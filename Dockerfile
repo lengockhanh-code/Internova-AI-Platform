@@ -81,7 +81,7 @@ HEALTHCHECK \
 # ============================================================
 # Production Server
 # ============================================================
-CMD ["sh", "-c", "gunicorn src.main:app \
+CMD ["sh", "-c", "python scripts/download_private_data.py && exec gunicorn src.main:app \
     --worker-class uvicorn.workers.UvicornWorker \
     --workers ${WEB_CONCURRENCY:-1} \
     --bind 0.0.0.0:${PORT:-10000} \
