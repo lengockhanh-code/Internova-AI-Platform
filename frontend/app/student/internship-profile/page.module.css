@@ -1,0 +1,563 @@
+.layout {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    background: #f5f7fb;
+}
+
+.main {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
+.profilePage {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 20px;
+    padding: 28px 32px;
+}
+
+.pageHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.pageHeader h1 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 30px;
+    font-weight: 700;
+}
+
+.pageHeader p {
+    margin: 8px 0 0;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.editButton {
+    min-height: 42px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 10px;
+    background: #0f172a;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+.editButton:hover {
+    background: #1e293b;
+    transform: translateY(-1px);
+}
+
+.profileGrid {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 20px;
+}
+
+.studentCard,
+.infoCard,
+.documentCard,
+.progressCard {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+}
+
+.studentCard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 24px;
+    text-align: center;
+}
+
+.avatar {
+    display: flex;
+    width: 106px;
+    height: 106px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.studentCard h2 {
+    margin: 18px 0 0;
+    color: #0f172a;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.studentCode {
+    margin: 6px 0 0;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.statusPill {
+    margin-top: 16px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    color: #059669;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.contactList {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 26px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.contactList div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #475569;
+    font-size: 14px;
+    text-align: left;
+}
+
+.contactList svg {
+    flex-shrink: 0;
+    color: #2563eb;
+}
+
+.infoCard {
+    padding: 24px;
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #2563eb;
+}
+
+.cardHeader h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.infoGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 24px;
+}
+
+.infoItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.infoIcon {
+    display: flex;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.infoItem p {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.infoItem strong {
+    display: block;
+    margin-top: 4px;
+    color: #1e293b;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.mentorBox {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 20px;
+    padding: 18px;
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+    background: #eff6ff;
+}
+
+.mentorAvatar {
+    display: flex;
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #2563eb;
+}
+
+.mentorBox p {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.mentorBox strong {
+    display: block;
+    margin-top: 3px;
+    color: #0f172a;
+    font-size: 15px;
+}
+
+.mentorBox span {
+    display: block;
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.bottomGrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+}
+
+.documentCard {
+    padding: 24px;
+}
+
+.documentList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.documentItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+
+.documentTitle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.documentTitle p {
+    margin: 0;
+    color: #1e293b;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.documentTitle span {
+    display: block;
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.documentDone {
+    color: #10b981;
+}
+
+.documentPending {
+    color: #94a3b8;
+}
+
+.documentItem button {
+    min-width: 76px;
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #334155;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.documentItem button:hover {
+    border-color: #93c5fd;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.progressCard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+    text-align: center;
+}
+
+.progressCard .cardHeader {
+    width: 100%;
+}
+
+.progressCircle {
+    display: flex;
+    width: 150px;
+    height: 150px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 24px;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at center, #ffffff 56%, transparent 57%),
+        conic-gradient(#2563eb 0deg 270deg, #e2e8f0 270deg 360deg);
+}
+
+.progressCircle div {
+    display: flex;
+    flex-direction: column;
+}
+
+.progressCircle strong {
+    color: #0f172a;
+    font-size: 30px;
+    font-weight: 700;
+}
+
+.progressCircle span {
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.progressText {
+    margin: 18px 0 0;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.progressBar {
+    width: 100%;
+    height: 8px;
+    margin-top: 18px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e2e8f0;
+}
+
+.progressFill {
+    width: 75%;
+    height: 100%;
+    border-radius: 999px;
+    background: #2563eb;
+}
+
+.completeButton {
+    width: 100%;
+    min-height: 42px;
+    margin-top: 22px;
+    border: none;
+    border-radius: 10px;
+    background: #2563eb;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.completeButton:hover {
+    background: #1d4ed8;
+}
+
+@media (max-width: 1100px) {
+
+    .profileGrid,
+    .bottomGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .studentCard {
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    .contactList {
+        max-width: 520px;
+    }
+}
+
+@media (max-width: 768px) {
+    .profilePage {
+        padding: 20px 18px;
+    }
+
+    .pageHeader {
+        flex-direction: column;
+    }
+
+    .pageHeader h1 {
+        font-size: 26px;
+    }
+
+    .editButton {
+        width: 100%;
+    }
+
+    .infoGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .documentItem {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .documentItem button {
+        width: 100%;
+    }
+}
+
+.uploadHint {
+    margin: -4px 0 16px;
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.documentTitle small {
+    display: block;
+    max-width: 260px;
+    margin-top: 4px;
+    overflow: hidden;
+    color: #94a3b8;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.documentActions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 7px;
+}
+
+.viewButton,
+.uploadButton,
+.deleteButton {
+    display: flex;
+    min-height: 34px;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.viewButton {
+    padding: 0 11px;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.viewButton:hover {
+    background: #dbeafe;
+}
+
+.uploadButton {
+    padding: 0 11px;
+    border: none;
+    background: #0f172a;
+    color: #ffffff;
+}
+
+.uploadButton:hover {
+    background: #1e293b;
+}
+
+.uploadButton:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+.deleteButton {
+    width: 34px;
+    border: 1px solid #fecaca;
+    background: #fff;
+    color: #dc2626;
+}
+
+.deleteButton:hover {
+    background: #fef2f2;
+}
+
+.deleteButton:disabled {
+    opacity: 0.6;
+}
+
+.smallSpinner {
+    animation: documentSpin 0.8s linear infinite;
+}
+
+@keyframes documentSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 700px) {
+    .documentItem {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .documentActions {
+        width: 100%;
+    }
+
+    .viewButton,
+    .uploadButton {
+        flex: 1;
+    }
+}

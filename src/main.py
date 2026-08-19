@@ -1,0 +1,261 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+# Auth
+from src.api.auth_routes import router as auth_router
+from src.api.checklist_routes import (
+    router as checklist_router,
+)
+from src.api.document_routes import (
+    router as document_router,
+)
+from src.api.internship_profile_routes import (
+    router as internship_profile_router,
+)
+from src.api.internship_registration_routes import (
+    router as internship_registration_router,
+)
+from src.api.lecturer_application_routes import (
+    router as lecturer_application_router,
+)
+from src.api.lecturer_evaluation_routes import (
+    router as lecturer_evaluation_router,
+)
+from src.api.lecturer_reminder_routes import (
+    router as lecturer_reminder_router,
+)
+from src.api.lecturer_report_routes import (
+    router as lecturer_report_router,
+)
+
+# Lecturer
+from src.api.lecturer_routes import (
+    router as lecturer_router,
+)
+from src.api.lecturer_settings_routes import (
+    router as lecturer_settings_router,
+)
+from src.api.lecturer_students_routes import (
+    router as lecturer_students_router,
+)
+from src.api.notification_routes import (
+    router as notification_router,
+)
+from src.api.notification_websocket_routes import (
+    router as notification_websocket_router,
+)
+# Admin
+
+from src.api.admin_observability_routes import (
+    router as admin_observability_router,
+)
+
+# ============================================================
+# API ROUTERS
+# ============================================================
+# Chatbot / RAG
+from src.api.routes import router as chat_router
+
+# Student
+from src.api.student_dashboard_routes import (
+    router as student_dashboard_router,
+)
+from src.api.student_routes import (
+    router as student_reports_router,
+)
+from src.api.student_settings_routes import (
+    router as student_settings_router,
+)
+
+# Config
+from src.config import get_settings
+
+# ============================================================
+# APP LIFESPAN
+# ============================================================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    settings = get_settings()
+
+    print(
+        f"Starting {settings.app_name} "
+        f"in {settings.app_env} mode"
+    )
+
+    yield
+
+    print("Shutting down...")
+
+
+# ============================================================
+# SETTINGS
+# ============================================================
+
+settings = get_settings()
+
+
+# ============================================================
+# FASTAPI APP
+# ============================================================
+
+app = FastAPI(
+    title="Internova API",
+    description=(
+        "Backend API for Internova "
+        "Internship Support Platform"
+    ),
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+
+# ============================================================
+# CORS
+# ============================================================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        origin.strip()
+        for origin in settings.cors_origins.split(",")
+        if origin.strip()
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ============================================================
+# API ROUTES
+# ============================================================
+
+# Auth
+app.include_router(
+    auth_router,
+    prefix="/api/v1",
+)
+
+# Chatbot / RAG
+app.include_router(
+    chat_router,
+    prefix="/api/v1",
+)
+
+# Student Dashboard
+app.include_router(
+    student_dashboard_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    student_settings_router,
+    prefix="/api/v1",
+)
+
+# Student Checklist
+app.include_router(
+    checklist_router,
+    prefix="/api/v1",
+)
+
+# Student Reports
+app.include_router(
+    student_reports_router,
+    prefix="/api/v1",
+)
+
+# Student Internship Profile
+app.include_router(
+    internship_profile_router,
+    prefix="/api/v1",
+)
+
+# Student Internship Registration
+app.include_router(
+    internship_registration_router,
+    prefix="/api/v1",
+)
+
+# Lecturer Dashboard
+app.include_router(
+    lecturer_router,
+    prefix="/api/v1",
+)
+
+# Lecturer Students
+app.include_router(
+    lecturer_students_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    lecturer_report_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    lecturer_application_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    lecturer_evaluation_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    lecturer_reminder_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    lecturer_settings_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    notification_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    notification_websocket_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    document_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    admin_observability_router,
+)
+
+# ============================================================
+# HEALTH CHECK
+# ============================================================
+
+@app.get("/health")
+async def health():
+    return {
+        "status": "ok",
+        "env": settings.app_env,
+    }
+
+
+# ============================================================
+# ROOT
+# ============================================================
+
+@app.get("/")
+async def root():
+    return {
+        "name": "Internova API",
+        "status": "running",
+        "docs": "/docs",
+    }

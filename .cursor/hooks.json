@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": "py -3 scripts/log_hook.py --tool=cursor"
+      }
+    ],
+    "stop": [
+      {
+        "command": "py -3 scripts/log_hook.py --tool=cursor"
+      }
+    ]
+  }
+}

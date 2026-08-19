@@ -1,0 +1,1179 @@
+/* ============================================================
+   PAGE
+   ============================================================ */
+
+.page {
+  min-height: calc(100vh - 72px);
+
+  padding: 28px 34px 40px;
+
+  background: #f4f7fb;
+}
+
+
+/* ============================================================
+   PAGE HEADER
+   ============================================================ */
+
+.pageHeader {
+  display: flex;
+
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 24px;
+
+  margin-bottom: 22px;
+}
+
+
+.eyebrow {
+  margin: 0 0 7px;
+
+  color: #287df4;
+
+  font-size: 13px;
+  font-weight: 800;
+
+  letter-spacing: 0.08em;
+}
+
+
+.pageHeader h1 {
+  margin: 0;
+
+  color: #16233e;
+
+  font-size: 28px;
+  font-weight: 760;
+
+  letter-spacing: -0.025em;
+}
+
+
+.pageHeader p {
+  max-width: 700px;
+
+  margin: 8px 0 0;
+
+  color: #718096;
+
+  font-size: 14px;
+
+  line-height: 1.55;
+}
+
+
+/* ============================================================
+   HEADER ACTIONS
+   ============================================================ */
+
+.headerActions {
+  display: flex;
+
+  flex-shrink: 0;
+
+  align-items: center;
+
+  gap: 10px;
+}
+
+
+/* ============================================================
+   ADD STUDENT BUTTON
+   ============================================================ */
+
+.addButton {
+  display: inline-flex;
+
+  min-height: 42px;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  padding: 0 15px;
+
+  border: 1px solid #287df4;
+  border-radius: 10px;
+
+  background: #287df4;
+
+  color: #ffffff;
+
+  font: inherit;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+
+.addButton:hover {
+  border-color: #1d6fe5;
+
+  background: #1d6fe5;
+
+  box-shadow:
+    0 5px 14px
+    rgba(40, 125, 244, 0.2);
+}
+
+
+.addButton:active {
+  transform: translateY(1px);
+}
+
+
+/* ============================================================
+   REFRESH BUTTON
+   ============================================================ */
+
+.refreshButton {
+  display: inline-flex;
+
+  min-height: 42px;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  padding: 0 15px;
+
+  border: 1px solid #dce5ef;
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  color: #334155;
+
+  font: inherit;
+
+  font-size: 14px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+
+.refreshButton:hover {
+  border-color: #93c5fd;
+
+  background: #f8fbff;
+
+  color: #2563eb;
+}
+
+
+.refreshButton:active {
+  transform: translateY(1px);
+}
+
+
+/* ============================================================
+   SUMMARY
+   ============================================================ */
+
+.summaryGrid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(0, 1fr)
+    );
+
+  gap: 15px;
+
+  margin-bottom: 18px;
+}
+
+
+.summaryCard {
+  display: flex;
+
+  min-height: 96px;
+
+  align-items: center;
+
+  gap: 13px;
+
+  padding: 17px;
+
+  border: 1px solid #e0e7ef;
+  border-radius: 15px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 3px 13px
+    rgba(15, 23, 42, 0.035);
+
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+
+.summaryCard:hover {
+  transform: translateY(-1px);
+
+  border-color: #d7e0ea;
+
+  box-shadow:
+    0 7px 20px
+    rgba(15, 23, 42, 0.055);
+}
+
+
+.summaryIcon {
+  display: flex;
+
+  width: 44px;
+  height: 44px;
+
+  flex-shrink: 0;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+
+  background: #eaf3ff;
+
+  color: #287df4;
+}
+
+
+.summaryCard:nth-child(2) .summaryIcon {
+  background: #ecfdf5;
+
+  color: #059669;
+}
+
+
+.summaryCard:nth-child(3) .summaryIcon {
+  background: #f5f3ff;
+
+  color: #7c3aed;
+}
+
+
+.summaryCard:nth-child(4) .summaryIcon {
+  background: #fff7ed;
+
+  color: #ea580c;
+}
+
+
+.summaryCard span {
+  color: #718096;
+
+  font-size: 13px;
+}
+
+
+.summaryCard strong {
+  display: block;
+
+  margin-top: 4px;
+
+  color: #16233e;
+
+  font-size: 23px;
+  font-weight: 750;
+}
+
+
+/* ============================================================
+   CONTENT CARD
+   ============================================================ */
+
+.contentCard {
+  overflow: hidden;
+
+  border: 1px solid #e0e7ef;
+  border-radius: 16px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 3px 13px
+    rgba(15, 23, 42, 0.035);
+}
+
+
+/* ============================================================
+   CARD HEADER
+   ============================================================ */
+
+.cardHeader {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 20px 22px 14px;
+}
+
+
+.cardHeader h2 {
+  margin: 0;
+
+  color: #16233e;
+
+  font-size: 17px;
+  font-weight: 700;
+}
+
+
+.cardHeader p {
+  margin: 5px 0 0;
+
+  color: #94a3b8;
+
+  font-size: 13px;
+}
+
+
+/* ============================================================
+   TOOLBAR
+   ============================================================ */
+
+.toolbar {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 0 22px 18px;
+}
+
+
+/* ============================================================
+   SEARCH
+   ============================================================ */
+
+.searchBox {
+  display: flex;
+
+  min-height: 42px;
+
+  flex: 1;
+
+  align-items: center;
+
+  gap: 9px;
+
+  padding: 0 13px;
+
+  border: 1px solid #dce5ef;
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  color: #94a3b8;
+
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+
+.searchBox:focus-within {
+  border-color: #60a5fa;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(96, 165, 250, 0.11);
+}
+
+
+.searchBox input {
+  width: 100%;
+
+  border: 0;
+
+  outline: 0;
+
+  background: transparent;
+
+  color: #17233f;
+
+  font: inherit;
+
+  font-size: 14px;
+}
+
+
+.searchBox input::placeholder {
+  color: #94a3b8;
+}
+
+
+/* ============================================================
+   STATUS SELECT
+   ============================================================ */
+
+.statusSelect {
+  min-width: 185px;
+  min-height: 42px;
+
+  padding: 0 12px;
+
+  border: 1px solid #dce5ef;
+  border-radius: 10px;
+
+  outline: 0;
+
+  background: #ffffff;
+
+  color: #475569;
+
+  font: inherit;
+
+  font-size: 14px;
+
+  cursor: pointer;
+}
+
+
+.statusSelect:focus {
+  border-color: #60a5fa;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(96, 165, 250, 0.1);
+}
+
+
+/* ============================================================
+   TABLE WRAPPER
+   ============================================================ */
+
+.tableWrapper {
+  width: 100%;
+
+  overflow-x: auto;
+
+  border-top: 1px solid #eef2f7;
+
+  scrollbar-width: thin;
+
+  scrollbar-color:
+    #cbd5e1
+    transparent;
+}
+
+
+.tableWrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+
+.tableWrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+
+.tableWrapper::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+
+  background: #cbd5e1;
+}
+
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+
+.table {
+  width: 100%;
+
+  min-width: 1390px;
+
+  border-collapse: collapse;
+}
+
+
+.table th {
+  padding: 12px 14px;
+
+  border-bottom:
+    1px solid #e2e8f0;
+
+  background: #fafbfd;
+
+  color: #64748b;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  text-align: left;
+
+  white-space: nowrap;
+}
+
+
+.table td {
+  padding: 15px 14px;
+
+  border-bottom:
+    1px solid #eef2f7;
+
+  color: #475569;
+
+  font-size: 14px;
+
+  vertical-align: middle;
+}
+
+
+.table tbody tr {
+  cursor: pointer;
+
+  transition:
+    background 0.16s ease;
+}
+
+
+.table tbody tr:hover {
+  background: #f8fbff;
+}
+
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+
+/* ============================================================
+   STUDENT CELL
+   ============================================================ */
+
+.studentCell,
+.companyCell {
+  display: flex;
+
+  align-items: center;
+
+  gap: 9px;
+}
+
+
+.studentCell {
+  min-width: 195px;
+}
+
+
+.avatar {
+  display: flex;
+
+  width: 38px;
+  height: 38px;
+
+  flex-shrink: 0;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #e8f1fb;
+
+  color: #315c83;
+
+  font-size: 13px;
+  font-weight: 800;
+}
+
+
+.studentCell strong,
+.companyCell strong,
+.majorCell strong,
+.reportCell strong {
+  display: block;
+
+  color: #27364e;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+
+.studentCell span,
+.companyCell span,
+.majorCell span {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #94a3b8;
+
+  font-size: 11px;
+}
+
+
+/* ============================================================
+   STUDENT CODE
+   ============================================================ */
+
+.studentCode {
+  color: #42526b;
+
+  font-size: 13px;
+  font-weight: 650;
+
+  white-space: nowrap;
+}
+
+
+/* ============================================================
+   CLASS / MAJOR
+   ============================================================ */
+
+.majorCell {
+  min-width: 135px;
+}
+
+
+.majorCell strong {
+  color: #334155;
+}
+
+
+.majorCell span {
+  max-width: 170px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+
+/* ============================================================
+   COMPANY
+   ============================================================ */
+
+.companyCell {
+  min-width: 170px;
+}
+
+
+.companyCell svg {
+  flex-shrink: 0;
+
+  color: #64748b;
+}
+
+
+.companyCell > div {
+  min-width: 0;
+}
+
+
+.companyCell strong {
+  max-width: 180px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+
+.companyCell span {
+  max-width: 180px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+
+/* ============================================================
+   PROGRESS
+   ============================================================ */
+
+.progressCell {
+  min-width: 122px;
+}
+
+
+.progressCell strong {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: #334155;
+
+  font-size: 13px;
+}
+
+
+.progressTrack {
+  width: 112px;
+  height: 6px;
+
+  overflow: hidden;
+
+  border-radius: 999px;
+
+  background: #e6ebf1;
+}
+
+
+.progressTrack span {
+  display: block;
+
+  height: 100%;
+
+  border-radius: inherit;
+
+  transition:
+    width 0.25s ease;
+}
+
+
+.progressDanger {
+  background: #dc6b5b;
+}
+
+
+.progressWarning {
+  background: #d7a32d;
+}
+
+
+.progressGood {
+  background: #3b82f6;
+}
+
+
+.progressCompleted {
+  background: #43a66c;
+}
+
+
+/* ============================================================
+   REPORT
+   ============================================================ */
+
+.reportCell {
+  min-width: 105px;
+}
+
+
+.reportBadge {
+  display: inline-flex;
+
+  margin-top: 5px;
+
+  padding: 4px 7px;
+
+  border-radius: 6px;
+
+  font-size: 11px;
+  font-weight: 650;
+
+  white-space: nowrap;
+}
+
+
+.reportOnTime {
+  background: #ecfdf5;
+
+  color: #059669;
+}
+
+
+.reportLate {
+  background: #fff1f2;
+
+  color: #dc2626;
+}
+
+
+.reportMissing {
+  background: #fff7ed;
+
+  color: #c2410c;
+}
+
+
+.reportUpcoming {
+  background: #f8fafc;
+
+  color: #64748b;
+}
+
+
+/* ============================================================
+   SCORE
+   ============================================================ */
+
+.score {
+  color: #334155;
+
+  font-size: 14px;
+  font-weight: 700;
+}
+
+
+/* ============================================================
+   WARNING
+   ============================================================ */
+
+.warningBadge {
+  display: inline-flex;
+
+  min-width: 27px;
+  height: 27px;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #f8fafc;
+
+  color: #64748b;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+
+.warningBadgeActive {
+  background: #fff7ed;
+
+  color: #c2410c;
+}
+
+
+/* ============================================================
+   INTERNSHIP STATUS
+   ============================================================ */
+
+.statusBadge {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 5px 8px;
+
+  border-radius: 999px;
+
+  font-size: 11px;
+  font-weight: 650;
+
+  white-space: nowrap;
+}
+
+
+.statusInProgress {
+  background: #eff6ff;
+
+  color: #2563eb;
+}
+
+
+.statusCompleted {
+  background: #ecfdf5;
+
+  color: #059669;
+}
+
+
+.statusPaused {
+  background: #fff7ed;
+
+  color: #ea580c;
+}
+
+
+.statusNotStarted {
+  background: #f1f5f9;
+
+  color: #64748b;
+}
+
+
+/* ============================================================
+   DETAIL BUTTON
+   ============================================================ */
+
+.detailButton {
+  display: flex;
+
+  width: 31px;
+  height: 31px;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: transparent;
+
+  color: #94a3b8;
+
+  cursor: pointer;
+
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease;
+}
+
+
+.detailButton:hover {
+  background: #eaf3ff;
+
+  color: #287df4;
+}
+
+
+.detailButton:active {
+  transform: translateX(1px);
+}
+
+
+/* ============================================================
+   MUTED TEXT
+   ============================================================ */
+
+.mutedText {
+  color: #94a3b8;
+
+  font-size: 12px;
+}
+
+
+/* ============================================================
+   LOADING / ERROR / EMPTY
+   ============================================================ */
+
+.stateBox {
+  display: flex;
+
+  min-height: 260px;
+
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 9px;
+
+  padding: 30px;
+
+  color: #94a3b8;
+
+  text-align: center;
+}
+
+
+.stateBox h3 {
+  margin: 3px 0 0;
+
+  color: #334155;
+
+  font-size: 16px;
+}
+
+
+.stateBox p {
+  max-width: 650px;
+
+  margin: 0;
+
+  font-size: 13px;
+
+  line-height: 1.5;
+}
+
+
+.stateBox button {
+  margin-top: 6px;
+
+  padding: 8px 14px;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: #287df4;
+
+  color: #ffffff;
+
+  font: inherit;
+
+  font-size: 13px;
+  font-weight: 650;
+
+  cursor: pointer;
+}
+
+
+.stateBox button:hover {
+  background: #1d6fe5;
+}
+
+
+/* ============================================================
+   LOADING ANIMATION
+   ============================================================ */
+
+.spin {
+  animation:
+    spin 0.8s linear infinite;
+}
+
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* ============================================================
+   RESPONSIVE <= 1200
+   ============================================================ */
+
+@media (max-width: 1200px) {
+  .summaryGrid {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+  }
+}
+
+
+/* ============================================================
+   RESPONSIVE <= 820
+   ============================================================ */
+
+@media (max-width: 820px) {
+  .page {
+    min-height:
+      calc(100vh - 72px);
+
+    padding:
+      22px 18px 32px;
+  }
+
+
+  .pageHeader {
+    flex-direction: column;
+  }
+
+
+  .headerActions {
+    width: 100%;
+  }
+
+
+  .addButton,
+  .refreshButton {
+    flex: 1;
+
+    justify-content: center;
+  }
+
+
+  .toolbar {
+    flex-direction: column;
+
+    align-items: stretch;
+  }
+
+
+  .statusSelect {
+    width: 100%;
+  }
+}
+
+
+/* ============================================================
+   RESPONSIVE <= 540
+   ============================================================ */
+
+@media (max-width: 540px) {
+  .summaryGrid {
+    grid-template-columns:
+      1fr;
+  }
+
+
+  .headerActions {
+    flex-direction: column;
+  }
+
+
+  .addButton,
+  .refreshButton {
+    width: 100%;
+  }
+
+
+  .cardHeader {
+    padding:
+      18px 18px 14px;
+  }
+
+
+  .toolbar {
+    padding:
+      0 18px 18px;
+  }
+}
+
+
+/* ============================================================
+   ACCESSIBILITY
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
+
+
+  .table tbody tr,
+  .summaryCard,
+  .addButton,
+  .refreshButton,
+  .detailButton,
+  .progressTrack span {
+    transition: none;
+  }
+}

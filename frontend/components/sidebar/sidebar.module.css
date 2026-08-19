@@ -1,0 +1,305 @@
+.sidebar {
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 50;
+
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: column;
+    justify-content: space-between;
+
+    width: 256px;
+    min-width: 256px;
+    height: 100vh;
+
+    padding: 24px 16px;
+
+    border-right: 1px solid #e2e8f0;
+    background: #ffffff;
+
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+/* =========================
+   LOGO
+========================= */
+
+.sidebarLogo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 0 8px;
+    margin-bottom: 30px;
+}
+
+.sidebarLogo img {
+    flex-shrink: 0;
+    object-fit: contain;
+}
+
+.sidebarLogo span {
+    color: #0f172a;
+
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.mobileCloseButton,
+.mobileOverlay {
+    display: none;
+}
+
+/* =========================
+   NAVIGATION
+========================= */
+
+.sidebarNav {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Navigation group */
+
+.navGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.navGroupTitle {
+    margin: 0;
+    padding: 0 12px;
+
+    color: #94a3b8;
+
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+
+    letter-spacing: 0.08em;
+}
+
+.navGroupItems {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* Navigation item */
+
+.sidebarNavItem {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    width: 100%;
+    min-height: 44px;
+
+    padding: 10px 12px;
+
+    border-radius: 12px;
+
+    background: transparent;
+
+    color: #64748b;
+
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.4;
+
+    text-decoration: none;
+
+    box-sizing: border-box;
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.sidebarNavItem svg {
+    flex-shrink: 0;
+
+    transition:
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.sidebarNavItem:hover {
+    background: #f8fafc;
+    color: #334155;
+
+    transform: translateX(2px);
+}
+
+.sidebarNavItem:hover svg {
+    transform: scale(1.05);
+}
+
+/* =========================
+   ACTIVE
+========================= */
+
+.active {
+    background: #eff6ff;
+    color: #2563eb;
+
+    font-weight: 600;
+}
+
+.active::before {
+    content: "";
+
+    position: absolute;
+
+    top: 50%;
+    left: 0;
+
+    width: 4px;
+    height: 24px;
+
+    border-radius: 0 6px 6px 0;
+
+    background: #2563eb;
+
+    transform: translateY(-50%);
+}
+
+.active svg {
+    color: #2563eb;
+}
+
+.active:hover {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+/* =========================
+   FOOTER
+========================= */
+
+.sidebarFooterCard {
+    margin-top: 28px;
+
+    padding: 16px;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+
+    background: #ffffff;
+
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.sidebarFooterIcon {
+    margin-bottom: 8px;
+
+    color: #2563eb;
+}
+
+.sidebarFooterTitle {
+    margin: 0;
+
+    color: #0f172a;
+
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.sidebarFooterDesc {
+    margin: 5px 0 0;
+
+    color: #64748b;
+
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 220px;
+        min-width: 220px;
+
+        padding: 20px 12px;
+    }
+
+    .sidebarNavItem {
+        padding: 10px;
+
+        font-size: 14px;
+    }
+
+    .navGroupTitle {
+        padding: 0 10px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        z-index: 110;
+        display: flex;
+        width: min(300px, 84vw);
+        min-width: 0;
+        height: 100dvh;
+        transform: translateX(-100%);
+        transition: transform 200ms ease;
+    }
+
+    .mobileOpen {
+        transform: translateX(0);
+    }
+
+    .mobileCloseButton {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        margin-left: auto;
+        place-items: center;
+        padding: 0;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #fff;
+        color: #526176;
+        cursor: pointer;
+    }
+
+    .mobileOverlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: block;
+        border: 0;
+        background: rgba(15, 23, 42, 0.46);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .sidebarNavItem,
+    .sidebarNavItem svg {
+        transition: none;
+    }
+
+    .sidebarNavItem:hover {
+        transform: none;
+    }
+
+    .sidebarNavItem:hover svg {
+        transform: none;
+    }
+}

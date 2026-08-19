@@ -1,0 +1,1062 @@
+.layout {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    background: #f5f7fb;
+}
+
+.main {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
+.checklistPage {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 20px;
+    padding: 28px 32px;
+}
+
+
+/* ============================================================
+   HEADER
+============================================================ */
+
+.pageHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.titleRow {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.titleIcon {
+    display: flex;
+    width: 54px;
+    height: 54px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 15px;
+    background: #eff6ff;
+    color: #2563eb;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.1);
+}
+
+.pageHeader h1 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.pageHeader p {
+    margin: 7px 0 0;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.addButton {
+    display: flex;
+    min-height: 42px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 10px;
+    background: #0f172a;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.addButton:hover {
+    background: #1e293b;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.15);
+    transform: translateY(-1px);
+}
+
+
+/* ============================================================
+   STATS
+============================================================ */
+
+.statGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.statCard {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.2s ease;
+}
+
+.statCard:hover {
+    border-color: #bfdbfe;
+    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.08);
+    transform: translateY(-3px);
+}
+
+.statCard p {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.statCard strong {
+    display: block;
+    margin-top: 7px;
+    color: #0f172a;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.statCard div>span {
+    display: block;
+    margin-top: 4px;
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.statIcon {
+    display: flex;
+    width: 50px;
+    height: 50px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+
+/* ============================================================
+   TOOLBAR
+============================================================ */
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 14px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #ffffff;
+}
+
+.toolbarLeft {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 9px;
+}
+
+.filterLabel {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-right: 4px;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.filterButton,
+.filterButtonActive,
+.sortButton,
+.sortButtonActive {
+    min-height: 36px;
+    padding: 0 13px;
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.filterButton {
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #64748b;
+}
+
+.filterButton:hover {
+    border-color: #93c5fd;
+    color: #2563eb;
+}
+
+.filterButtonActive {
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.sortButton,
+.sortButtonActive {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 7px;
+}
+
+.sortButton {
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #475569;
+}
+
+.sortButton:hover {
+    border-color: #93c5fd;
+    color: #2563eb;
+}
+
+.sortButtonActive {
+    border: 1px solid #93c5fd;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+
+/* ============================================================
+   CONTENT
+============================================================ */
+
+.contentGrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+    align-items: start;
+}
+
+.taskColumn {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.groupCard,
+.overviewCard,
+.deadlineCard {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+}
+
+.groupCard {
+    padding: 22px;
+}
+
+.groupHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.groupHeader h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.groupHeader p {
+    margin: 6px 0 0;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.groupProgressInfo {
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.groupProgressInfo strong {
+    display: block;
+    color: #2563eb;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.groupProgressInfo span {
+    display: block;
+    margin-top: 2px;
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.groupProgressBar {
+    width: 100%;
+    height: 8px;
+    margin-top: 18px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e2e8f0;
+}
+
+.groupProgressFill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #2563eb, #60a5fa);
+    transition: width 0.3s ease;
+}
+
+
+/* ============================================================
+   TASK
+============================================================ */
+
+.taskList {
+    display: flex;
+    flex-direction: column;
+    margin-top: 12px;
+}
+
+.taskItem {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) 34px;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 17px 4px;
+    border-bottom: 1px solid #edf2f7;
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+.taskItem:last-child {
+    border-bottom: none;
+}
+
+.taskItem:hover {
+    background: #f8fafc;
+    transform: translateX(3px);
+}
+
+.checkButton,
+.moreButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.checkButton {
+    margin-top: 2px;
+}
+
+.checkButton:disabled {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+.completedIcon {
+    color: #10b981;
+}
+
+.pendingIcon {
+    color: #cbd5e1;
+}
+
+.taskContent {
+    min-width: 0;
+}
+
+.taskTitleRow {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.taskTitleRow h3 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.taskContent>p {
+    margin: 5px 0 0;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.taskMeta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.taskMeta>span:first-child {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.priorityBadge,
+.statusBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.high {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.medium {
+    background: #fff7ed;
+    color: #ea580c;
+}
+
+.low {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.completed {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.inProgress {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.pending {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.taskCompleted .taskTitleRow h3 {
+    color: #94a3b8;
+    text-decoration: line-through;
+}
+
+.moreButton {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    color: #94a3b8;
+}
+
+.moreButton:hover {
+    background: #f1f5f9;
+    color: #2563eb;
+}
+
+
+/* ============================================================
+   SIDE COLUMN
+============================================================ */
+
+.sideColumn {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.overviewCard,
+.deadlineCard {
+    padding: 22px;
+}
+
+.sideHeader {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: #2563eb;
+}
+
+.sideHeader h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+
+/* ============================================================
+   PROGRESS
+============================================================ */
+
+.progressCircle {
+    display: flex;
+    width: 154px;
+    height: 154px;
+    align-items: center;
+    justify-content: center;
+    margin: 25px auto 0;
+    border-radius: 50%;
+}
+
+.progressCircle>div {
+    display: flex;
+    width: 118px;
+    height: 118px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #ffffff;
+}
+
+.progressCircle strong {
+    color: #0f172a;
+    font-size: 30px;
+    font-weight: 700;
+}
+
+.progressCircle span {
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.overviewStats {
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    margin-top: 24px;
+}
+
+.overviewStats>div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.overviewStats p {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.overviewStats strong {
+    color: #334155;
+    font-size: 12px;
+}
+
+.overviewDotDone,
+.overviewDotProgress,
+.overviewDotPending {
+    width: 9px;
+    height: 9px;
+    flex-shrink: 0;
+    border-radius: 50%;
+}
+
+.overviewDotDone {
+    background: #10b981;
+}
+
+.overviewDotProgress {
+    background: #2563eb;
+}
+
+.overviewDotPending {
+    background: #cbd5e1;
+}
+
+
+/* ============================================================
+   DEADLINE
+============================================================ */
+
+.deadlineMain {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    background: #eff6ff;
+}
+
+.deadlineMain>span {
+    display: flex;
+    width: 58px;
+    height: 58px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: #ffffff;
+    color: #2563eb;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.deadlineMain p,
+.deadlineMain strong,
+.deadlineMain small {
+    display: block;
+}
+
+.deadlineMain p {
+    margin: 0;
+    color: #64748b;
+    font-size: 11px;
+}
+
+.deadlineMain strong {
+    margin-top: 4px;
+    color: #0f172a;
+    font-size: 13px;
+}
+
+.deadlineMain small {
+    margin-top: 4px;
+    color: #dc2626;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.deadlineButton {
+    width: 100%;
+    min-height: 42px;
+    margin-top: 17px;
+    border: none;
+    border-radius: 10px;
+    background: #2563eb;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.deadlineButton:hover {
+    background: #1d4ed8;
+}
+
+.noDeadline {
+    display: flex;
+    min-height: 150px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #10b981;
+    text-align: center;
+}
+
+.noDeadline p {
+    margin: 0;
+    color: #64748b;
+    font-size: 12px;
+}
+
+
+/* ============================================================
+   LOADING / ERROR / EMPTY
+============================================================ */
+
+.statePage {
+    display: flex;
+    flex: 1;
+    min-height: 500px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 30px;
+    color: #64748b;
+    text-align: center;
+}
+
+.statePage h2,
+.statePage p {
+    margin: 0;
+}
+
+.statePage h2 {
+    color: #334155;
+    font-size: 18px;
+}
+
+.statePage button {
+    margin-top: 5px;
+    padding: 9px 15px;
+    border: none;
+    border-radius: 9px;
+    background: #2563eb;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.emptyState {
+    display: flex;
+    min-height: 260px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 16px;
+    background: #ffffff;
+    color: #94a3b8;
+    text-align: center;
+}
+
+.emptyState h3 {
+    margin: 12px 0 0;
+    color: #334155;
+    font-size: 15px;
+}
+
+.emptyState p {
+    margin: 6px 0 0;
+    font-size: 12px;
+}
+
+.spinner,
+.smallSpinner {
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* ============================================================
+   MODAL
+============================================================ */
+
+.modalOverlay {
+    position: fixed;
+    z-index: 999;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.48);
+    backdrop-filter: blur(3px);
+}
+
+.modal {
+    width: min(100%, 560px);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.25);
+}
+
+.modalHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 21px 22px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.modalHeader h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 19px;
+    font-weight: 700;
+}
+
+.modalHeader p {
+    margin: 5px 0 0;
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.modalHeader>button {
+    display: flex;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.modalHeader>button:hover {
+    background: #f1f5f9;
+}
+
+.addTaskForm {
+    padding: 22px;
+}
+
+.formGroup {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 7px;
+    margin-bottom: 16px;
+}
+
+.formGroup label {
+    color: #334155;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.formGroup input,
+.formGroup textarea,
+.formGroup select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 12px;
+    border: 1px solid #dbe2ea;
+    border-radius: 10px;
+    outline: none;
+    background: #ffffff;
+    color: #0f172a;
+    font-family: inherit;
+    font-size: 13px;
+}
+
+.formGroup textarea {
+    resize: vertical;
+}
+
+.formGroup input:focus,
+.formGroup textarea:focus,
+.formGroup select:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.12);
+}
+
+.formRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 13px;
+}
+
+.modalActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    margin-top: 6px;
+}
+
+.cancelButton,
+.submitButton {
+    display: flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 0 15px;
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.cancelButton {
+    border: 1px solid #dbe2ea;
+    background: #ffffff;
+    color: #475569;
+}
+
+.cancelButton:hover {
+    background: #f8fafc;
+}
+
+.submitButton {
+    border: none;
+    background: #0f172a;
+    color: #ffffff;
+}
+
+.submitButton:hover {
+    background: #1e293b;
+}
+
+.submitButton:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+
+/* ============================================================
+   RESPONSIVE
+============================================================ */
+
+@media (max-width: 1180px) {
+    .statGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .contentGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .sideColumn {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .checklistPage {
+        padding: 20px 18px;
+    }
+
+    .pageHeader,
+    .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .pageHeader h1 {
+        font-size: 25px;
+    }
+
+    .addButton {
+        width: 100%;
+    }
+
+    .statGrid,
+    .sideColumn {
+        grid-template-columns: 1fr;
+    }
+
+    .sortButton,
+    .sortButtonActive {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .groupHeader {
+        flex-direction: column;
+    }
+
+    .groupProgressInfo {
+        text-align: left;
+    }
+
+    .taskTitleRow {
+        flex-direction: column;
+    }
+
+    .formRow {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}
+
+@media (max-width: 520px) {
+    .titleRow {
+        align-items: flex-start;
+    }
+
+    .titleIcon {
+        width: 48px;
+        height: 48px;
+    }
+
+    .taskItem {
+        grid-template-columns: 26px minmax(0, 1fr);
+    }
+
+    .moreButton {
+        display: none;
+    }
+
+    .toolbarLeft {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .filterButton,
+    .filterButtonActive {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .addButton,
+    .statCard,
+    .taskItem,
+    .groupProgressFill {
+        transition: none;
+    }
+
+    .spinner,
+    .smallSpinner {
+        animation: none;
+    }
+}

@@ -1,0 +1,413 @@
+.layout {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    background: #f5f7fb;
+}
+
+.main {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
+.dashboard {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    padding: 28px 32px;
+    overflow-x: hidden;
+}
+
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.dashboardWelcome {
+    margin-top: 8px;
+}
+
+.dashboardWelcome h1 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 28px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+}
+
+.dashboardWelcome p {
+    font-size: 15px;
+    color: #64748b;
+    margin: 6px 0 0;
+}
+
+.dashboardPanel {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.featureGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.featureCard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 32px 24px;
+}
+
+.featureIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #2563eb;
+    margin-bottom: 20px;
+}
+
+.featureCard h3 {
+    font-size: 17px;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 0;
+}
+
+.featureCard p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #64748b;
+    margin: 8px 0 0;
+}
+
+.featureCta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 24px;
+    background: #0f172a;
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.featureCta:hover {
+    background: #1e293b;
+}
+
+.statusGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.statusCard {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.statusCardHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #2563eb;
+    margin-bottom: 16px;
+}
+
+.statusCardHeader h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 0;
+}
+
+.statusPill {
+    width: fit-content;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-bottom: 16px;
+}
+
+.statusList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+    margin: 0;
+}
+
+.statusRow {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 14px;
+}
+
+.statusRow dt {
+    color: #64748b;
+}
+
+.statusRow dd {
+    margin: 0;
+    color: #1e293b;
+    text-align: right;
+}
+
+.statusCta {
+    margin-top: 20px;
+    background: transparent;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1e293b;
+    cursor: pointer;
+}
+
+.statusCta:hover {
+    background: #f8fafc;
+}
+
+.deadlineList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    flex: 1;
+}
+
+.deadlineList li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.deadlineDot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: #3b82f6;
+    margin-top: 6px;
+    flex-shrink: 0;
+}
+
+.deadlineInfo {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex: 1;
+}
+
+.deadlineTitle {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1e293b;
+    margin: 0;
+}
+
+.deadlineSubtitle {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0;
+}
+
+.deadlineDate {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.deadlineDate p:first-child {
+    font-size: 13px;
+    font-weight: 500;
+    color: #2563eb;
+    margin: 0;
+}
+
+.deadlineDate p:last-child {
+    font-size: 12px;
+    color: #94a3b8;
+    margin: 0;
+}
+
+.progressHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.progressHeader p {
+    font-size: 14px;
+    color: #1e293b;
+    margin: 0;
+}
+
+.progressHeader p span {
+    color: #94a3b8;
+}
+
+.progressBadge {
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 8px;
+}
+
+.progressBar {
+    width: 100%;
+    height: 8px;
+    background: #f1f5f9;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.progressBarFill {
+    height: 100%;
+    background: #2563eb;
+    border-radius: 999px;
+}
+
+.checklist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+}
+
+.checklist li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #334155;
+}
+
+.checkDone {
+    color: #10b981;
+}
+
+.checkPending {
+    color: #cbd5e1;
+}
+
+.tipBanner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 16px;
+    padding: 14px 20px;
+}
+
+.tipBanner svg {
+    flex-shrink: 0;
+    color: #3b82f6;
+}
+
+.tipBanner p {
+    font-size: 14px;
+    color: #1e3a8a;
+    margin: 0;
+}
+
+.statePage {
+    display: flex;
+    flex: 1;
+    min-height: 500px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 30px;
+    color: #64748b;
+    text-align: center;
+}
+
+.statePage h2,
+.statePage p {
+    margin: 0;
+}
+
+.statePage h2 {
+    color: #0f172a;
+    font-size: 19px;
+}
+
+.statePage button {
+    margin-top: 6px;
+    padding: 9px 16px;
+    border: none;
+    border-radius: 9px;
+    background: #2563eb;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.spinner {
+    animation: dashboardSpin 0.8s linear infinite;
+}
+
+@keyframes dashboardSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.emptyCard {
+    display: flex;
+    min-height: 140px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #94a3b8;
+    text-align: center;
+}
+
+.emptyCard p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+}

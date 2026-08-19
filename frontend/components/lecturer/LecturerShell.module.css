@@ -1,0 +1,807 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(55, 125, 255, 0.06),
+      transparent 26%
+    ),
+    #f5f7fb;
+  color: #15233c;
+  font-family: inherit;
+}
+
+
+/* ============================================================
+   SIDEBAR
+   GIỮ ĐÚNG KÍCH THƯỚC DASHBOARD GỐC
+   ============================================================ */
+
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 60;
+
+  width: 280px;
+
+  overflow-y: auto;
+
+  padding: 20px 16px 18px;
+
+  box-sizing: border-box;
+
+  background:
+    radial-gradient(
+      circle at 18% 0%,
+      rgba(73, 139, 255, 0.24),
+      transparent 28%
+    ),
+    linear-gradient(
+      180deg,
+      #071d3f 0%,
+      #0a2a57 52%,
+      #09264e 100%
+    );
+
+  color: #ffffff;
+
+  box-shadow:
+    12px 0 30px
+    rgba(8, 27, 57, 0.08);
+
+  transition:
+    transform 220ms ease;
+
+  scrollbar-width: thin;
+  scrollbar-color:
+    rgba(255, 255, 255, 0.22)
+    transparent;
+}
+
+
+/* ============================================================
+   BRAND
+   Dashboard gốc:
+   icon 46x46
+   title 18px
+   subtitle 11px
+   ============================================================ */
+
+.brand {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 4px 8px 20px;
+
+  border-bottom:
+    1px solid
+    rgba(255, 255, 255, 0.1);
+}
+
+
+.brandIcon {
+  display: grid;
+
+  width: 46px;
+  height: 46px;
+
+  flex: 0 0 46px;
+
+  place-items: center;
+
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #4f9cff,
+      #1d6ce5
+    );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 10px 22px
+    rgba(21, 101, 220, 0.32);
+}
+
+
+.brandText {
+  display: block;
+
+  min-width: 0;
+}
+
+
+.brandText strong,
+.brandText span {
+  display: block;
+}
+
+
+.brandText strong {
+  color: #ffffff;
+
+  font-size: 18px;
+  font-weight: 800;
+
+  line-height: normal;
+
+  letter-spacing: -0.2px;
+}
+
+
+.brandText span {
+  margin-top: 3px;
+
+  overflow: hidden;
+
+  color: #aebed4;
+
+  font-size: 13px;
+  font-weight: 400;
+
+  line-height: normal;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.mobileClose {
+  display: none;
+
+  margin-left: auto;
+
+  border: 0;
+
+  background: transparent;
+
+  color: #ffffff;
+
+  cursor: pointer;
+}
+
+
+/* ============================================================
+   SIDEBAR GROUPS
+   ============================================================ */
+
+.sidebarSection {
+  margin-top: 20px;
+}
+
+
+.sidebarLabel {
+  margin: 0 12px 8px;
+
+  color: #8298b7;
+
+  font-size: 12px;
+  font-weight: 800;
+
+  line-height: normal;
+
+  letter-spacing: 0.8px;
+}
+
+
+.navList {
+  display: grid;
+
+  gap: 3px;
+}
+
+
+/* ============================================================
+   NAV ITEM
+   Dashboard gốc:
+   normal 43px / 12px
+   active 46px / 13px
+   ============================================================ */
+
+.navItem {
+  position: relative;
+
+  display: flex;
+
+  width: 100%;
+  min-height: 43px;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 0 13px;
+
+  box-sizing: border-box;
+
+  border: 0;
+  border-radius: 9px;
+
+  background: transparent;
+
+  color: #d8e3f2;
+
+  font: inherit;
+
+  font-size: 14px;
+  font-weight: 400;
+
+  line-height: normal;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+
+.navItem:hover {
+  background:
+    rgba(255, 255, 255, 0.08);
+
+  color: #ffffff;
+
+  transform:
+    translateX(2px);
+}
+
+
+.navItem span {
+  min-width: 0;
+
+  flex: 1;
+}
+
+
+.navItemActive {
+  min-height: 46px;
+
+  border-radius: 10px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #1d73ec 0%,
+      #3888f3 100%
+    );
+
+  padding: 0 14px;
+
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  box-shadow:
+    0 8px 18px
+    rgba(24, 103, 220, 0.22);
+
+  transform: none;
+}
+
+
+.navItemActive:hover {
+  background:
+    linear-gradient(
+      90deg,
+      #1d73ec 0%,
+      #3888f3 100%
+    );
+
+  color: #ffffff;
+
+  transform: none;
+}
+
+
+.itemChevron {
+  flex: 0 0 auto;
+
+  margin-left: auto;
+
+  color: #8ea5c3;
+}
+
+
+/* ============================================================
+   MAIN AREA
+   ============================================================ */
+
+.mainArea {
+  width:
+    calc(100% - 280px);
+
+  min-width: 0;
+  min-height: 100vh;
+
+  margin-left: 280px;
+}
+
+
+/* ============================================================
+   TOPBAR
+   Dashboard gốc = 72px
+   ============================================================ */
+
+.topbar {
+  position: sticky;
+
+  top: 0;
+
+  z-index: 40;
+
+  display: flex;
+
+  width: 100%;
+
+  min-height: 72px;
+  height: 72px;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 20px;
+
+  padding: 0 28px;
+
+  box-sizing: border-box;
+
+  border-bottom:
+    1px solid #e4e9f1;
+
+  background:
+    rgba(255, 255, 255, 0.94);
+
+  backdrop-filter:
+    blur(12px);
+}
+
+
+/* ============================================================
+   TOPBAR LEFT
+   ============================================================ */
+
+.topbarLeft {
+  display: flex;
+
+  min-width: 0;
+
+  align-items: center;
+
+  gap: 14px;
+
+  color: #203352;
+}
+
+
+.desktopMenu {
+  flex: 0 0 auto;
+
+  color: #66768d;
+}
+
+
+.pageTitle {
+  overflow: hidden;
+
+  color: #203352;
+
+  font-size: 17px;
+  font-weight: 700;
+
+  line-height: normal;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+
+/* ============================================================
+   MOBILE MENU
+   ============================================================ */
+
+.menuButton {
+  position: relative;
+
+  display: none;
+
+  width: 38px;
+  height: 38px;
+
+  flex: 0 0 38px;
+
+  place-items: center;
+
+  padding: 0;
+
+  border:
+    1px solid #e2e8f1;
+
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  color: #53647d;
+
+  cursor: pointer;
+}
+
+
+.menuButton:hover {
+  border-color: #c6d6eb;
+
+  background: #f5f9ff;
+
+  color: #176dde;
+}
+
+
+/* ============================================================
+   TOPBAR RIGHT
+   ============================================================ */
+
+.topbarRight {
+  display: flex;
+
+  flex: 0 0 auto;
+
+  align-items: center;
+
+  gap: 9px;
+}
+
+
+/* ============================================================
+   SEARCH / NOTIFICATION
+   Dashboard gốc = 38 x 38
+   ============================================================ */
+
+.iconButton,
+.notificationButton {
+  position: relative;
+
+  display: grid;
+
+  width: 38px;
+  height: 38px;
+
+  flex: 0 0 38px;
+
+  place-items: center;
+
+  padding: 0;
+
+  border:
+    1px solid #e2e8f1;
+
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  color: #53647d;
+
+  cursor: pointer;
+
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    color 150ms ease;
+}
+
+
+.iconButton:hover,
+.notificationButton:hover {
+  border-color: #c6d6eb;
+
+  background: #f5f9ff;
+
+  color: #176dde;
+}
+
+
+/* ============================================================
+   NOTIFICATION BADGE
+   ============================================================ */
+
+.notificationButton > span {
+  position: absolute;
+
+  top: -5px;
+  right: -5px;
+
+  display: grid;
+
+  min-width: 18px;
+  height: 18px;
+
+  place-items: center;
+
+  padding: 0 4px;
+
+  box-sizing: border-box;
+
+  border:
+    2px solid #ffffff;
+
+  border-radius: 999px;
+
+  background: #ef554b;
+
+  color: #ffffff;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  line-height: normal;
+}
+
+
+/* ============================================================
+   ACCOUNT
+   Dashboard gốc:
+   avatar 40px
+   name 12px
+   role 10px
+   ============================================================ */
+
+.account {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  margin-left: 6px;
+
+  padding-left: 13px;
+
+  border-left:
+    1px solid #e6ebf2;
+}
+
+
+.accountAvatar {
+  display: grid;
+
+  width: 40px;
+  height: 40px;
+
+  flex: 0 0 40px;
+
+  place-items: center;
+
+  border-radius: 50%;
+
+  background:
+    linear-gradient(
+      145deg,
+      #e3efff,
+      #bfd9ff
+    );
+
+  color: #1456b5;
+
+  font-size: 13px;
+  font-weight: 800;
+
+  line-height: normal;
+}
+
+
+.accountText {
+  display: block;
+
+  min-width: 0;
+
+  max-width: 220px;
+}
+
+
+.accountText strong,
+.accountText span {
+  display: block;
+}
+
+
+.accountText strong {
+  max-width: 220px;
+
+  overflow: hidden;
+
+  color: #1c2d47;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  line-height: normal;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+
+.accountText span {
+  margin-top: 2px;
+
+  overflow: hidden;
+
+  color: #8a96a8;
+
+  font-size: 12px;
+  font-weight: 400;
+
+  line-height: normal;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+
+.account > svg {
+  flex: 0 0 auto;
+
+  color: #53647d;
+}
+
+
+/* ============================================================
+   CONTENT
+   ============================================================ */
+
+.content {
+  min-height:
+    calc(100vh - 72px);
+
+  background:
+    transparent;
+}
+
+
+/* ============================================================
+   OVERLAY
+   ============================================================ */
+
+.overlay {
+  display: none;
+}
+
+
+/* ============================================================
+   RESPONSIVE <= 1080
+   Dashboard gốc đổi sidebar sang drawer ở 1080px
+   ============================================================ */
+
+@media (max-width: 1080px) {
+  .sidebar {
+    transform:
+      translateX(-100%);
+  }
+
+
+  .sidebarOpen {
+    transform:
+      translateX(0);
+  }
+
+
+  .mainArea {
+    width: 100%;
+
+    margin-left: 0;
+  }
+
+
+  .menuButton {
+    display: grid;
+  }
+
+
+  .desktopMenu {
+    display: none;
+  }
+
+
+  .overlay {
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 50;
+
+    display: block;
+
+    border: 0;
+
+    background:
+      rgba(6, 21, 44, 0.48);
+
+    cursor: pointer;
+  }
+
+
+  .topbar {
+    padding: 0 20px;
+  }
+}
+
+
+/* ============================================================
+   RESPONSIVE <= 720
+   ============================================================ */
+
+@media (max-width: 720px) {
+  .topbar {
+    padding: 0 14px;
+  }
+
+
+  .topbarRight {
+    gap: 6px;
+  }
+
+
+  .accountText {
+    display: none;
+  }
+
+
+  .account {
+    margin-left: 2px;
+
+    padding-left: 9px;
+  }
+
+
+  .pageTitle {
+    font-size: 16px;
+  }
+}
+
+
+/* ============================================================
+   RESPONSIVE <= 520
+   ============================================================ */
+
+@media (max-width: 520px) {
+  .iconButton {
+    display: none;
+  }
+
+
+  .topbarLeft {
+    gap: 9px;
+  }
+
+
+  .account {
+    padding-left: 7px;
+  }
+}
+
+
+/* ============================================================
+   ACCESSIBILITY
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .navItem,
+  .iconButton,
+  .notificationButton {
+    transition: none;
+  }
+}

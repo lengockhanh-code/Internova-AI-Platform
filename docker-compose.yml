@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  # ── Backend FastAPI ──────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: internova-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Mount thư mục Data để index ChromaDB và file PDF được persist
+      - ./Data:/app/Data
+      - ./database:/app/database
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3

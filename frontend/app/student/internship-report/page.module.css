@@ -1,0 +1,1303 @@
+/* ============================================================
+   LAYOUT
+============================================================ */
+
+.layout {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    background: #f5f7fb;
+}
+
+.main {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
+.reportPage {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 20px;
+    padding: 26px 32px 40px;
+}
+
+
+/* ============================================================
+   PAGE HEADER
+============================================================ */
+
+.pageHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.pageHeader h1 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 29px;
+    font-weight: 750;
+    letter-spacing: -0.03em;
+}
+
+.pageHeader p {
+    max-width: 760px;
+    margin: 7px 0 0;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.createButton {
+    display: inline-flex;
+    min-height: 43px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 16px;
+    border: none;
+    border-radius: 11px;
+    background: #0f172a;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.createButton:hover {
+    background: #1e293b;
+    box-shadow:
+        0 10px 22px rgba(15, 23, 42, 0.14);
+    transform: translateY(-1px);
+}
+
+.createButton:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+    box-shadow: none;
+    transform: none;
+}
+
+
+/* ============================================================
+   POLICY NOTICE
+============================================================ */
+
+.policyNotice {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    padding: 14px 16px;
+    border: 1px solid #dbeafe;
+    border-radius: 13px;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.policyNotice svg {
+    flex-shrink: 0;
+}
+
+.policyNotice strong {
+    color: #1d4ed8;
+    font-size: 12px;
+}
+
+.policyNotice p {
+    max-width: 900px;
+    margin: 4px 0 0;
+    color: #475569;
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+
+/* ============================================================
+   STATS
+============================================================ */
+
+.statGrid {
+    display: grid;
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.statCard {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 18px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow:
+        0 4px 16px rgba(15, 23, 42, 0.035);
+}
+
+.statContent {
+    min-width: 0;
+}
+
+.statContent p {
+    margin: 0;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.statContent strong {
+    display: block;
+    margin-top: 5px;
+    color: #0f172a;
+    font-size: 25px;
+    font-weight: 750;
+}
+
+.statContent span {
+    display: block;
+    margin-top: 3px;
+    color: #94a3b8;
+    font-size: 9px;
+}
+
+.statIcon {
+    display: flex;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+
+/* ============================================================
+   CONTENT GRID
+============================================================ */
+
+.contentGrid {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr) 290px;
+    gap: 18px;
+    align-items: start;
+}
+
+.reportListCard,
+.progressCard,
+.deadlineCard,
+.aiInfoCard {
+    border: 1px solid #e2e8f0;
+    border-radius: 15px;
+    background: #ffffff;
+    box-shadow:
+        0 4px 18px rgba(15, 23, 42, 0.035);
+}
+
+.reportListCard {
+    overflow: hidden;
+}
+
+
+/* ============================================================
+   CARD HEADER
+============================================================ */
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px 19px;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.cardHeader h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.cardHeader p {
+    max-width: 520px;
+    margin: 4px 0 0;
+    color: #94a3b8;
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+
+/* ============================================================
+   FILTER
+============================================================ */
+
+.filterSelect {
+    min-height: 36px;
+    flex-shrink: 0;
+    padding: 0 10px;
+    border: 1px solid #dbe2ea;
+    border-radius: 8px;
+    outline: none;
+    background: #ffffff;
+    color: #475569;
+    font-family: inherit;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.filterSelect:focus {
+    border-color: #60a5fa;
+    box-shadow:
+        0 0 0 3px rgba(96, 165, 250, 0.12);
+}
+
+
+/* ============================================================
+   REPORT LIST
+============================================================ */
+
+.reportList {
+    display: flex;
+    flex-direction: column;
+}
+
+.reportCard {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 16px 18px;
+    border-bottom: 1px solid #edf2f7;
+    transition:
+        background 0.18s ease;
+}
+
+.reportCard:last-child {
+    border-bottom: none;
+}
+
+.reportCard:hover {
+    background: #fbfdff;
+}
+
+.reportCardMain {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: flex-start;
+    gap: 11px;
+}
+
+.reportIcon {
+    display: flex;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.reportInformation {
+    min-width: 0;
+    flex: 1;
+}
+
+.reportTitleRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.reportTitleRow h3 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.reportType {
+    margin: 4px 0 0;
+    color: #64748b;
+    font-size: 10px;
+}
+
+.reportMeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 11px;
+    margin-top: 7px;
+    color: #94a3b8;
+    font-size: 9px;
+}
+
+
+/* ============================================================
+   FILE INFO
+============================================================ */
+
+.fileInfo,
+.letterReady,
+.letterMissing {
+    display: flex;
+    max-width: 600px;
+    align-items: center;
+    gap: 6px;
+    margin-top: 7px;
+    font-size: 9px;
+}
+
+.fileInfo {
+    color: #64748b;
+}
+
+.fileInfo span,
+.letterReady span,
+.letterMissing span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.letterReady {
+    color: #059669;
+}
+
+.letterMissing {
+    color: #dc2626;
+}
+
+.revisionNotice {
+    display: inline-flex;
+    margin-top: 8px;
+    padding: 5px 8px;
+    border-radius: 7px;
+    background: #fff7ed;
+    color: #ea580c;
+    font-size: 9px;
+    font-weight: 600;
+}
+
+
+/* ============================================================
+   STATUS
+============================================================ */
+
+.statusBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 8px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.status_DRAFT {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.status_SUBMITTED,
+.status_UNDER_REVIEW {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.status_LATE {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.status_REVISION_REQUIRED {
+    background: #fff7ed;
+    color: #ea580c;
+}
+
+.status_APPROVED {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+
+/* ============================================================
+   REPORT ACTIONS
+============================================================ */
+
+.reportActions {
+    display: flex;
+    max-width: 290px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    gap: 5px;
+}
+
+.reportActions button {
+    display: flex;
+    width: 31px;
+    height: 31px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #64748b;
+    cursor: pointer;
+    transition:
+        border-color 0.18s ease,
+        background 0.18s ease,
+        color 0.18s ease,
+        transform 0.18s ease;
+}
+
+.reportActions button:hover {
+    border-color: #93c5fd;
+    background: #eff6ff;
+    color: #2563eb;
+    transform: translateY(-1px);
+}
+
+.reportActions button:disabled {
+    cursor: wait;
+    opacity: 0.5;
+    transform: none;
+}
+
+.aiAction {
+    color: #7c3aed !important;
+}
+
+.aiAction:hover {
+    border-color: #c4b5fd !important;
+    background: #f5f3ff !important;
+    color: #7c3aed !important;
+}
+
+.feedbackAction {
+    color: #059669 !important;
+}
+
+.feedbackAction:hover {
+    border-color: #a7f3d0 !important;
+    background: #ecfdf5 !important;
+    color: #059669 !important;
+}
+
+.submitAction {
+    color: #2563eb !important;
+}
+
+.deleteAction:hover {
+    border-color: #fecaca !important;
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+}
+
+
+/* ============================================================
+   EMPTY STATE
+============================================================ */
+
+.emptyState {
+    display: flex;
+    min-height: 300px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 30px;
+    color: #94a3b8;
+    text-align: center;
+}
+
+.emptyState h3 {
+    margin: 4px 0 0;
+    color: #475569;
+    font-size: 13px;
+}
+
+.emptyState p {
+    max-width: 320px;
+    margin: 0;
+    color: #94a3b8;
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+
+/* ============================================================
+   SIDE COLUMN
+============================================================ */
+
+.sideColumn {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.progressCard,
+.deadlineCard,
+.aiInfoCard {
+    padding: 18px;
+}
+
+.sideTitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #2563eb;
+}
+
+.sideTitle h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 13px;
+}
+
+
+/* ============================================================
+   PROGRESS
+============================================================ */
+
+.progressNumber {
+    display: block;
+    margin-top: 20px;
+    color: #2563eb;
+    font-size: 29px;
+}
+
+.progressBar {
+    width: 100%;
+    height: 7px;
+    margin-top: 10px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e2e8f0;
+}
+
+.progressFill {
+    height: 100%;
+    border-radius: inherit;
+    background: #2563eb;
+    transition: width 0.3s ease;
+}
+
+.progressStats {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 11px;
+}
+
+.progressStats span {
+    color: #64748b;
+    font-size: 9px;
+}
+
+.progressStats strong {
+    color: #334155;
+    font-size: 10px;
+}
+
+
+/* ============================================================
+   DEADLINE
+============================================================ */
+
+.deadlineContent {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 18px;
+}
+
+.deadlineContent strong {
+    color: #334155;
+    font-size: 11px;
+}
+
+.deadlineContent span {
+    color: #64748b;
+    font-size: 9px;
+}
+
+.deadlineContent p {
+    margin: 4px 0 0;
+    color: #2563eb;
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.noDeadline {
+    display: flex;
+    min-height: 120px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #10b981;
+    text-align: center;
+}
+
+.noDeadline p {
+    margin: 0;
+    color: #64748b;
+    font-size: 10px;
+}
+
+
+/* ============================================================
+   AI INFO CARD
+============================================================ */
+
+.aiInfoCard>svg {
+    color: #7c3aed;
+}
+
+.aiInfoCard h2 {
+    margin: 9px 0 0;
+    color: #0f172a;
+    font-size: 13px;
+}
+
+.aiInfoCard p {
+    margin: 7px 0 0;
+    color: #64748b;
+    font-size: 9px;
+    line-height: 1.6;
+}
+
+
+/* ============================================================
+   MODAL OVERLAY
+============================================================ */
+
+.modalOverlay {
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+    background:
+        rgba(15, 23, 42, 0.52);
+    backdrop-filter: blur(3px);
+}
+
+
+/* ============================================================
+   MODALS
+============================================================ */
+
+.reportModal,
+.aiReviewModal,
+.feedbackModal {
+    width: min(100%, 700px);
+    max-height:
+        calc(100vh - 44px);
+    overflow-y: auto;
+    border-radius: 17px;
+    background: #ffffff;
+    box-shadow:
+        0 24px 70px rgba(15, 23, 42, 0.28);
+}
+
+.reportModal {
+    width: min(100%, 740px);
+}
+
+
+/* ============================================================
+   MODAL HEADER
+============================================================ */
+
+.modalHeader {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 20px 22px;
+    border-bottom:
+        1px solid #e2e8f0;
+    background: #ffffff;
+}
+
+.modalHeader h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.modalHeader p {
+    margin: 5px 0 0;
+    color: #64748b;
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+.modalHeader>button {
+    display: flex;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.modalHeader>button:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+
+/* ============================================================
+   REPORT FORM
+============================================================ */
+
+.reportForm {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 15px;
+    padding: 22px;
+}
+
+.reportForm label {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    color: #334155;
+    font-size: 10px;
+    font-weight: 650;
+}
+
+.reportForm input,
+.reportForm select,
+.reportForm textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 11px;
+    border: 1px solid #dbe2ea;
+    border-radius: 10px;
+    outline: none;
+    background: #ffffff;
+    color: #0f172a;
+    font-family: inherit;
+    font-size: 11px;
+}
+
+.reportForm input,
+.reportForm select {
+    min-height: 42px;
+}
+
+.reportForm textarea {
+    min-height: 235px;
+    resize: vertical;
+    line-height: 1.65;
+}
+
+.reportForm input:focus,
+.reportForm select:focus,
+.reportForm textarea:focus {
+    border-color: #60a5fa;
+    box-shadow:
+        0 0 0 3px rgba(96, 165, 250, 0.12);
+}
+
+.fullWidth {
+    grid-column: 1 / -1;
+}
+
+
+/* ============================================================
+   AI SUPPORT NOTICE
+============================================================ */
+
+.aiSupportNotice {
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 12px 13px;
+    border: 1px solid #ddd6fe;
+    border-radius: 10px;
+    background: #f5f3ff;
+    color: #7c3aed;
+}
+
+.aiSupportNotice svg {
+    flex-shrink: 0;
+}
+
+.aiSupportNotice strong {
+    color: #6d28d9;
+    font-size: 10px;
+}
+
+.aiSupportNotice p {
+    margin: 4px 0 0;
+    color: #475569;
+    font-size: 9px;
+    line-height: 1.55;
+}
+
+
+/* ============================================================
+   MODAL ACTIONS
+============================================================ */
+
+.modalActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    padding: 16px 22px 22px;
+    border-top:
+        1px solid #edf2f7;
+}
+
+.secondaryButton,
+.primaryButton {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 0 15px;
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.secondaryButton {
+    border: 1px solid #dbe2ea;
+    background: #ffffff;
+    color: #475569;
+}
+
+.secondaryButton:hover {
+    background: #f8fafc;
+}
+
+.primaryButton {
+    border: none;
+    background: #0f172a;
+    color: #ffffff;
+}
+
+.primaryButton:hover {
+    background: #1e293b;
+}
+
+.primaryButton:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+
+/* ============================================================
+   AI REVIEW BODY
+============================================================ */
+
+.aiReviewBody {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 22px;
+}
+
+.aiDisclaimer {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 13px;
+    border: 1px solid #ddd6fe;
+    border-radius: 10px;
+    background: #f5f3ff;
+    color: #7c3aed;
+}
+
+.aiDisclaimer svg {
+    flex-shrink: 0;
+}
+
+.aiDisclaimer strong {
+    color: #6d28d9;
+    font-size: 10px;
+}
+
+.aiDisclaimer p {
+    margin: 4px 0 0;
+    color: #475569;
+    font-size: 9px;
+    line-height: 1.55;
+}
+
+
+/* ============================================================
+   AI SCORE
+============================================================ */
+
+.aiScore {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 11px;
+    background: #f8fafc;
+}
+
+.aiScore span {
+    color: #475569;
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.aiScore p {
+    margin: 3px 0 0;
+    color: #94a3b8;
+    font-size: 9px;
+}
+
+.aiScore strong {
+    color: #7c3aed;
+    font-size: 25px;
+    font-weight: 750;
+}
+
+
+/* ============================================================
+   REVIEW SECTIONS
+============================================================ */
+
+.reviewSection {
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 11px;
+    background: #ffffff;
+}
+
+.reviewSection h3 {
+    margin: 0 0 9px;
+    color: #0f172a;
+    font-size: 11px;
+}
+
+.reviewSection ul {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin: 0;
+    padding-left: 18px;
+}
+
+.reviewSection li {
+    color: #475569;
+    font-size: 10px;
+    line-height: 1.55;
+}
+
+.reviewSummary {
+    border-left:
+        3px solid #64748b;
+}
+
+.reviewGood {
+    border-left:
+        3px solid #10b981;
+}
+
+.reviewWarning {
+    border-left:
+        3px solid #f59e0b;
+}
+
+.reviewSuggestion {
+    border-left:
+        3px solid #7c3aed;
+}
+
+
+/* ============================================================
+   FACULTY FEEDBACK
+============================================================ */
+
+.feedbackBody {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 22px;
+}
+
+.lecturerScore {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 14px;
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    background: #ecfdf5;
+}
+
+.lecturerScore span {
+    color: #047857;
+    font-size: 10px;
+}
+
+.lecturerScore strong {
+    color: #047857;
+    font-size: 22px;
+}
+
+.feedbackText {
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+
+.feedbackText h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 11px;
+}
+
+.feedbackText p {
+    margin: 8px 0 0;
+    color: #475569;
+    font-size: 10px;
+    line-height: 1.65;
+}
+
+
+/* ============================================================
+   PAGE STATE
+============================================================ */
+
+.statePage {
+    display: flex;
+    flex: 1;
+    min-height: 520px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 30px;
+    color: #64748b;
+    text-align: center;
+}
+
+.statePage p {
+    margin: 0;
+    font-size: 11px;
+}
+
+.statePage button {
+    margin-top: 6px;
+    padding: 9px 14px;
+    border: none;
+    border-radius: 8px;
+    background: #2563eb;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+
+/* ============================================================
+   SPINNER
+============================================================ */
+
+.spinner {
+    animation:
+        reportSpinner 0.8s linear infinite;
+}
+
+@keyframes reportSpinner {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* ============================================================
+   TABLET
+============================================================ */
+
+@media (max-width: 1150px) {
+    .statGrid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .contentGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .sideColumn {
+        display: grid;
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+    }
+}
+
+
+/* ============================================================
+   SMALL TABLET
+============================================================ */
+
+@media (max-width: 850px) {
+    .reportCard {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .reportActions {
+        width: 100%;
+        max-width: none;
+        justify-content: flex-start;
+    }
+
+    .sideColumn {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* ============================================================
+   MOBILE
+============================================================ */
+
+@media (max-width: 720px) {
+    .reportPage {
+        padding: 18px;
+    }
+
+    .pageHeader {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .pageHeader h1 {
+        font-size: 24px;
+    }
+
+    .createButton {
+        width: 100%;
+    }
+
+    .statGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .cardHeader {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .filterSelect {
+        width: 100%;
+    }
+
+    .reportForm {
+        grid-template-columns: 1fr;
+    }
+
+    .reportForm label,
+    .fullWidth {
+        grid-column: 1;
+    }
+
+    .modalOverlay {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .reportModal,
+    .aiReviewModal,
+    .feedbackModal {
+        width: 100%;
+        max-height: 92vh;
+        border-radius:
+            17px 17px 0 0;
+    }
+}
+
+
+/* ============================================================
+   SMALL MOBILE
+============================================================ */
+
+@media (max-width: 500px) {
+    .modalActions {
+        flex-direction: column-reverse;
+    }
+
+    .modalActions button {
+        width: 100%;
+    }
+
+    .aiScore {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+
+/* ============================================================
+   ACCESSIBILITY
+============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .createButton,
+    .reportCard,
+    .reportActions button,
+    .progressFill {
+        transition: none;
+    }
+
+    .spinner {
+        animation: none;
+    }
+}

@@ -1,0 +1,1509 @@
+/* ============================================================
+   PAGE LAYOUT
+============================================================ */
+
+.layout {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    background: #f5f7fb;
+}
+
+.main {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
+.registrationPage {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 20px;
+    padding: 28px 32px 40px;
+}
+
+
+/* ============================================================
+   PAGE HEADER
+============================================================ */
+
+.pageHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.titleRow {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.titleIcon {
+    display: flex;
+    width: 54px;
+    height: 54px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 16px;
+
+    background: #eff6ff;
+    color: #2563eb;
+
+    box-shadow:
+        0 10px 24px rgba(37, 99, 235, 0.1);
+}
+
+.pageHeader h1 {
+    margin: 0;
+
+    color: #0f172a;
+
+    font-size: 29px;
+    font-weight: 750;
+
+    letter-spacing: -0.03em;
+}
+
+.pageHeader p {
+    max-width: 740px;
+
+    margin: 7px 0 0;
+
+    color: #64748b;
+
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+
+/* ============================================================
+   HEADER ACTIONS
+============================================================ */
+
+.headerActions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 10px;
+}
+
+.deleteDraftButton {
+    display: inline-flex;
+
+    min-height: 43px;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    padding: 0 15px;
+
+    border: 1px solid #fecaca;
+    border-radius: 11px;
+
+    background: #ffffff;
+    color: #dc2626;
+
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 650;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.deleteDraftButton:hover {
+    border-color: #fca5a5;
+
+    background: #fef2f2;
+
+    transform: translateY(-1px);
+}
+
+
+/* ============================================================
+   COMMON BUTTONS
+============================================================ */
+
+.primaryButton,
+.submitButton,
+.secondaryButton {
+    display: inline-flex;
+
+    min-height: 43px;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    padding: 0 17px;
+
+    border-radius: 11px;
+
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 650;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease,
+        border-color 0.2s ease;
+}
+
+
+.primaryButton {
+    border: none;
+
+    background: #0f172a;
+    color: #ffffff;
+}
+
+.primaryButton:hover {
+    background: #1e293b;
+
+    box-shadow:
+        0 10px 22px rgba(15, 23, 42, 0.15);
+
+    transform: translateY(-1px);
+}
+
+
+.submitButton {
+    border: none;
+
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.submitButton:hover {
+    background: #1d4ed8;
+
+    box-shadow:
+        0 10px 22px rgba(37, 99, 235, 0.2);
+
+    transform: translateY(-1px);
+}
+
+.submitButton:disabled {
+    cursor: not-allowed;
+
+    opacity: 0.65;
+
+    box-shadow: none;
+
+    transform: none;
+}
+
+
+.secondaryButton {
+    border: 1px solid #dbe2ea;
+
+    background: #ffffff;
+    color: #475569;
+}
+
+.secondaryButton:hover {
+    border-color: #93c5fd;
+
+    background: #f8fafc;
+    color: #2563eb;
+}
+
+.secondaryButton:disabled {
+    cursor: not-allowed;
+
+    opacity: 0.45;
+}
+
+
+/* ============================================================
+   STEP CARD
+============================================================ */
+
+.stepCard {
+    position: relative;
+
+    overflow: hidden;
+
+    padding: 20px;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 4px 18px rgba(15, 23, 42, 0.04);
+}
+
+.stepProgress {
+    position: absolute;
+
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 4px;
+
+    background: #e2e8f0;
+}
+
+.stepProgressFill {
+    height: 100%;
+
+    border-radius: 999px;
+
+    background:
+        linear-gradient(90deg,
+            #2563eb,
+            #60a5fa);
+
+    transition:
+        width 0.35s ease;
+}
+
+.stepList {
+    display: grid;
+
+    grid-template-columns:
+        repeat(5, minmax(0, 1fr));
+
+    gap: 10px;
+}
+
+
+/* ============================================================
+   STEP ITEM
+============================================================ */
+
+.stepItem {
+    display: flex;
+
+    min-width: 0;
+
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 10px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: transparent;
+    color: #94a3b8;
+
+    font-family: inherit;
+    text-align: left;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease;
+}
+
+.stepItem:hover {
+    background: #f8fafc;
+    color: #475569;
+}
+
+.stepIcon {
+    display: flex;
+
+    width: 38px;
+    height: 38px;
+
+    flex-shrink: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 11px;
+
+    background: #ffffff;
+}
+
+.stepText {
+    display: flex;
+
+    min-width: 0;
+
+    flex-direction: column;
+}
+
+.stepText strong {
+    color: inherit;
+
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.stepText small {
+    margin-top: 2px;
+
+    overflow: hidden;
+
+    font-size: 10px;
+    font-weight: 500;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* ============================================================
+   STEP ACTIVE / COMPLETED
+============================================================ */
+
+.stepActive {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.stepActive .stepIcon {
+    border-color: #bfdbfe;
+
+    background: #ffffff;
+}
+
+.stepCompleted {
+    color: #059669;
+}
+
+.stepCompleted .stepIcon {
+    border-color: #a7f3d0;
+
+    background: #ecfdf5;
+}
+
+
+/* ============================================================
+   MAIN FORM LAYOUT
+============================================================ */
+
+.formLayout {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr) 310px;
+
+    gap: 20px;
+
+    align-items: start;
+}
+
+.formCard,
+.statusCard,
+.requirementCard {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 4px 18px rgba(15, 23, 42, 0.04);
+}
+
+.formCard {
+    padding: 24px;
+}
+
+
+/* ============================================================
+   FORM SECTION HEADER
+============================================================ */
+
+.formSectionHeader {
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    padding-bottom: 20px;
+
+    border-bottom:
+        1px solid #edf2f7;
+}
+
+.formSectionHeader>span {
+    display: flex;
+
+    width: 44px;
+    height: 44px;
+
+    flex-shrink: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 13px;
+
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.formSectionHeader h2 {
+    margin: 0;
+
+    color: #0f172a;
+
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.formSectionHeader p {
+    margin: 4px 0 0;
+
+    color: #64748b;
+
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+
+/* ============================================================
+   FORM GRID
+============================================================ */
+
+.formGrid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 18px;
+
+    margin-top: 22px;
+}
+
+.fieldGroup {
+    display: flex;
+
+    min-width: 0;
+
+    flex-direction: column;
+
+    gap: 8px;
+}
+
+.fullWidth {
+    grid-column:
+        1 / -1;
+}
+
+.fieldGroup label {
+    color: #334155;
+
+    font-size: 12px;
+    font-weight: 650;
+}
+
+
+/* ============================================================
+   INPUT
+============================================================ */
+
+.inputWrapper,
+.selectWrapper {
+    display: flex;
+
+    min-height: 46px;
+
+    align-items: center;
+
+    gap: 9px;
+
+    padding: 0 13px;
+
+    border: 1px solid #dbe2ea;
+    border-radius: 11px;
+
+    background: #ffffff;
+    color: #94a3b8;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+
+.inputWrapper:focus-within,
+.selectWrapper:focus-within,
+.fieldGroup textarea:focus {
+    border-color: #60a5fa;
+
+    box-shadow:
+        0 0 0 3px rgba(96, 165, 250, 0.13);
+}
+
+.inputWrapper input,
+.selectWrapper select {
+    width: 100%;
+
+    min-width: 0;
+
+    border: none;
+    outline: none;
+
+    background: transparent;
+
+    color: #0f172a;
+
+    font-family: inherit;
+    font-size: 13px;
+}
+
+.inputWrapper input::placeholder,
+.fieldGroup textarea::placeholder {
+    color: #94a3b8;
+}
+
+
+/* ============================================================
+   DISABLED INPUT
+============================================================ */
+
+.inputWrapper:has(input:disabled),
+.selectWrapper:has(select:disabled) {
+    background: #f8fafc;
+
+    color: #94a3b8;
+}
+
+.inputWrapper input:disabled,
+.selectWrapper select:disabled,
+.fieldGroup textarea:disabled {
+    cursor: not-allowed;
+
+    color: #64748b;
+}
+
+
+/* ============================================================
+   SELECT
+============================================================ */
+
+.selectWrapper {
+    position: relative;
+}
+
+.selectWrapper select {
+    height: 44px;
+
+    appearance: none;
+
+    cursor: pointer;
+}
+
+.selectWrapper select:disabled {
+    cursor: not-allowed;
+}
+
+.selectWrapper svg {
+    flex-shrink: 0;
+
+    pointer-events: none;
+}
+
+
+/* ============================================================
+   TEXTAREA
+============================================================ */
+
+.fieldGroup textarea {
+    width: 100%;
+
+    min-height: 130px;
+
+    box-sizing: border-box;
+
+    padding: 13px;
+
+    resize: vertical;
+
+    border: 1px solid #dbe2ea;
+    border-radius: 11px;
+
+    outline: none;
+
+    background: #ffffff;
+    color: #0f172a;
+
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.fieldGroup textarea:disabled {
+    background: #f8fafc;
+}
+
+
+/* ============================================================
+   FORM INFORMATION
+============================================================ */
+
+.formInfo {
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+
+    margin-top: 20px;
+
+    padding: 12px 14px;
+
+    border: 1px solid #dbeafe;
+    border-radius: 11px;
+
+    background: #eff6ff;
+    color: #1d4ed8;
+
+    font-size: 12px;
+}
+
+.formInfo svg {
+    flex-shrink: 0;
+}
+
+
+/* ============================================================
+   UPLOAD AREA
+============================================================ */
+
+.uploadArea {
+    display: flex;
+
+    width: 100%;
+
+    box-sizing: border-box;
+
+    align-items: center;
+
+    gap: 13px;
+
+    margin-top: 20px;
+
+    padding: 16px;
+
+    border: 1px dashed #bfdbfe;
+    border-radius: 13px;
+
+    background: #f8fbff;
+
+    color: #475569;
+
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease;
+}
+
+.uploadArea:hover {
+    border-color: #60a5fa;
+
+    background: #f8fbff;
+}
+
+.uploadIcon {
+    display: flex;
+
+    width: 46px;
+    height: 46px;
+
+    flex-shrink: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 13px;
+
+    background: #ffffff;
+    color: #2563eb;
+
+    box-shadow:
+        0 6px 14px rgba(37, 99, 235, 0.08);
+}
+
+
+/* ============================================================
+   UPLOAD CONTENT
+============================================================ */
+
+.uploadContent {
+    display: flex;
+
+    min-width: 0;
+
+    flex: 1;
+
+    flex-direction: column;
+}
+
+.uploadContent strong {
+    color: #1e293b;
+
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.uploadContent small {
+    max-width: 330px;
+
+    margin-top: 4px;
+
+    overflow: hidden;
+
+    color: #64748b;
+
+    font-size: 11px;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+}
+
+
+/* ============================================================
+   UPLOAD ACTION BUTTONS
+============================================================ */
+
+.uploadActions {
+    display: flex;
+
+    flex-shrink: 0;
+
+    align-items: center;
+
+    gap: 7px;
+}
+
+.uploadActions button {
+    display: inline-flex;
+
+    min-height: 34px;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 5px;
+
+    padding: 0 10px;
+
+    border: 1px solid #bfdbfe;
+    border-radius: 9px;
+
+    background: #ffffff;
+    color: #2563eb;
+
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 650;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
+}
+
+.uploadActions button:hover {
+    border-color: #93c5fd;
+
+    background: #eff6ff;
+}
+
+.uploadActions button:last-child {
+    border-color: #fecaca;
+
+    color: #dc2626;
+}
+
+.uploadActions button:last-child:hover {
+    border-color: #fca5a5;
+
+    background: #fef2f2;
+}
+
+.uploadActions button:disabled {
+    cursor: not-allowed;
+
+    opacity: 0.55;
+}
+
+
+/* ============================================================
+   LEGACY UPLOAD BUTTON
+   Giữ để tránh lỗi nếu page.tsx cũ còn gọi class này
+============================================================ */
+
+.uploadButton {
+    flex-shrink: 0;
+
+    padding: 8px 11px;
+
+    border: 1px solid #bfdbfe;
+    border-radius: 9px;
+
+    background: #ffffff;
+    color: #2563eb;
+
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 650;
+
+    cursor: pointer;
+}
+
+
+/* ============================================================
+   FORM ACTIONS
+============================================================ */
+
+.formActions {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 14px;
+
+    margin-top: 26px;
+
+    padding-top: 20px;
+
+    border-top:
+        1px solid #edf2f7;
+}
+
+
+/* ============================================================
+   RIGHT SIDE
+============================================================ */
+
+.sideColumn {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 18px;
+}
+
+.statusCard,
+.requirementCard {
+    padding: 20px;
+}
+
+.sideCardHeader {
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+
+    color: #2563eb;
+}
+
+.sideCardHeader h2 {
+    margin: 0;
+
+    color: #0f172a;
+
+    font-size: 15px;
+    font-weight: 700;
+}
+
+
+/* ============================================================
+   APPLICATION STATUS
+============================================================ */
+
+.statusBadge {
+    display: inline-flex;
+
+    margin-top: 16px;
+
+    padding: 6px 10px;
+
+    border-radius: 999px;
+
+    background: #f1f5f9;
+    color: #475569;
+
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.statusDraft {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.statusSubmitted {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.statusReview {
+    background: #fff7ed;
+    color: #ea580c;
+}
+
+.statusApproved {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.statusRejected {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+
+/* ============================================================
+   STATUS TIMELINE
+============================================================ */
+
+.statusTimeline {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 18px;
+
+    margin-top: 20px;
+}
+
+.timelineItem {
+    display: grid;
+
+    grid-template-columns:
+        12px minmax(0, 1fr);
+
+    gap: 10px;
+}
+
+.timelineItem strong {
+    display: block;
+
+    color: #334155;
+
+    font-size: 12px;
+}
+
+.timelineItem p {
+    margin: 3px 0 0;
+
+    color: #94a3b8;
+
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+.timelineDotCompleted,
+.timelineDotActive,
+.timelineDotPending {
+    width: 10px;
+    height: 10px;
+
+    margin-top: 3px;
+
+    border-radius: 50%;
+}
+
+.timelineDotCompleted {
+    background: #10b981;
+
+    box-shadow:
+        0 0 0 4px rgba(16, 185, 129, 0.1);
+}
+
+.timelineDotActive {
+    background: #2563eb;
+
+    box-shadow:
+        0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.timelineDotPending {
+    background: #cbd5e1;
+}
+
+
+/* ============================================================
+   REQUIRED DOCUMENTS
+============================================================ */
+
+.requirementList {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 13px;
+
+    margin: 18px 0 0;
+
+    padding: 0;
+
+    list-style: none;
+}
+
+.requirementList li {
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+
+    color: #475569;
+
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.requirementList svg {
+    flex-shrink: 0;
+
+    color: #10b981;
+}
+
+
+/* ============================================================
+   REVIEW
+============================================================ */
+
+.reviewGrid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 16px;
+
+    margin-top: 22px;
+}
+
+.reviewSection {
+    padding: 18px;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 13px;
+
+    background: #f8fafc;
+}
+
+.reviewSection h3 {
+    margin: 0 0 14px;
+
+    color: #0f172a;
+
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.reviewRow {
+    display: flex;
+
+    align-items: flex-start;
+    justify-content: space-between;
+
+    gap: 14px;
+
+    padding: 8px 0;
+
+    border-bottom:
+        1px solid #e8edf4;
+}
+
+.reviewRow:last-child {
+    border-bottom: none;
+}
+
+.reviewRow span {
+    color: #64748b;
+
+    font-size: 11px;
+}
+
+.reviewRow strong {
+    max-width: 65%;
+
+    color: #334155;
+
+    font-size: 11px;
+    font-weight: 650;
+
+    text-align: right;
+
+    overflow-wrap: anywhere;
+}
+
+
+/* ============================================================
+   CONFIRM
+============================================================ */
+
+.confirmBox {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 10px;
+
+    margin-top: 20px;
+
+    padding: 14px;
+
+    border: 1px solid #dbeafe;
+    border-radius: 11px;
+
+    background: #f8fbff;
+    color: #475569;
+
+    font-size: 12px;
+    line-height: 1.55;
+
+    cursor: pointer;
+}
+
+.confirmBox input {
+    width: 16px;
+    height: 16px;
+
+    flex-shrink: 0;
+
+    margin-top: 1px;
+
+    accent-color: #2563eb;
+}
+
+.confirmBox input:disabled {
+    cursor: not-allowed;
+}
+
+
+/* ============================================================
+   SUBMITTED MESSAGE
+============================================================ */
+
+.submittedMessage {
+    display: flex;
+
+    align-items: center;
+
+    gap: 13px;
+
+    margin-top: 20px;
+
+    padding: 18px;
+
+    border: 1px solid #bbf7d0;
+    border-radius: 13px;
+
+    background: #f0fdf4;
+    color: #15803d;
+}
+
+.submittedMessage h3 {
+    margin: 0;
+
+    font-size: 14px;
+}
+
+.submittedMessage p {
+    margin: 4px 0 0;
+
+    color: #4b7d5d;
+
+    font-size: 12px;
+}
+
+
+/* ============================================================
+   LOADING / ERROR STATE
+============================================================ */
+
+.statePage {
+    display: flex;
+
+    flex: 1;
+
+    min-height: 520px;
+
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 12px;
+
+    padding: 30px;
+
+    color: #64748b;
+
+    text-align: center;
+}
+
+.statePage h2,
+.statePage p {
+    margin: 0;
+}
+
+.statePage h2 {
+    color: #0f172a;
+
+    font-size: 18px;
+}
+
+.statePage button {
+    margin-top: 7px;
+
+    padding: 9px 15px;
+
+    border: none;
+    border-radius: 9px;
+
+    background: #2563eb;
+    color: #ffffff;
+
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+.statePage button:hover {
+    background: #1d4ed8;
+}
+
+
+/* ============================================================
+   SPINNER
+============================================================ */
+
+.spinner {
+    animation:
+        registrationSpinner 0.8s linear infinite;
+}
+
+@keyframes registrationSpinner {
+    to {
+        transform:
+            rotate(360deg);
+    }
+}
+
+
+/* ============================================================
+   TABLET
+============================================================ */
+
+@media (max-width: 1180px) {
+    .formLayout {
+        grid-template-columns:
+            1fr;
+    }
+
+    .sideColumn {
+        display: grid;
+
+        grid-template-columns:
+            repeat(2,
+                minmax(0, 1fr));
+    }
+
+    .stepText small {
+        display: none;
+    }
+}
+
+
+/* ============================================================
+   SMALL TABLET
+============================================================ */
+
+@media (max-width: 900px) {
+    .stepList {
+        grid-template-columns:
+            repeat(5, 44px);
+
+        justify-content:
+            space-between;
+    }
+
+    .stepItem {
+        justify-content:
+            center;
+
+        padding: 4px;
+    }
+
+    .stepText {
+        display: none;
+    }
+}
+
+
+/* ============================================================
+   MOBILE
+============================================================ */
+
+@media (max-width: 768px) {
+    .registrationPage {
+        padding:
+            20px 18px 32px;
+    }
+
+    .pageHeader {
+        align-items:
+            stretch;
+
+        flex-direction:
+            column;
+    }
+
+    .pageHeader h1 {
+        font-size: 24px;
+    }
+
+    .headerActions {
+        width: 100%;
+    }
+
+    .deleteDraftButton {
+        width: 100%;
+    }
+
+    .formGrid,
+    .reviewGrid,
+    .sideColumn {
+        grid-template-columns:
+            1fr;
+    }
+
+    .formCard {
+        padding: 18px;
+    }
+
+    .uploadArea {
+        align-items:
+            flex-start;
+
+        flex-direction:
+            column;
+    }
+
+    .uploadContent {
+        width: 100%;
+    }
+
+    .uploadContent small {
+        max-width:
+            100%;
+    }
+
+    .uploadActions {
+        width: 100%;
+    }
+
+    .uploadActions button {
+        flex: 1;
+    }
+}
+
+
+/* ============================================================
+   SMALL MOBILE
+============================================================ */
+
+@media (max-width: 520px) {
+    .titleRow {
+        align-items:
+            flex-start;
+    }
+
+    .titleIcon {
+        width: 48px;
+        height: 48px;
+    }
+
+    .stepCard {
+        padding:
+            16px 10px;
+    }
+
+    .stepList {
+        grid-template-columns:
+            repeat(5, 38px);
+    }
+
+    .stepIcon {
+        width: 34px;
+        height: 34px;
+    }
+
+    .formActions {
+        align-items:
+            stretch;
+
+        flex-direction:
+            column-reverse;
+    }
+
+    .formActions button {
+        width: 100%;
+    }
+
+    .uploadActions {
+        flex-direction:
+            column;
+    }
+
+    .uploadActions button {
+        width: 100%;
+    }
+}
+
+
+/* ============================================================
+   ACCESSIBILITY
+============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .primaryButton,
+    .submitButton,
+    .secondaryButton,
+    .deleteDraftButton,
+    .stepItem,
+    .stepProgressFill,
+    .uploadArea,
+    .uploadActions button {
+        transition: none;
+    }
+
+    .spinner {
+        animation: none;
+    }
+}

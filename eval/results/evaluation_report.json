@@ -1,0 +1,144 @@
+{
+  "run_at": "2026-08-16T07:54:19.375078+00:00",
+  "summary": {
+    "total": 10,
+    "passed": 9,
+    "failed": 1,
+    "pass_rate": 0.9,
+    "hallucination_rate": 0.0,
+    "by_category": {
+      "capstone_talent": {
+        "total": 10,
+        "passed": 9
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "tc_001_capstone_easy",
+      "category": "capstone_talent",
+      "query": "Can you give me an example of a Capstone project in CECS?",
+      "expected_status": "answered",
+      "actual_status": "answered",
+      "passed": true,
+      "failures": [],
+      "answer": "## Example Capstone Project in CECS\n\nOne example is:\n\n- **Project name:** *Development of an EMG-Driven Wearable Knee Exoskeleton for Assistive Rehabilitation*  \n- **Project outcome:** An **EMG-driven wearable knee exoskeleton**\n\n*Source: CAID-VinUni-Capstone-Booklet.pdf, p. 6*",
+      "source_count": 1,
+      "source_names": [
+        "CAID-VinUni-Capstone-Booklet.pdf"
+      ]
+    },
+    {
+      "id": "tc_002_capstone_easy",
+      "category": "capstone_talent",
+      "query": "Can you give me an example of a Capstone project in CBM?",
+      "expected_status": "answered",
+      "actual_status": "answered",
+      "passed": true,
+      "failures": [],
+      "answer": "## Example of a CBM Capstone Project\n\nOne example is:\n\n**“Scaling an AI Platform by Targeting Micro Business Owners”**  \n- **Project outcome:** A scaling strategy focused on micro business owners.\n\n*Source: CAID-VinUni-Capstone-Booklet.pdf, p. 11*",
+      "source_count": 1,
+      "source_names": [
+        "CAID-VinUni-Capstone-Booklet.pdf"
+      ]
+    },
+    {
+      "id": "tc_003_capstone_medium",
+      "category": "capstone_talent",
+      "query": "What are some Capstone projects in the College of Health Sciences?",
+      "expected_status": "insufficient_evidence",
+      "actual_status": "insufficient_evidence",
+      "passed": true,
+      "failures": [],
+      "answer": "Mình chưa tìm thấy thông tin chính xác về các dự án Capstone tại College of Health Sciences. Bạn có thể cho biết bạn quan tâm đến chương trình/ngành cụ thể hoặc kiểm tra lại tên gọi của môn học không?",
+      "source_count": 0,
+      "source_names": []
+    },
+    {
+      "id": "tc_004_capstone_hard",
+      "category": "capstone_talent",
+      "query": "Does the Capstone booklet contain the official requirements for graduation?",
+      "expected_status": "insufficient_evidence",
+      "actual_status": "insufficient_evidence",
+      "passed": true,
+      "failures": [],
+      "answer": "Mình chưa tìm thấy thông tin chính xác để xác nhận liệu Capstone booklet có phải là tài liệu quy định chính thức về điều kiện tốt nghiệp hay không. Bạn có thể cho biết booklet này thuộc chương trình/ngành nào hoặc kiểm tra lại tên tài liệu để mình hỗ trợ tốt hơn không?",
+      "source_count": 0,
+      "source_names": []
+    },
+    {
+      "id": "tc_005_capstone_hard",
+      "category": "capstone_talent",
+      "query": "What is the exact official definition of a Capstone Project according to the Booklet?",
+      "expected_status": "insufficient_evidence",
+      "actual_status": "insufficient_evidence",
+      "passed": true,
+      "failures": [],
+      "answer": "Mình chưa tìm thấy thông tin chính xác về định nghĩa chính thức của “Capstone Project” trong Booklet. Bạn có thể cho mình biết tên/phiên bản của Booklet hoặc cung cấp thêm ngữ cảnh để mình hỗ trợ tìm đúng nội dung không?",
+      "source_count": 0,
+      "source_names": []
+    },
+    {
+      "id": "tc_006_talent_easy",
+      "category": "capstone_talent",
+      "query": "Is the Talent Handbook available?",
+      "expected_status": "insufficient_evidence",
+      "actual_status": "insufficient_evidence",
+      "passed": true,
+      "failures": [],
+      "answer": "Mình chưa tìm thấy thông tin chính xác về việc Talent Handbook có sẵn hay không. Bạn có thể cho biết thêm Talent Handbook này thuộc chương trình/đơn vị nào hoặc kiểm tra lại tên tài liệu giúp mình nhé?",
+      "source_count": 0,
+      "source_names": []
+    },
+    {
+      "id": "tc_007_talent_easy",
+      "category": "capstone_talent",
+      "query": "What are the core values in the VinUni Talent Handbook?",
+      "expected_status": "insufficient_evidence",
+      "actual_status": "insufficient_evidence",
+      "passed": true,
+      "failures": [],
+      "answer": "Mình chưa tìm thấy thông tin chính xác về các giá trị cốt lõi trong VinUni Talent Handbook. Bạn có thể cung cấp thêm phiên bản/tài liệu cụ thể hoặc kiểm tra lại tên tài liệu để mình hỗ trợ tốt hơn không?",
+      "source_count": 0,
+      "source_names": []
+    },
+    {
+      "id": "tc_008_talent_medium",
+      "category": "capstone_talent",
+      "query": "How does the Talent Handbook describe student life?",
+      "expected_status": "insufficient_evidence",
+      "actual_status": "insufficient_evidence",
+      "passed": true,
+      "failures": [],
+      "answer": "Mình chưa tìm thấy thông tin chính xác về cách Talent Handbook mô tả đời sống sinh viên. Bạn có thể cung cấp thêm phiên bản/đường dẫn của Talent Handbook hoặc kiểm tra lại tên tài liệu để mình hỗ trợ tốt hơn không?",
+      "source_count": 0,
+      "source_names": []
+    },
+    {
+      "id": "tc_009_talent_hard",
+      "category": "capstone_talent",
+      "query": "What is the exact penalty for cheating in the Talent Handbook?",
+      "expected_status": "insufficient_evidence",
+      "actual_status": "error",
+      "passed": false,
+      "failures": [
+        "exception: 'charmap' codec can't encode character '\\u2192' in position 9: character maps to <undefined>"
+      ],
+      "answer": "",
+      "source_count": 0,
+      "source_names": []
+    },
+    {
+      "id": "tc_010_talent_hard",
+      "category": "capstone_talent",
+      "query": "Summarize the entire Talent Handbook in 500 words.",
+      "expected_status": "insufficient_evidence",
+      "actual_status": "insufficient_evidence",
+      "passed": true,
+      "failures": [],
+      "answer": "Mình chưa tìm thấy đầy đủ nội dung của Talent Handbook để có thể tóm tắt chính xác trong 500 từ. Bạn có thể cung cấp tài liệu/đường link hoặc cho biết phiên bản cụ thể của Handbook mà bạn muốn tóm tắt không?",
+      "source_count": 0,
+      "source_names": []
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+.page { min-height: calc(100vh - 72px); padding: 28px 34px 40px; background: #f4f7fb; color: #16233e; }
+.topActions { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.backButton, .editButton, .statePanel button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 7px; padding: 0 14px; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.backButton { border: 1px solid #dce5ef; background: #fff; color: #475569; }
+.editButton, .statePanel button { border: 1px solid #287df4; background: #287df4; color: #fff; }
+.header { padding: 24px; border: 1px solid #e0e7ef; border-radius: 8px; background: #fff; }
+.eyebrow { margin: 0 0 8px; color: #287df4; font-size: 13px; font-weight: 800; letter-spacing: 0; }
+.titleRow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.titleRow h1 { margin: 0; font-size: 28px; letter-spacing: 0; }
+.titleRow span { padding: 5px 9px; border-radius: 999px; font-size: 12px; font-weight: 750; }
+.statusACTIVE { background: #ecfdf5; color: #047857; }
+.statusUPCOMING { background: #fff7ed; color: #c2410c; }
+.statusCOMPLETED { background: #eff6ff; color: #2563eb; }
+.meta { margin: 9px 0 0; color: #64748b; font-size: 14px; }
+.dateBand { display: grid; grid-template-columns: 1fr 1px 1fr; align-items: center; gap: 24px; margin-top: 16px; padding: 20px 24px; border: 1px solid #e0e7ef; border-radius: 8px; background: #fff; }
+.dateBand > div:not(.dateDivider) { display: flex; align-items: center; gap: 11px; color: #287df4; }
+.dateBand span { color: #94a3b8; font-size: 12px; }
+.dateBand strong { display: block; margin-top: 4px; color: #334155; font-size: 15px; }
+.dateDivider { width: 1px; height: 42px; background: #e2e8f0; }
+.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.metrics article { display: flex; min-height: 92px; align-items: center; gap: 12px; padding: 18px; border: 1px solid #e0e7ef; border-radius: 8px; background: #fff; color: #287df4; }
+.metrics span { color: #64748b; font-size: 12px; }
+.metrics strong { display: block; margin-top: 5px; color: #16233e; font-size: 22px; }
+.progressPanel { margin-top: 16px; padding: 22px 24px; border: 1px solid #e0e7ef; border-radius: 8px; background: #fff; }
+.progressPanel > div:first-child { display: flex; align-items: center; justify-content: space-between; }
+.progressPanel h2 { margin: 0; font-size: 17px; }
+.progressPanel p { margin: 16px 0 0; color: #64748b; font-size: 14px; line-height: 1.6; }
+.progressTrack { height: 9px; margin-top: 13px; overflow: hidden; border-radius: 999px; background: #e7edf4; }
+.progressTrack span { display: block; height: 100%; border-radius: inherit; background: #287df4; }
+.statePanel { display: flex; min-height: 360px; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border: 1px solid #e0e7ef; border-radius: 8px; background: #fff; color: #64748b; text-align: center; }
+.statePanel h2, .statePanel p { margin: 0; }
+.statePanel h2 { color: #334155; font-size: 17px; }
+.statePanel p { max-width: 620px; font-size: 14px; }
+.errorPanel { color: #dc2626; }
+.spin { animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 900px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .page { padding: 20px 16px 30px; } .topActions { align-items: stretch; flex-direction: column; } .dateBand { grid-template-columns: 1fr; } .dateDivider { width: 100%; height: 1px; } .metrics { grid-template-columns: 1fr; } }

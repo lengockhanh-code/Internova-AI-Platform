@@ -1,0 +1,189 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+
+import {
+    Home,
+    FileText,
+    BarChart2,
+    ClipboardList,
+    Bot,
+    GraduationCap,
+    BriefcaseBusiness,
+    Bell,
+    Settings,
+    X,
+} from "lucide-react";
+
+import styles from "./sidebar.module.css";
+
+const navGroups = [
+    {
+        title: "TỔNG QUAN",
+        items: [
+            {
+                label: "Dashboard",
+                href: "/student/dashboard",
+                icon: Home,
+            },
+        ],
+    },
+
+    {
+        title: "THỰC TẬP",
+        items: [
+            {
+                label: "Đăng ký thực tập",
+                href: "/student/internship-registration",
+                icon: BriefcaseBusiness,
+            },
+            {
+                label: "Hồ sơ thực tập",
+                href: "/student/internship-profile",
+                icon: FileText,
+            },
+            {
+                label: "Báo cáo",
+                href: "/student/internship-report",
+                icon: BarChart2,
+            },
+            {
+                label: "Checklist",
+                href: "/student/checklist",
+                icon: ClipboardList,
+            },
+        ],
+    },
+
+    {
+        title: "HỖ TRỢ AI",
+        items: [
+            {
+                label: "Hỏi đáp AI",
+                href: "/student/chatbot",
+                icon: Bot,
+            },
+        ],
+    },
+
+    {
+        title: "CÁ NHÂN",
+        items: [
+            {
+                label: "Lịch & Thông báo",
+                href: "/student/notification",
+                icon: Bell,
+            },
+            {
+                label: "Cài đặt",
+                href: "/student/internship-setting",
+                icon: Settings,
+            },
+        ],
+    },
+];
+
+export default function Sidebar() {
+    const pathname = usePathname();
+    const [mobileOpen, setMobileOpen] = useState(false);
+
+    useEffect(() => {
+        const toggleSidebar = () => setMobileOpen((open) => !open);
+        window.addEventListener(
+            "internova:toggle-student-sidebar",
+            toggleSidebar,
+        );
+        return () => window.removeEventListener(
+            "internova:toggle-student-sidebar",
+            toggleSidebar,
+        );
+    }, []);
+
+    const isActive = (href: string) => {
+        return pathname === href || pathname.startsWith(`${href}/`);
+    };
+
+    return (
+        <>
+        <aside className={`${styles.sidebar} ${mobileOpen ? styles.mobileOpen : ""}`}>
+            <div>
+                <div className={styles.sidebarLogo}>
+                    <Image
+                        src="/internova.png"
+                        alt="Internova logo"
+                        width={40}
+                        height={40}
+                        priority
+                    />
+
+                    <span>Internova</span>
+
+                    <button
+                        aria-label="Đóng menu"
+                        className={styles.mobileCloseButton}
+                        onClick={() => setMobileOpen(false)}
+                        type="button"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <nav className={styles.sidebarNav}>
+                    {navGroups.map((group) => (
+                        <div key={group.title} className={styles.navGroup}>
+                            <p className={styles.navGroupTitle}>
+                                {group.title}
+                            </p>
+
+                            <div className={styles.navGroupItems}>
+                                {group.items.map(
+                                    ({ label, href, icon: Icon }) => (
+                                        <Link
+                                            key={href}
+                                            href={href}
+                                            className={`${styles.sidebarNavItem} ${isActive(href)
+                                                    ? styles.active
+                                                    : ""
+                                                }`}
+                                            onClick={() => setMobileOpen(false)}
+                                        >
+                                            <Icon size={19} strokeWidth={2} />
+                                            <span>{label}</span>
+                                        </Link>
+                                    )
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </nav>
+            </div>
+
+            <div className={styles.sidebarFooterCard}>
+                <GraduationCap
+                    size={22}
+                    className={styles.sidebarFooterIcon}
+                />
+
+                <p className={styles.sidebarFooterTitle}>
+                    Internova
+                </p>
+
+                <p className={styles.sidebarFooterDesc}>
+                    Nền tảng hỗ trợ thực tập sinh viên toàn diện
+                </p>
+            </div>
+        </aside>
+        {mobileOpen && (
+            <button
+                aria-label="Đóng menu"
+                className={styles.mobileOverlay}
+                onClick={() => setMobileOpen(false)}
+                type="button"
+            />
+        )}
+        </>
+    );
+}

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internova AI - System Architecture & Data Flow Diagram</title>
+    <!-- Tailwind CSS for sleek styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Mermaid.js for visual diagram rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .diagram-card {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        .mermaid {
+            background-color: #0f172a;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+    <div class="max-w-7xl mx-auto space-y-10">
+        
+        <!-- Header -->
+        <header class="text-center space-y-4">
+            <div class="inline-block px-4 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-400 text-sm font-semibold tracking-wide uppercase">
+                Architecture & Data Flow Specification
+            </div>
+            <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-white">
+                🎓 Internova AI — System Architecture
+            </h1>
+            <p class="text-lg text-slate-400 max-w-3xl mx-auto">
+                Sơ đồ Kiến trúc Thành phần (Component Architecture) & Luồng Dữ liệu (Data Flow Diagram) của Hệ thống VinUniversity Internship RAG Chatbot.
+            </p>
+        </header>
+
+        <!-- Diagram Section 1: High-Level System Architecture -->
+        <section class="diagram-card p-6 md:p-8 space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-700 pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-blue-400">1. Sơ đồ Kiến trúc Tổng quan (System Component Architecture)</h2>
+                    <p class="text-sm text-slate-400">Mô hình phân tầng 5 tầng từ User Interface, FastAPI Backend, Semantic RAG Engine đến Data Storage.</p>
+                </div>
+                <span class="px-3 py-1 bg-slate-800 text-slate-300 text-xs font-mono rounded-md border border-slate-700">Tiered Model</span>
+            </div>
+            <div class="mermaid">
+graph TB
+    subgraph UI_Layer ["1. Client & Presentation Layer (Giao diện)"]
+        StreamlitUI["Streamlit Web UI<br/>(demo.py)"]
+        FastAPI_Web["FastAPI Web Client<br/>(src/main.py / static)"]
+        Viewer["PDF / DOCX Viewer Component"]
+    end
+
+    subgraph API_Layer ["2. API & Service Layer (Backend)"]
+        FastAPI_App["FastAPI REST App<br/>(src/main.py)"]
+        Chat_Router["Chat Router Endpoint<br/>(src/api/routes.py)"]
+        Auth_Router["Auth Router Endpoint<br/>(src/api/auth_routes.py)"]
+        Chat_Service["Chat Service Coordinator<br/>(src/services/chat_service.py)"]
+        DB_Layer[("SQLAlchemy Database<br/>PostgreSQL / SQLite")]
+    end
+
+    subgraph RAG_Engine ["3. End-to-End Semantic RAG Engine (src/rag/)"]
+        Pipeline["Query Pipeline Controller<br/>(query_pipeline.py)"]
+        Guardrails["Guardrails & Input Checker<br/>(validation.py)"]
+        Router["Semantic Intent Router<br/>(classify_intent)"]
+        Planner["Semantic Query Planner<br/>(plan_semantic_retrieval_queries)"]
+        
+        subgraph Retrieval_Sub ["Multi-Query Hybrid Retrieval & Rerank"]
+            Retriever["Hybrid Retriever<br/>(retriever.py)"]
+            VectorStore["ChromaDB Vector Store<br/>(BGE-M3 Embeddings)"]
+            BM25Store["BM25 Lexical Store<br/>(bm25_store.py)"]
+            RRF["Reciprocal Rank Fusion (RRF)"]
+            Reranker["Cross-Encoder LLM Reranker<br/>(reranker.py)"]
+        end
+
+        subgraph Validation_Sub ["Evidence Check & Answer Generation"]
+            EvidencePlan["Semantic Evidence Planner<br/>(plan_semantic_evidence)"]
+            EvidenceSel["Semantic Evidence Selector<br/>(select_semantic_evidence)"]
+            Generator["Grounded Answer Generator<br/>(answer_generator.py)"]
+            Groundedness["Groundedness & Confidence Gate<br/>(check_groundedness)"]
+        end
+    end
+
+    subgraph Ingestion_Pipeline ["4. Data Ingestion & Indexing (Offline)"]
+        DocLoader["Document Loader<br/>(PDF / DOCX)"]
+        Cleaner["Text Cleaner & Metadata Enricher"]
+        Chunker["Semantic Chunker & Section Detector"]
+        Indexer["Indexer Orchestrator<br/>(build_rag_index)"]
+    end
+
+    subgraph Storage_Layer ["5. Persistent Data Layer (Data/)"]
+        RawDocs[("Raw PDFs & DOCXs<br/>(Data/*.pdf, *.docx)")]
+        ChunksJSONL[("Chunks File<br/>(Data/chunks.jsonl)")]
+        ChromaData[("Chroma Vector DB<br/>(Data/chroma/)")]
+        BM25Data[("BM25 Index File<br/>(Data/bm25.pkl)")]
+    end
+
+    %% Connections
+    StreamlitUI -->|HTTP / Direct| Chat_Service
+    FastAPI_Web -->|POST /api/v1/chat| Chat_Router
+    Chat_Router --> Chat_Service
+    Auth_Router --> DB_Layer
+    Chat_Service --> DB_Layer
+    Chat_Service --> Pipeline
+
+    Pipeline --> Guardrails
+    Guardrails --> Router
+    Router -->|In-Scope Query| Planner
+    Planner --> Retriever
+
+    Retriever --> VectorStore
+    Retriever --> BM25Store
+    VectorStore --> RRF
+    BM25Store --> RRF
+    RRF --> Reranker
+
+    Reranker --> EvidencePlan
+    EvidencePlan --> EvidenceSel
+    EvidenceSel -->|Sufficient| Generator
+    Generator --> Groundedness
+
+    RawDocs --> DocLoader
+    DocLoader --> Cleaner
+    Cleaner --> Chunker
+    Chunker --> Indexer
+    Indexer --> ChunksJSONL
+    Indexer --> ChromaData
+    Indexer --> BM25Data
+
+    VectorStore -.-> ChromaData
+    BM25Store -.-> BM25Data
+    StreamlitUI -.-> Viewer
+    Viewer -.-> RawDocs
+            </div>
+        </section>
+
+        <!-- Diagram Section 2: Detailed RAG Query Processing Data Flow -->
+        <section class="diagram-card p-6 md:p-8 space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-700 pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-emerald-400">2. Sơ đồ Luồng Dữ liệu Xử lý Truy vấn (Detailed Query Data Flow)</h2>
+                    <p class="text-sm text-slate-400">Luồng thực thi dữ liệu 10 bước chi tiết từ User Query đến Final Answer.</p>
+                </div>
+                <span class="px-3 py-1 bg-slate-800 text-slate-300 text-xs font-mono rounded-md border border-slate-700">Data Pipeline</span>
+            </div>
+            <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor User as Người dùng (Client)
+    participant UI as Streamlit / FastAPI UI
+    participant Pipe as QueryPipeline
+    participant Guard as Input Guardrails
+    participant Router as Intent Router
+    participant Planner as Semantic Query Planner
+    participant Search as Hybrid Retriever (Vector + BM25)
+    participant Rerank as Cross-Encoder Reranker
+    participant Evidence as Semantic Evidence Checker
+    participant LLM as Answer Generator (LLM)
+    participant Gate as Groundedness & Confidence Gate
+
+    User->>UI: Nhập câu hỏi (Query + Conversation Context)
+    UI->>Pipe: run(query, memory, options)
+    
+    Pipe->>Guard: check_input(query)
+    alt Phát hiện Prompt Injection / Malicious Input
+        Guard-->>Pipe: Guardrail Violation
+        Pipe-->>UI: Fallback Result (Lỗi an toàn)
+    else Đầu vào Hợp lệ
+        Guard-->>Pipe: OK
+        
+        Pipe->>Router: classify_intent(query)
+        Router-->>Pipe: RouteDecision (intent, scope, language)
+        
+        alt Route = Out of Scope / Unsupported Language
+            Pipe-->>UI: Fallback Result (Từ chối / Ngoài phạm vi)
+        else Route = Conversation / General Support
+            Pipe->>LLM: generate_conversation_answer / general_support
+            LLM-->>Pipe: Conversational Response
+            Pipe-->>UI: Trả lời trực tiếp (Skip RAG)
+        else Route = In-Scope RAG (Internship / Career / Capstone)
+            Pipe->>Planner: plan_semantic_retrieval_queries(query, context)
+            Planner-->>Pipe: QueryExpansionResult (query_en + complementary search_queries)
+            
+            Pipe->>Search: retrieve(search_queries, top_k_vector, top_k_bm25)
+            par Dense Vector Search
+                Search->>Search: ChromaDB Vector Query (BGE-M3 Embeddings)
+            and Sparse Keyword Search
+                Search->>Search: BM25 Lexical Search
+            end
+            Search->>Search: Reciprocal Rank Fusion (RRF Score Aggregation)
+            Search-->>Pipe: Fused Hits List
+            
+            Pipe->>Rerank: rerank_hits(query_en, fused_hits, top_k_rerank)
+            Rerank->>Rerank: Score Chunks 0-10 & Fuse Retrieval + LLM Ranks
+            Rerank-->>Pipe: Final Top-K Reranked Hits
+            
+            Pipe->>Evidence: check_evidence(query, final_hits, route)
+            Evidence->>Evidence: plan_semantic_evidence() & select_semantic_evidence()
+            Evidence-->>Pipe: EvidenceCheckResult (status: sufficient / insufficient)
+            
+            alt Evidence Status = Insufficient
+                Pipe-->>UI: Fallback Result (Không tìm thấy đủ bằng chứng trong quy chế)
+            else Evidence Status = Sufficient
+                Pipe->>LLM: generate_answer_from_evidence(query, evidence_hits, context)
+                LLM-->>Pipe: Generated Answer + Source Citations (Document, Page, Section)
+                
+                Pipe->>Gate: check_groundedness(answer, final_hits)
+                Gate->>Gate: Fact-Token Support Verification & Calculate RAG Confidence Score
+                Gate-->>Pipe: Groundedness Result & Confidence Score (0.0 - 1.0)
+                
+                Pipe-->>UI: QueryResult (Answer, Sources, Confidence, Latency_ms)
+                UI-->>User: Hiển thị Phản hồi Markdown + Trích dẫn Nguồn + Bộ xem File Gốc
+            end
+        end
+    end
+            </div>
+        </section>
+
+        <!-- Diagram Section 3: Data Ingestion & Indexing Data Flow -->
+        <section class="diagram-card p-6 md:p-8 space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-700 pb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-purple-400">3. Sơ đồ Luồng Nạp và Đánh chỉ mục Dữ liệu (Offline Ingestion Data Flow)</h2>
+                    <p class="text-sm text-slate-400">Quy trình tiền xử lý văn bản quy chế PDF/DOCX và tạo kho lưu trữ Vector & Keyword Index.</p>
+                </div>
+                <span class="px-3 py-1 bg-slate-800 text-slate-300 text-xs font-mono rounded-md border border-slate-700">Offline Pipeline</span>
+            </div>
+            <div class="mermaid">
+flowchart LR
+    subgraph DocsInput ["1. Document Sources (Data/)"]
+        PDF["POL-CAID-001...pdf<br/>(Quy chế thực tập)"]
+        DOCX["Form 1 - 4...docx<br/>(Biểu mẫu thực tập)"]
+    end
+
+    subgraph LoaderCleaner ["2. Load & Clean (src/rag/ingestion/)"]
+        Loader["loader.py<br/>(PyMuPDF / docx)"]
+        Cleaner["cleaner.py<br/>(Text Normalization)"]
+    end
+
+    subgraph ChunkingEngine ["3. Chunk & Enrich"]
+        Chunker["chunker.py<br/>(Semantic Chunker)"]
+        SectionDetector["Section Detector<br/>(detect_section)"]
+        Enricher["Metadata Enricher<br/>(enrich_chunks)"]
+    end
+
+    subgraph IndexingEngine ["4. Indexing Engine (src/rag/retrieval/)"]
+        Indexer["indexer.py<br/>(build_rag_index)"]
+        Embedder["OpenAI Embeddings<br/>(text-embedding-3-small)"]
+        BM25Builder["BM25 Builder<br/>(bm25_store.py)"]
+    end
+
+    subgraph Outputs ["5. Generated RAG Artifacts (Data/)"]
+        ChunksFile[("chunks.jsonl")]
+        ChromaStore[("chroma/ Vector Store")]
+        BM25File[("bm25.pkl Store")]
+        Manifest[("index_manifest.json")]
+    end
+
+    PDF & DOCX --> Loader
+    Loader --> Cleaner
+    Cleaner --> Chunker
+    Chunker --> SectionDetector
+    SectionDetector --> Enricher
+    Enricher --> ChunksFile
+
+    ChunksFile --> Indexer
+    Indexer --> Embedder
+    Embedder --> ChromaStore
+
+    Indexer --> BM25Builder
+    BM25Builder --> BM25File
+
+    Indexer --> Manifest
+            </div>
+        </section>
+
+        <!-- Summary Table -->
+        <section class="diagram-card p-6 md:p-8 space-y-4">
+            <h2 class="text-xl font-bold text-white border-b border-slate-700 pb-3">📌 Bảng mô tả chi tiết các thành phần chính</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="bg-slate-800 text-slate-200 uppercase text-xs">
+                        <tr>
+                            <th class="p-3">Thành phần (Component)</th>
+                            <th class="p-3">Đường dẫn tệp (File Path)</th>
+                            <th class="p-3">Công nghệ (Tech Stack)</th>
+                            <th class="p-3">Nhiệm vụ chính trong luồng (Function & Role)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700">
+                        <tr class="hover:bg-slate-800/50">
+                            <td class="p-3 font-semibold text-blue-400">Streamlit UI</td>
+                            <td class="p-3 font-mono text-xs text-slate-400">demo.py</td>
+                            <td class="p-3">Streamlit</td>
+                            <td class="p-3">Giao diện Chatbot tương tác, stream câu trả lời, hiển thị badge tin cậy & viewer xem file PDF/DOCX gốc.</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/50">
+                            <td class="p-3 font-semibold text-blue-400">FastAPI Server</td>
+                            <td class="p-3 font-mono text-xs text-slate-400">src/main.py, src/api/routes.py</td>
+                            <td class="p-3">FastAPI, Pydantic</td>
+                            <td class="p-3">Cung cấp REST API endpoint <code>POST /api/v1/chat</code> và tích hợp Swagger Docs.</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/50">
+                            <td class="p-3 font-semibold text-emerald-400">Query Pipeline</td>
+                            <td class="p-3 font-mono text-xs text-slate-400">src/rag/query_pipeline.py</td>
+                            <td class="p-3">Python, LangChain</td>
+                            <td class="p-3">Bộ điều phối chính (Orchestrator) 10 bước từ nhận câu hỏi, kiểm tra guardrail, truy xuất đến trả lời.</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/50">
+                            <td class="p-3 font-semibold text-emerald-400">Semantic Query Planner</td>
+                            <td class="p-3 font-mono text-xs text-slate-400">src/rag/prompts.py</td>
+                            <td class="p-3">OpenAI LLM, Structured Output</td>
+                            <td class="p-3">Lập kế hoạch truy vấn đa chiều (Multi-query expansion) và dịch câu hỏi song ngữ VI-EN.</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/50">
+                            <td class="p-3 font-semibold text-purple-400">Hybrid Retriever</td>
+                            <td class="p-3 font-mono text-xs text-slate-400">src/rag/retrieval/retriever.py</td>
+                            <td class="p-3">ChromaDB, BM25, RRF</td>
+                            <td class="p-3">Tìm kiếm kết hợp giữa Vector Search (BGE-M3) và Lexical Keyword Search (BM25) qua thuật toán RRF.</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/50">
+                            <td class="p-3 font-semibold text-purple-400">LLM Reranker</td>
+                            <td class="p-3 font-mono text-xs text-slate-400">src/rag/retrieval/reranker.py</td>
+                            <td class="p-3">Cross-Encoder LLM</td>
+                            <td class="p-3">Chấm điểm 0-10 độ liên quan giữa query và chunk, hợp nhất thứ hạng với RRF để lọc Top-K tốt nhất.</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/50">
+                            <td class="p-3 font-semibold text-amber-400">Evidence Checker</td>
+                            <td class="p-3 font-mono text-xs text-slate-400">src/rag/evidence.py</td>
+                            <td class="p-3">Structured LLM Planner</td>
+                            <td class="p-3">Lập kế hoạch bằng chứng ngữ nghĩa, kiểm tra độ đầy đủ (sufficient/insufficient) trước khi sinh câu trả lời.</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/50">
+                            <td class="p-3 font-semibold text-amber-400">Groundedness Gate</td>
+                            <td class="p-3 font-mono text-xs text-slate-400">src/rag/generation/validation.py</td>
+                            <td class="p-3">Token Validation & Coverage Score</td>
+                            <td class="p-3">Xác thực các dữ kiện trong câu trả lời có căn cứ trong tài liệu hay không và tính toán điểm tin cậy (Confidence %).</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center text-slate-500 text-sm pt-6 border-t border-slate-800">
+            <p>Internova AI System Architecture & Data Flow • VinUniversity Internship RAG Chatbot</p>
+        </footer>
+
+    </div>
+
+    <script>
+        // Initialize Mermaid diagrams with custom dark theme
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#0f172a',
+                primaryColor: '#1e293b',
+                primaryTextColor: '#f8fafc',
+                primaryBorderColor: '#3b82f6',
+                lineColor: '#64748b',
+                secondaryColor: '#334155',
+                tertiaryColor: '#0f172a'
+            },
+            flowchart: {
+                curve: 'basis'
+            }
+        });
+    </script>
+</body>
+</html>

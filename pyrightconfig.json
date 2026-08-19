@@ -1,0 +1,17 @@
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "include": [
+    "src",
+    "tests"
+  ],
+  "extraPaths": [
+    "."
+  ],
+  "typeCheckingMode": "off",
+  "reportAttributeAccessIssue": "none",
+  "reportCallIssue": "none",
+  "reportArgumentType": "none",
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "none"
+}

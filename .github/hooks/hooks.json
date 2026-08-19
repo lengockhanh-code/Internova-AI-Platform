@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "bash scripts/_pyrun.sh scripts/log_hook.py --tool=copilot",
+        "powershell": "py -3 scripts\\log_hook.py --tool=copilot",
+        "timeoutSec": 10
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": "bash scripts/_pyrun.sh scripts/log_hook.py --tool=copilot",
+        "powershell": "py -3 scripts\\log_hook.py --tool=copilot",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

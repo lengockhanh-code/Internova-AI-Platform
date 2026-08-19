@@ -1,0 +1,61 @@
+# ---- Git & IDE ----
+.git
+.gitignore
+.github
+.vscode
+.cursor
+.claude
+.codex
+.gemini
+.agents
+
+# ---- Python cache ----
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# ---- Môi trường ảo ----
+.venv
+venv
+env
+
+# ---- Biến môi trường (KHÔNG được copy vào image!) ----
+.env
+.env.local
+.env.*.local
+
+# ---- Tài liệu & Slides (không cần trong runtime) ----
+docs/
+presentation/
+gate_docs/
+*.md
+!requirements.txt
+
+# ---- Kiểm thử (không cần trong production) ----
+eval/
+tests/
+test_*.py
+
+# ---- Frontend (deploy riêng trên Vercel) ----
+frontend/
+
+# ---- Docker files chính ----
+.dockerignore
+docker-compose*.yml
+
+# ---- Node.js (nếu có trong root) ----
+node_modules/
+
+# ---- Data index lớn (mount volume thay thế) ----
+Data/chroma/
+Data/rag/bm25.pkl
+
+# ---- Misc ----
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

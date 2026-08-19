@@ -1,0 +1,62 @@
+{
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "answered_passed": 3,
+    "not_found_passed": 2,
+    "hallucination_rate_not_found": 0.0
+  },
+  "cases": [
+    {
+      "id": "rag_gold_001",
+      "query": "How many hours are required for a part-time internship?",
+      "expected_status": "answered",
+      "actual_status": "answered",
+      "passed": true,
+      "failures": [],
+      "answer": "Theo tai lieu duoc phep, doan lien quan la: a. Internship Request Form (IRF) completion by host site and approval by the College b. Must be an on-the-job learning experience. c. Registration within the first 3 weeks of the semester (except late adds and summer semester). Retroactive credit is not permitted. d. Have completed all required Foundation courses. e. For full-time internships: Minimum duration of each 7 weeks for Fall and Spring semesters and 6 weeks for summer semester. f. For part-time internships: Minimum duration of 240 hours each semester. g. Have 2.0 overall GPA, and all pre-requisites from supervising academic department. h. Student and Host Organization evaluations of learning objectives/outcomes plus a student reflection paper. Grading All internships are graded either on Pass/Fail or Letter Grade, depending on the course syllabus. The grading scheme should be communicated with students prior to the internship. Faculty mentoring, reporting and supervision Each student will be assigned with a Faculty mentor matching with the faculty expertise areas, to allow interaction between the faculty and the industry for research, executive education, and consultancy projects etc.",
+      "source_count": 1
+    },
+    {
+      "id": "rag_gold_002",
+      "query": "What GPA is required before taking an internship?",
+      "expected_status": "answered",
+      "actual_status": "answered",
+      "passed": true,
+      "failures": [],
+      "answer": "Theo tai lieu duoc phep, doan lien quan la: a. Internship Request Form (IRF) completion by host site and approval by the College b. Must be an on-the-job learning experience. c. Registration within the first 3 weeks of the semester (except late adds and summer semester). Retroactive credit is not permitted. d. Have completed all required Foundation courses. e. For full-time internships: Minimum duration of each 7 weeks for Fall and Spring semesters and 6 weeks for summer semester. f. For part-time internships: Minimum duration of 240 hours each semester. g. Have 2.0 overall GPA, and all pre-requisites from supervising academic department. h. Student and Host Organization evaluations of learning objectives/outcomes plus a student reflection paper. Grading All internships are graded either on Pass/Fail or Letter Grade, depending on the course syllabus. The grading scheme should be communicated with students prior to the internship. Faculty mentoring, reporting and supervision Each student will be assigned with a Faculty mentor matching with the faculty expertise areas, to allow interaction between the faculty and the industry for research, executive education, and consultancy projects etc.",
+      "source_count": 1
+    },
+    {
+      "id": "rag_gold_003",
+      "query": "Which form is used for an internship grievance?",
+      "expected_status": "answered",
+      "actual_status": "answered",
+      "passed": true,
+      "failures": [],
+      "answer": "Theo tai lieu duoc phep, doan lien quan la: STATEMENT OF INTERNSHIP GRIEVANCE\nGENERAL INFORMATION\nSTATEMENT GRIEVANCE\nI hereby confirm that I have described the incident truthfully to the best of my knowledge.\nSignature: _______________________________ Date: ______________________________\nName in full: | Student ID:\nEmail: | Intake:\nCollege:\nType of internship: | 5in5 Summer Work placement Other:………………………\nCredit: | Non Credit-bearing Credit-bearing:………………………………………credit\nCourse Code:\nHost Company:\nInternship position:\nIndustry supervisor:\nFaculty supervisor:\nDate of Incident: | Time of Incident:\nEmail: | Intake:\nLocation of Incident:\nPlease describe the incident in detail:\nWitness information: | If there are others who have witnessed the incident, please provide their names and phone numbers below:\nRepeated issue: | Is this the first time you have raised concern about this issue? Yes No\nSuggestion | Do you have any suggestions for resolving this issue?\nAdditional information | Do you have any additional information? If so, please explain.",
+      "source_count": 1
+    },
+    {
+      "id": "rag_gold_004",
+      "query": "What is the internship submission deadline in August 2026?",
+      "expected_status": "not_found",
+      "actual_status": "not_found",
+      "passed": true,
+      "failures": [],
+      "answer": "Khong tim thay thong tin nay trong cac tai lieu duoc phep.",
+      "source_count": 0
+    },
+    {
+      "id": "rag_gold_005",
+      "query": "What is the personal email of the faculty mentor?",
+      "expected_status": "not_found",
+      "actual_status": "not_found",
+      "passed": true,
+      "failures": [],
+      "answer": "Khong tim thay thong tin nay trong cac tai lieu duoc phep.",
+      "source_count": 0
+    }
+  ]
+}
