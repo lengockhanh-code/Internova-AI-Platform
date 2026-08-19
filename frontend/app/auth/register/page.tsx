@@ -26,7 +26,6 @@ import {
 } from "next/navigation";
 
 
-
 import styles from "./page.module.css";
 
 
@@ -314,13 +313,6 @@ export default function RegisterPage() {
                     "Đăng ký thất bại."
                 );
             }
-
-
-            /*
-             * Backend trả accessToken luôn.
-             * Đăng ký thành công -> đăng nhập luôn.
-             */
-
             localStorage.setItem(
                 "internova_access_token",
                 data.accessToken
@@ -338,13 +330,6 @@ export default function RegisterPage() {
             setSuccessMessage(
                 "Đăng ký thành công."
             );
-
-
-            /*
-             * Chỉ STUDENT được đăng ký
-             * từ trang public.
-             */
-
             if (
                 data.user?.role !==
                 "STUDENT"
@@ -422,11 +407,7 @@ export default function RegisterPage() {
                     styles.authCard
                 }
             >
-                {/* ==========================================
-                    LEFT
-                ========================================== */}
-
-                <div
+<div
                     className={
                         styles.authLeft
                     }
@@ -492,11 +473,7 @@ export default function RegisterPage() {
                                 styles.authDesc
                             }
                         >
-                            Tạo tài khoản sinh viên
-                            để quản lý hồ sơ thực tập,
-                            báo cáo, checklist và sử
-                            dụng trợ lý AI của
-                            Internova.
+                            Quản lý hồ sơ, báo cáo và tiến độ thực tập trên Internova.
                         </p>
 
 
@@ -570,13 +547,7 @@ export default function RegisterPage() {
                         </div>
                     </div>
                 </div>
-
-
-                {/* ==========================================
-                    RIGHT
-                ========================================== */}
-
-                <div
+<div
                     className={
                         styles.authRight
                     }
@@ -612,18 +583,10 @@ export default function RegisterPage() {
 
 
                         <p>
-                            Điền thông tin sinh viên
-                            để bắt đầu sử dụng hệ
-                            thống.
+                            Điền thông tin để tạo tài khoản.
                         </p>
                     </div>
-
-
-                    {/* ======================================
-                        REGISTER FORM
-                    ====================================== */}
-
-                    <form
+<form
                         className={
                             styles.loginForm
                         }
@@ -631,9 +594,7 @@ export default function RegisterPage() {
                             handleSubmit
                         }
                     >
-                        {/* FIRST NAME */}
-
-                        <div
+<div
                             className={
                                 styles.formGroup
                             }
@@ -670,11 +631,7 @@ export default function RegisterPage() {
                                 />
                             </div>
                         </div>
-
-
-                        {/* LAST NAME */}
-
-                        <div
+<div
                             className={
                                 styles.formGroup
                             }
@@ -711,11 +668,7 @@ export default function RegisterPage() {
                                 />
                             </div>
                         </div>
-
-
-                        {/* STUDENT CODE */}
-
-                        <div
+<div
                             className={
                                 styles.formGroup
                             }
@@ -752,22 +705,8 @@ export default function RegisterPage() {
                                 />
                             </div>
 
-                            <p
-                                style={{
-                                    margin: "6px 0 0",
-                                    color: "#64748b",
-                                    fontSize: "12px",
-                                    lineHeight: 1.5,
-                                }}
-                            >
-                                Mã số sinh viên phải có sẵn trong dữ liệu nhà trường và chưa được liên kết với tài khoản nào.
-                            </p>
                         </div>
-
-
-                        {/* GENDER */}
-
-                        <div
+<div
                             className={
                                 styles.formGroup
                             }
@@ -816,11 +755,7 @@ export default function RegisterPage() {
                                 </select>
                             </div>
                         </div>
-
-
-                        {/* EMAIL */}
-
-                        <div
+<div
                             className={
                                 styles.formGroup
                             }
@@ -874,11 +809,7 @@ export default function RegisterPage() {
                                 </span>
                             </div>
                         </div>
-
-
-                        {/* PASSWORD */}
-
-                        <div
+<div
                             className={
                                 styles.formGroup
                             }
@@ -948,11 +879,7 @@ export default function RegisterPage() {
                                 </button>
                             </div>
                         </div>
-
-
-                        {/* CONFIRM PASSWORD */}
-
-                        <div
+<div
                             className={
                                 styles.formGroup
                             }
@@ -1022,11 +949,7 @@ export default function RegisterPage() {
                                 </button>
                             </div>
                         </div>
-
-
-                        {/* ERROR */}
-
-                        {error && (
+{error && (
                             <div
                                 role="alert"
                                 style={{
@@ -1049,11 +972,7 @@ export default function RegisterPage() {
                                 {error}
                             </div>
                         )}
-
-
-                        {/* SUCCESS */}
-
-                        {successMessage && (
+{successMessage && (
                             <div
                                 style={{
                                     padding:
@@ -1075,11 +994,7 @@ export default function RegisterPage() {
                                 {successMessage}
                             </div>
                         )}
-
-
-                        {/* TERMS */}
-
-                        <label
+<label
                             className={
                                 styles.rememberRow
                             }
@@ -1095,11 +1010,7 @@ export default function RegisterPage() {
                                 bảo mật.
                             </span>
                         </label>
-
-
-                        {/* SUBMIT */}
-
-                        <button
+<button
                             type="submit"
                             className={
                                 styles.loginButton
@@ -1130,19 +1041,7 @@ export default function RegisterPage() {
                         </button>
                     </form>
 
-
-                    {/* ======================================
-                        GOOGLE
-                    ====================================== */}
-
-                   
-
-
-                    {/* ======================================
-                        LOGIN LINK
-                    ====================================== */}
-
-                    <div
+<div
                         className={
                             styles.authSwitch
                         }
@@ -1156,18 +1055,6 @@ export default function RegisterPage() {
                         </Link>
                     </div>
 
-
-                    <p
-                        className={
-                            styles.terms
-                        }
-                    >
-                        Tài khoản tạo từ trang này
-                        luôn có vai trò{" "}
-                        <strong>
-                            STUDENT
-                        </strong>.
-                    </p>
                 </div>
             </section>
         </main>

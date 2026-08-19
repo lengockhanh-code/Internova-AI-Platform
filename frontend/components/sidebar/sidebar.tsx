@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -18,6 +17,7 @@ import {
     X,
 } from "lucide-react";
 
+import BrandMark from "@/components/brand-mark/brandmark";
 import styles from "./sidebar.module.css";
 
 const navGroups = [
@@ -31,7 +31,6 @@ const navGroups = [
             },
         ],
     },
-
     {
         title: "THỰC TẬP",
         items: [
@@ -57,7 +56,6 @@ const navGroups = [
             },
         ],
     },
-
     {
         title: "HỖ TRỢ AI",
         items: [
@@ -68,7 +66,6 @@ const navGroups = [
             },
         ],
     },
-
     {
         title: "CÁ NHÂN",
         items: [
@@ -92,14 +89,18 @@ export default function Sidebar() {
 
     useEffect(() => {
         const toggleSidebar = () => setMobileOpen((open) => !open);
+
         window.addEventListener(
             "internova:toggle-student-sidebar",
             toggleSidebar,
         );
-        return () => window.removeEventListener(
-            "internova:toggle-student-sidebar",
-            toggleSidebar,
-        );
+
+        return () => {
+            window.removeEventListener(
+                "internova:toggle-student-sidebar",
+                toggleSidebar,
+            );
+        };
     }, []);
 
     const isActive = (href: string) => {
@@ -108,82 +109,82 @@ export default function Sidebar() {
 
     return (
         <>
-        <aside className={`${styles.sidebar} ${mobileOpen ? styles.mobileOpen : ""}`}>
-            <div>
-                <div className={styles.sidebarLogo}>
-                    <Image
-                        src="/internova.png"
-                        alt="Internova logo"
-                        width={40}
-                        height={40}
-                        priority
-                    />
+            <aside
+                className={`${styles.sidebar} ${
+                    mobileOpen ? styles.mobileOpen : ""
+                }`}
+            >
+                <div>
+                    <div className={styles.sidebarLogo}>
+                        <BrandMark size={40} />
 
-                    <span>Internova</span>
+                        <span>Internova</span>
 
-                    <button
-                        aria-label="Đóng menu"
-                        className={styles.mobileCloseButton}
-                        onClick={() => setMobileOpen(false)}
-                        type="button"
-                    >
-                        <X size={20} />
-                    </button>
+                        <button
+                            aria-label="Đóng menu"
+                            className={styles.mobileCloseButton}
+                            onClick={() => setMobileOpen(false)}
+                            type="button"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <nav className={styles.sidebarNav}>
+                        {navGroups.map((group) => (
+                            <div key={group.title} className={styles.navGroup}>
+                                <p className={styles.navGroupTitle}>
+                                    {group.title}
+                                </p>
+
+                                <div className={styles.navGroupItems}>
+                                    {group.items.map(
+                                        ({ label, href, icon: Icon }) => (
+                                            <Link
+                                                key={href}
+                                                href={href}
+                                                className={`${styles.sidebarNavItem} ${
+                                                    isActive(href)
+                                                        ? styles.active
+                                                        : ""
+                                                }`}
+                                                onClick={() => setMobileOpen(false)}
+                                            >
+                                                <Icon size={19} strokeWidth={2} />
+                                                <span>{label}</span>
+                                            </Link>
+                                        ),
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </nav>
                 </div>
 
-                <nav className={styles.sidebarNav}>
-                    {navGroups.map((group) => (
-                        <div key={group.title} className={styles.navGroup}>
-                            <p className={styles.navGroupTitle}>
-                                {group.title}
-                            </p>
+                <div className={styles.sidebarFooterCard}>
+                    <GraduationCap
+                        size={22}
+                        className={styles.sidebarFooterIcon}
+                    />
 
-                            <div className={styles.navGroupItems}>
-                                {group.items.map(
-                                    ({ label, href, icon: Icon }) => (
-                                        <Link
-                                            key={href}
-                                            href={href}
-                                            className={`${styles.sidebarNavItem} ${isActive(href)
-                                                    ? styles.active
-                                                    : ""
-                                                }`}
-                                            onClick={() => setMobileOpen(false)}
-                                        >
-                                            <Icon size={19} strokeWidth={2} />
-                                            <span>{label}</span>
-                                        </Link>
-                                    )
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </nav>
-            </div>
+                    <p className={styles.sidebarFooterTitle}>
+                        Internship Support
+                    </p>
 
-            <div className={styles.sidebarFooterCard}>
-                <GraduationCap
-                    size={22}
-                    className={styles.sidebarFooterIcon}
+                    <p className={styles.sidebarFooterDesc}>
+                        Hồ sơ, tiến độ, báo cáo và hỗ trợ sinh viên.
+                    </p>
+                </div>
+            </aside>
+
+            {mobileOpen && (
+                <button
+                    aria-label="Đóng menu"
+                    className={styles.mobileOverlay}
+                    onClick={() => setMobileOpen(false)}
+                    type="button"
                 />
-
-                <p className={styles.sidebarFooterTitle}>
-                    Internova
-                </p>
-
-                <p className={styles.sidebarFooterDesc}>
-                    Nền tảng hỗ trợ thực tập sinh viên toàn diện
-                </p>
-            </div>
-        </aside>
-        {mobileOpen && (
-            <button
-                aria-label="Đóng menu"
-                className={styles.mobileOverlay}
-                onClick={() => setMobileOpen(false)}
-                type="button"
-            />
-        )}
+            )}
         </>
     );
 }

@@ -16,7 +16,6 @@ import Sidebar from "@/components/sidebar/sidebar";
 
 import {
     Bot,
-    BotMessageSquare,
     ChevronDown,
     ArrowDown,
     Download,
@@ -42,6 +41,14 @@ const CHAT_MESSAGES_KEY =
 
 const CHAT_SESSION_KEY =
     "internova_chat_session_id";
+
+const CHAT_UPDATED_EVENT =
+    "internova:chat-updated";
+
+type ChatRuntimeWindow = Window & {
+    __internovaChatStreamActive?: boolean;
+    __internovaChatAbortController?: AbortController | null;
+};
 
 
 /*
@@ -359,6 +366,29 @@ export default function RagChatPage() {
     const abortControllerRef =
         useRef<AbortController | null>(null);
 
+    const messagesRef =
+        useRef<Message[]>([
+            welcomeMessage,
+        ]);
+
+    const getChatRuntime = () =>
+        window as ChatRuntimeWindow;
+
+    const persistMessages = (
+        nextMessages: Message[],
+    ) => {
+        messagesRef.current = nextMessages;
+
+        sessionStorage.setItem(
+            CHAT_MESSAGES_KEY,
+            JSON.stringify(nextMessages)
+        );
+
+        window.dispatchEvent(
+            new Event(CHAT_UPDATED_EVENT)
+        );
+    };
+
     /* ============================================================
        LOAD CHAT FROM SESSION STORAGE
     ============================================================ */
@@ -390,21 +420,56 @@ export default function RagChatPage() {
                     &&
                     parsed.length > 0
                 ) {
-                    // Clean up stuck streaming/thinking states on refresh
-                    const cleaned = parsed.map(msg => {
-                        if (msg.status === "streaming" || msg.streamPhase === "thinking" || msg.streamPhase === "answering") {
-                            return {
-                                ...msg,
-                                status: undefined,
-                                streamPhase: undefined,
-                                content: msg.content || "Cuộc trò chuyện bị gián đoạn.",
-                            };
-                        }
-                        return msg;
-                    }).filter(msg => msg.role !== "assistant" || msg.content);
+                    const streamStillRunning =
+                        getChatRuntime()
+                            .__internovaChatStreamActive
+                        === true;
+
+                    const cleaned =
+                        (
+                            streamStillRunning
+                                ? parsed
+                                : parsed.map(
+                                    msg => {
+                                        if (
+                                            msg.status === "streaming"
+                                            ||
+                                            msg.streamPhase === "thinking"
+                                            ||
+                                            msg.streamPhase === "answering"
+                                        ) {
+                                            return {
+                                                ...msg,
+                                                status: undefined,
+                                                streamPhase: undefined,
+                                                content:
+                                                    msg.content
+                                                    ||
+                                                    "Cuộc trò chuyện bị gián đoạn.",
+                                            };
+                                        }
+
+                                        return msg;
+                                    }
+                                )
+                        ).filter(
+                            msg =>
+                                msg.role !== "assistant"
+                                ||
+                                Boolean(msg.content)
+                                ||
+                                streamStillRunning
+                        );
+
+                    messagesRef.current =
+                        cleaned;
 
                     setMessages(
                         cleaned
+                    );
+
+                    setLoading(
+                        streamStillRunning
                     );
 
                     setVisibleMessageCount(
@@ -458,6 +523,57 @@ export default function RagChatPage() {
     }, []);
     /* eslint-enable react-hooks/set-state-in-effect */
 
+    useEffect(() => {
+        const syncFromStorage = () => {
+            const stored =
+                sessionStorage.getItem(
+                    CHAT_MESSAGES_KEY
+                );
+
+            if (!stored) {
+                return;
+            }
+
+            try {
+                const parsed =
+                    JSON.parse(stored) as Message[];
+
+                if (
+                    !Array.isArray(parsed)
+                    ||
+                    parsed.length === 0
+                ) {
+                    return;
+                }
+
+                messagesRef.current = parsed;
+                setMessages(parsed);
+
+                setLoading(
+                    getChatRuntime()
+                        .__internovaChatStreamActive
+                    === true
+                );
+            } catch (error) {
+                console.error(
+                    "Không thể đồng bộ chat:",
+                    error
+                );
+            }
+        };
+
+        window.addEventListener(
+            CHAT_UPDATED_EVENT,
+            syncFromStorage
+        );
+
+        return () => {
+            window.removeEventListener(
+                CHAT_UPDATED_EVENT,
+                syncFromStorage
+            );
+        };
+    }, []);
 
 
     /* ============================================================
@@ -466,10 +582,11 @@ export default function RagChatPage() {
 
     useEffect(() => {
 
+        messagesRef.current =
+            messages;
+
         if (
             !storageLoaded
-            ||
-            loading
         ) {
             return;
         }
@@ -496,7 +613,6 @@ export default function RagChatPage() {
     }, [
         messages,
         storageLoaded,
-        loading,
     ]);
 
 
@@ -771,6 +887,24 @@ export default function RagChatPage() {
 
     function startNewChat() {
 
+        const runtime =
+            getChatRuntime();
+
+        (
+            runtime.__internovaChatAbortController
+            ??
+            abortControllerRef.current
+        )?.abort();
+
+        runtime.__internovaChatAbortController =
+            null;
+
+        runtime.__internovaChatStreamActive =
+            false;
+
+        abortControllerRef.current =
+            null;
+
         const newSessionId =
             crypto.randomUUID();
 
@@ -785,14 +919,17 @@ export default function RagChatPage() {
         );
 
 
-        sessionStorage.removeItem(
-            CHAT_MESSAGES_KEY
+        const initialMessages = [
+            welcomeMessage,
+        ];
+
+        persistMessages(
+            initialMessages
         );
 
-
-        setMessages([
-            welcomeMessage,
-        ]);
+        setMessages(
+            initialMessages
+        );
 
         setVisibleMessageCount(
             INITIAL_VISIBLE_MESSAGES
@@ -831,10 +968,19 @@ export default function RagChatPage() {
        STOP GENERATION
     ============================================================ */
     function stopGeneration() {
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-            abortControllerRef.current = null;
-        }
+        const runtime =
+            getChatRuntime();
+
+        (
+            runtime.__internovaChatAbortController
+            ??
+            abortControllerRef.current
+        )?.abort();
+
+        abortControllerRef.current = null;
+        runtime.__internovaChatAbortController = null;
+        runtime.__internovaChatStreamActive = false;
+
         setLoading(false);
         if (streamFrameRef.current !== null) {
             cancelAnimationFrame(streamFrameRef.current);
@@ -931,12 +1077,18 @@ export default function RagChatPage() {
             true;
         setShowJumpToLatest(false);
 
+        const nextMessages = [
+            ...messagesRef.current,
+            userMessage,
+            assistantMessage,
+        ];
+
+        persistMessages(
+            nextMessages
+        );
+
         setMessages(
-            current => [
-                ...current,
-                userMessage,
-                assistantMessage,
-            ]
+            nextMessages
         );
 
         setInput("");
@@ -956,20 +1108,26 @@ export default function RagChatPage() {
                 current: Message,
             ) => Message,
         ) => {
-            setMessages(
-                current =>
-                    current.map(
-                        item => {
-                            if (
-                                item.id !==
-                                assistantMessageId
-                            ) {
-                                return item;
-                            }
-
-                            return updater(item);
+            const nextMessages =
+                messagesRef.current.map(
+                    item => {
+                        if (
+                            item.id !==
+                            assistantMessageId
+                        ) {
+                            return item;
                         }
-                    )
+
+                        return updater(item);
+                    }
+                );
+
+            persistMessages(
+                nextMessages
+            );
+
+            setMessages(
+                nextMessages
             );
         };
 
@@ -1026,7 +1184,20 @@ export default function RagChatPage() {
                 headers["Authorization"] = `Bearer ${token}`;
             }
 
-            abortControllerRef.current = new AbortController();
+            const requestController =
+                new AbortController();
+
+            abortControllerRef.current =
+                requestController;
+
+            const runtime =
+                getChatRuntime();
+
+            runtime.__internovaChatAbortController =
+                requestController;
+
+            runtime.__internovaChatStreamActive =
+                true;
 
             const response =
                 await fetch(
@@ -1034,7 +1205,7 @@ export default function RagChatPage() {
                     {
                         method: "POST",
                         headers,
-                        signal: abortControllerRef.current.signal,
+                        signal: requestController.signal,
                         body: JSON.stringify({
                             message,
                             session_id: sessionIdRef.current,
@@ -1344,7 +1515,25 @@ export default function RagChatPage() {
 
             streamBufferRef.current = "";
 
+            const runtime =
+                getChatRuntime();
+
+            if (
+                runtime.__internovaChatAbortController
+                === abortControllerRef.current
+            ) {
+                runtime.__internovaChatAbortController =
+                    null;
+            }
+
+            runtime.__internovaChatStreamActive =
+                false;
+
             abortControllerRef.current = null;
+
+            window.dispatchEvent(
+                new Event(CHAT_UPDATED_EVENT)
+            );
 
             setLoading(
                 false
@@ -1439,11 +1628,9 @@ export default function RagChatPage() {
                                         styles.titleIcon
                                     }
                                 >
-                                    <BotMessageSquare
+                                    <Bot
                                         size={36}
-                                        strokeWidth={
-                                            1.8
-                                        }
+                                        strokeWidth={1.8}
                                     />
                                 </span>
 
@@ -1879,7 +2066,10 @@ const MessageBubble = memo(function MessageBubble({
                 {isUser ? (
                     <User size={18} />
                 ) : (
-                    <Bot size={20} />
+                    <Bot
+                        size={20}
+                        strokeWidth={2}
+                    />
                 )}
 
             </div>

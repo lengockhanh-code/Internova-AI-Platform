@@ -234,13 +234,16 @@ export default function HomePage() {
   return (
     <main className={styles.page}>
       <div className={styles.backgroundGrid} />
+      <div className={styles.glowOne} />
+      <div className={styles.glowTwo} />
+      <div className={styles.glowThree} />
 
       <header className={styles.header}>
         <nav className={styles.navbar}>
           <Link href="/" className={styles.logo}>
             <span className={styles.logoIcon}>
               <Image
-                src="/internova.png"
+                src="/vinuni-internship-logo.svg"
                 alt="Internova for VinUni logo"
                 width={48}
                 height={48}
@@ -357,7 +360,8 @@ export default function HomePage() {
       <section className={styles.hero}>
         <div className={styles.heroContent}>
           <div className={styles.heroBadge}>
-            Nền tảng quản lý thực tập dành cho sinh viên VinUni
+            <Sparkles size={16} />
+            Nền tảng hỗ trợ thực tập dành cho sinh viên VinUni
           </div>
 
           <div className={styles.universityIdentity}>
@@ -369,31 +373,50 @@ export default function HomePage() {
           </div>
 
           <h1>
-            Quản lý kỳ thực tập
-            <span> rõ ràng, tập trung và đúng tiến độ.</span>
+            Biến hành trình thực tập thành một trải nghiệm
+            <span> thông minh hơn.</span>
           </h1>
 
           <p className={styles.heroDescription}>
-            Internova tập trung hồ sơ, báo cáo, checklist, tiến độ và hỗ trợ tra cứu quy định thực tập trong một hệ thống thống nhất dành cho sinh viên VinUni.
+            Một không gian số tập trung cho sinh viên VinUni: quản lý hồ sơ, báo cáo, tiến độ và nhận hỗ trợ từ AI dựa trên tài liệu thực tập được cung cấp trong hệ thống.
           </p>
 
           <div className={styles.heroActions}>
-            <Link
-              href="/auth/register"
-              className={styles.primaryButton}
-            >
-              Tạo tài khoản sinh viên
-              <ArrowRight size={18} />
-            </Link>
+    <Link
+        href="/auth/register"
+        className={styles.primaryButton}
+    >
+        Bắt đầu với VinUni
+        <ArrowRight size={18} />
+    </Link>
+</div>
+
+          <div className={styles.trustRow}>
+            <div className={styles.avatarGroup}>
+              <span>NA</span>
+              <span>TH</span>
+              <span>ML</span>
+              <span>+</span>
+            </div>
+
+            <div>
+              <div className={styles.rating}>
+                ★ ★ ★ ★ ★
+              </div>
+              <p>Được thiết kế theo hành trình thực tập của sinh viên VinUni</p>
+            </div>
           </div>
         </div>
 
         <div className={styles.heroVisual}>
+          <div className={styles.visualOrbitOne} />
+          <div className={styles.visualOrbitTwo} />
+
           <div className={styles.dashboardMockup}>
             <div className={styles.mockupTopbar}>
               <div className={styles.mockupLogo}>
                 <Image
-                  src="/internova.png"
+                  src="/vinuni-internship-logo.svg"
                   alt="Internova for VinUni logo"
                   width={32}
                   height={32}
@@ -845,7 +868,7 @@ export default function HomePage() {
               <Link href="/" className={styles.footerLogo}>
                 <span className={styles.footerLogoIcon}>
                   <Image
-                    src="/internova.png"
+                    src="/vinuni-internship-logo.svg"
                     alt="Internova for VinUni logo"
                     width={48}
                     height={48}

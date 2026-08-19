@@ -632,15 +632,7 @@ export default function LoginPage() {
                     </div>
 
 
-                    <p
-                        className={
-                            styles.terms
-                        }
-                    >
-                        Trang đăng ký công khai chỉ
-                        dành cho sinh viên. Tài khoản
-                        giảng viên do hệ thống cấp.
-                    </p>
+                    
                 </div>
             </section>
         </main>
