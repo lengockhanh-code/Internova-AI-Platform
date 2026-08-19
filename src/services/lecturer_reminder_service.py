@@ -272,7 +272,7 @@ def get_lecturer_reminder_conversation(
             {
                 "key": f"overdue-{row['id']}",
                 "severity": "ERROR",
-                "title": f"Quá hạn {row['title'] or f'Báo cáo tuần {row['week_number']}'}",
+                "title": f"Quá hạn {row['title'] or ('Báo cáo tuần ' + str(row['week_number']))}",
                 "description": "Sinh viên chưa nộp báo cáo theo lịch yêu cầu.",
                 "relatedId": int(row["id"]),
                 "occurredAt": to_iso(row["due_at"]),
