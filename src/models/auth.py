@@ -6,6 +6,7 @@ from pydantic import (
     BaseModel,
     EmailStr,
     Field,
+    field_validator,
 )
 
 
@@ -16,17 +17,11 @@ Gender = Literal[
 ]
 
 
-LoginRole = Literal[
-    "STUDENT",
-    "LECTURER",
-    "ADMIN",
-]
-
-
 # ============================================================
 # REGISTER
 # Chỉ dành cho STUDENT
 # ============================================================
+
 
 class RegisterRequest(BaseModel):
     firstName: str = Field(
@@ -53,11 +48,31 @@ class RegisterRequest(BaseModel):
         max_length=128,
     )
 
+    @field_validator("email")
+    @classmethod
+    def validate_vinuni_email(
+        cls,
+        value: EmailStr,
+    ) -> EmailStr:
+        domain = (
+            str(value)
+            .rsplit("@", 1)[-1]
+            .lower()
+        )
+
+        if domain != "vinuni.edu.vn":
+            raise ValueError(
+                "Email phải sử dụng tên miền @vinuni.edu.vn."
+            )
+
+        return value
+
 
 # ============================================================
 # LOGIN
-# Sinh viên hoặc giảng viên
+# Không cho client gửi role.
 # ============================================================
+
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -67,12 +82,11 @@ class LoginRequest(BaseModel):
         max_length=128,
     )
 
-    role: LoginRole
-
 
 # ============================================================
 # RESPONSE
 # ============================================================
+
 
 class AuthUserResponse(BaseModel):
     id: int
@@ -81,7 +95,10 @@ class AuthUserResponse(BaseModel):
 
     fullName: str
 
-    role: str
+    role: Literal[
+        "STUDENT",
+        "LECTURER",
+    ]
 
     avatarUrl: str | None = None
 

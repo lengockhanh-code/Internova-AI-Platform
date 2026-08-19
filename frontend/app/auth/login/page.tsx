@@ -9,16 +9,13 @@ import {
     CheckCircle2,
     Eye,
     EyeOff,
-    GraduationCap,
     LockKeyhole,
     Mail,
     Sparkles,
-    UserRoundCheck,
 } from "lucide-react";
 
 import {
     FormEvent,
-    useEffect,
     useState,
 } from "react";
 
@@ -34,10 +31,6 @@ const API_URL =
     "http://localhost:8000";
 
 
-type LoginRole =
-    | "STUDENT"
-    | "LECTURER";
-
 
 export default function LoginPage() {
     const router =
@@ -50,14 +43,6 @@ export default function LoginPage() {
     ] =
         useState(false);
 
-
-    const [
-        role,
-        setRole,
-    ] =
-        useState<LoginRole>(
-            "STUDENT"
-        );
 
 
     const [
@@ -125,7 +110,6 @@ export default function LoginPage() {
                             JSON.stringify({
                                 email,
                                 password,
-                                role,
                             }),
                     }
                 );
@@ -144,6 +128,16 @@ export default function LoginPage() {
             }
 
 
+            if (
+                data.user?.role !== "STUDENT"
+                &&
+                data.user?.role !== "LECTURER"
+            ) {
+                throw new Error(
+                    "Tài khoản này không được phép đăng nhập tại cổng sinh viên/giảng viên."
+                );
+            }
+
             localStorage.setItem(
                 "internova_access_token",
                 data.accessToken
@@ -158,15 +152,15 @@ export default function LoginPage() {
             );
 
 
+            const requestedPath =
+                new URLSearchParams(
+                    window.location.search
+                ).get("next");
+
             if (
                 data.user.role ===
                 "LECTURER"
             ) {
-                const requestedPath =
-                    new URLSearchParams(
-                        window.location.search
-                    ).get("next");
-
                 router.push(
                     requestedPath?.startsWith(
                         "/lecturer/"
@@ -178,9 +172,12 @@ export default function LoginPage() {
                 return;
             }
 
-
             router.push(
-                "/student/dashboard"
+                requestedPath?.startsWith(
+                    "/student/"
+                )
+                    ? requestedPath
+                    : "/student/dashboard"
             );
 
 
@@ -367,38 +364,19 @@ export default function LoginPage() {
                                 styles.decorativeIcon
                             }
                         >
-                            {role ===
-                            "STUDENT" ? (
-                                <GraduationCap
-                                    size={22}
-                                />
-                            ) : (
-                                <UserRoundCheck
-                                    size={22}
-                                />
-                            )}
+                            <CheckCircle2
+                                size={22}
+                            />
                         </div>
 
 
                         <div>
                             <strong>
-                                {role ===
-                                "STUDENT"
-                                    ? "Không gian sinh viên"
-                                    : "Không gian giảng viên"}
+                                Một cổng đăng nhập duy nhất
                             </strong>
 
                             <p>
-                                {role ===
-                                "STUDENT"
-                                    ? (
-                                        "Quản lý internship, "
-                                        + "checklist và báo cáo."
-                                    )
-                                    : (
-                                        "Theo dõi sinh viên, "
-                                        + "tiến độ và báo cáo."
-                                    )}
+                                Internova tự nhận diện tài khoản sinh viên hoặc giảng viên sau khi xác thực.
                             </p>
                         </div>
                     </div>
@@ -445,127 +423,8 @@ export default function LoginPage() {
 
 
                         <p>
-                            Chọn chức vụ và nhập thông
-                            tin tài khoản để tiếp tục.
+                            Nhập email và mật khẩu. Hệ thống sẽ tự động nhận diện vai trò của tài khoản.
                         </p>
-                    </div>
-
-
-                    {/* ======================================
-                        ROLE
-                    ====================================== */}
-
-                    <div
-                        className={
-                            styles.formGroup
-                        }
-                    >
-                        <label>
-                            Chức vụ
-                        </label>
-
-
-                        <div
-                            style={{
-                                display:
-                                    "grid",
-
-                                gridTemplateColumns:
-                                    "1fr 1fr",
-
-                                gap:
-                                    "10px",
-                            }}
-                        >
-                            <button
-                                type="button"
-
-                                onClick={() =>
-                                    setRole(
-                                        "STUDENT"
-                                    )
-                                }
-
-                                style={{
-                                    height:
-                                        "46px",
-
-                                    border:
-                                        role ===
-                                        "STUDENT"
-                                            ? "1px solid #2563eb"
-                                            : "1px solid #dbe2ea",
-
-                                    borderRadius:
-                                        "10px",
-
-                                    background:
-                                        role ===
-                                        "STUDENT"
-                                            ? "#eff6ff"
-                                            : "#ffffff",
-
-                                    color:
-                                        role ===
-                                        "STUDENT"
-                                            ? "#2563eb"
-                                            : "#475569",
-
-                                    cursor:
-                                        "pointer",
-
-                                    fontWeight:
-                                        600,
-                                }}
-                            >
-                                Sinh viên
-                            </button>
-
-
-                            <button
-                                type="button"
-
-                                onClick={() =>
-                                    setRole(
-                                        "LECTURER"
-                                    )
-                                }
-
-                                style={{
-                                    height:
-                                        "46px",
-
-                                    border:
-                                        role ===
-                                        "LECTURER"
-                                            ? "1px solid #2563eb"
-                                            : "1px solid #dbe2ea",
-
-                                    borderRadius:
-                                        "10px",
-
-                                    background:
-                                        role ===
-                                        "LECTURER"
-                                            ? "#eff6ff"
-                                            : "#ffffff",
-
-                                    color:
-                                        role ===
-                                        "LECTURER"
-                                            ? "#2563eb"
-                                            : "#475569",
-
-                                    cursor:
-                                        "pointer",
-
-                                    fontWeight:
-                                        600,
-                                }}
-                            >
-                                Giảng viên
-                            </button>
-                        </div>
                     </div>
 
 

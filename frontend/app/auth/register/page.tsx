@@ -135,6 +135,33 @@ export default function RegisterPage() {
     }
 
 
+    function handleEmailChange(
+        event: React.ChangeEvent<HTMLInputElement>
+    ) {
+        let value =
+            event.target.value
+                .trimStart()
+                .toLowerCase();
+
+        value = value.replace(
+            /@vinuni\.edu\.vn$/i,
+            ""
+        );
+
+        value = value.replace(
+            /\s/g,
+            ""
+        );
+
+        setForm(
+            previous => ({
+                ...previous,
+                email: value,
+            })
+        );
+    }
+
+
     function validateForm() {
         const firstName =
             form.firstName.trim();
@@ -165,7 +192,18 @@ export default function RegisterPage() {
 
 
         if (!email) {
-            return "Vui lòng nhập email.";
+            return "Vui lòng nhập tên tài khoản email.";
+        }
+
+        if (
+            !/^[a-zA-Z0-9._-]+$/.test(
+                email
+            )
+        ) {
+            return (
+                "Tên tài khoản email chỉ được chứa "
+                + "chữ, số, dấu chấm, gạch dưới hoặc gạch ngang."
+            );
         }
 
 
@@ -255,9 +293,9 @@ export default function RegisterPage() {
                                     null,
 
                                 email:
-                                    form.email
+                                    `${form.email
                                         .trim()
-                                        .toLowerCase(),
+                                        .toLowerCase()}@vinuni.edu.vn`,
 
                                 password:
                                     form.password,
@@ -713,6 +751,17 @@ export default function RegisterPage() {
                                     required
                                 />
                             </div>
+
+                            <p
+                                style={{
+                                    margin: "6px 0 0",
+                                    color: "#64748b",
+                                    fontSize: "12px",
+                                    lineHeight: 1.5,
+                                }}
+                            >
+                                Mã số sinh viên phải có sẵn trong dữ liệu nhà trường và chưa được liên kết với tài khoản nào.
+                            </p>
                         </div>
 
 
@@ -795,17 +844,34 @@ export default function RegisterPage() {
                                 <input
                                     id="email"
                                     name="email"
-                                    type="email"
-                                    placeholder="student@vinuni.edu.vn"
+                                    type="text"
+                                    inputMode="email"
+                                    placeholder="ten.tai.khoan"
                                     value={
                                         form.email
                                     }
                                     onChange={
-                                        handleChange
+                                        handleEmailChange
                                     }
                                     autoComplete="email"
+                                    style={{
+                                        minWidth: 0,
+                                        flex: 1,
+                                    }}
                                     required
                                 />
+
+                                <span
+                                    aria-hidden="true"
+                                    style={{
+                                        color: "#64748b",
+                                        fontSize: "14px",
+                                        fontWeight: 600,
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    @vinuni.edu.vn
+                                </span>
                             </div>
                         </div>
 
