@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -17,7 +18,6 @@ import {
     X,
 } from "lucide-react";
 
-import BrandMark from "@/components/brand-mark/brandmark";
 import styles from "./sidebar.module.css";
 
 const navGroups = [
@@ -85,10 +85,15 @@ const navGroups = [
 
 export default function Sidebar() {
     const pathname = usePathname();
-    const [mobileOpen, setMobileOpen] = useState(false);
+
+    const [mobileOpen, setMobileOpen] =
+        useState(false);
 
     useEffect(() => {
-        const toggleSidebar = () => setMobileOpen((open) => !open);
+        const toggleSidebar = () =>
+            setMobileOpen(
+                (open) => !open
+            );
 
         window.addEventListener(
             "internova:toggle-student-sidebar",
@@ -103,76 +108,167 @@ export default function Sidebar() {
         };
     }, []);
 
-    const isActive = (href: string) => {
-        return pathname === href || pathname.startsWith(`${href}/`);
+    const isActive = (
+        href: string
+    ) => {
+        return (
+            pathname === href ||
+            pathname.startsWith(
+                `${href}/`
+            )
+        );
     };
 
     return (
         <>
             <aside
                 className={`${styles.sidebar} ${
-                    mobileOpen ? styles.mobileOpen : ""
+                    mobileOpen
+                        ? styles.mobileOpen
+                        : ""
                 }`}
             >
                 <div>
-                    <div className={styles.sidebarLogo}>
-                        <BrandMark size={40} />
+                    <div
+                        className={
+                            styles.sidebarLogo
+                        }
+                    >
+                        <Image
+                            src="/vinuni-internship-logo.svg"
+                            alt="Internova for VinUni logo"
+                            width={40}
+                            height={40}
+                            priority
+                        />
 
-                        <span>Internova</span>
+                        <span>
+                            Internova
+                        </span>
 
                         <button
                             aria-label="Đóng menu"
-                            className={styles.mobileCloseButton}
-                            onClick={() => setMobileOpen(false)}
+                            className={
+                                styles.mobileCloseButton
+                            }
+                            onClick={() =>
+                                setMobileOpen(
+                                    false
+                                )
+                            }
                             type="button"
                         >
                             <X size={20} />
                         </button>
                     </div>
 
-                    <nav className={styles.sidebarNav}>
-                        {navGroups.map((group) => (
-                            <div key={group.title} className={styles.navGroup}>
-                                <p className={styles.navGroupTitle}>
-                                    {group.title}
-                                </p>
+                    <nav
+                        className={
+                            styles.sidebarNav
+                        }
+                    >
+                        {navGroups.map(
+                            (group) => (
+                                <div
+                                    key={
+                                        group.title
+                                    }
+                                    className={
+                                        styles.navGroup
+                                    }
+                                >
+                                    <p
+                                        className={
+                                            styles.navGroupTitle
+                                        }
+                                    >
+                                        {
+                                            group.title
+                                        }
+                                    </p>
 
-                                <div className={styles.navGroupItems}>
-                                    {group.items.map(
-                                        ({ label, href, icon: Icon }) => (
-                                            <Link
-                                                key={href}
-                                                href={href}
-                                                className={`${styles.sidebarNavItem} ${
-                                                    isActive(href)
-                                                        ? styles.active
-                                                        : ""
-                                                }`}
-                                                onClick={() => setMobileOpen(false)}
-                                            >
-                                                <Icon size={19} strokeWidth={2} />
-                                                <span>{label}</span>
-                                            </Link>
-                                        ),
-                                    )}
+                                    <div
+                                        className={
+                                            styles.navGroupItems
+                                        }
+                                    >
+                                        {group.items.map(
+                                            ({
+                                                label,
+                                                href,
+                                                icon: Icon,
+                                            }) => (
+                                                <Link
+                                                    key={
+                                                        href
+                                                    }
+                                                    href={
+                                                        href
+                                                    }
+                                                    className={`${styles.sidebarNavItem} ${
+                                                        isActive(
+                                                            href
+                                                        )
+                                                            ? styles.active
+                                                            : ""
+                                                    }`}
+                                                    onClick={() =>
+                                                        setMobileOpen(
+                                                            false
+                                                        )
+                                                    }
+                                                >
+                                                    <Icon
+                                                        size={
+                                                            19
+                                                        }
+                                                        strokeWidth={
+                                                            2
+                                                        }
+                                                    />
+
+                                                    <span>
+                                                        {
+                                                            label
+                                                        }
+                                                    </span>
+                                                </Link>
+                                            )
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            )
+                        )}
                     </nav>
                 </div>
 
-                <div className={styles.sidebarFooterCard}>
+                <div
+                    className={
+                        styles.sidebarFooterCard
+                    }
+                >
                     <GraduationCap
                         size={22}
-                        className={styles.sidebarFooterIcon}
+                        className={
+                            styles.sidebarFooterIcon
+                        }
                     />
 
-                    <p className={styles.sidebarFooterTitle}>
-                        Internship Support
+                    <p
+                        className={
+                            styles.sidebarFooterTitle
+                        }
+                    >
+                        Internova
                     </p>
 
-                    <p className={styles.sidebarFooterDesc}>
-                        Hồ sơ, tiến độ, báo cáo và hỗ trợ sinh viên.
+                    <p
+                        className={
+                            styles.sidebarFooterDesc
+                        }
+                    >
+                        Nền tảng hỗ trợ thực tập
+                        sinh viên
                     </p>
                 </div>
             </aside>
@@ -180,8 +276,12 @@ export default function Sidebar() {
             {mobileOpen && (
                 <button
                     aria-label="Đóng menu"
-                    className={styles.mobileOverlay}
-                    onClick={() => setMobileOpen(false)}
+                    className={
+                        styles.mobileOverlay
+                    }
+                    onClick={() =>
+                        setMobileOpen(false)
+                    }
                     type="button"
                 />
             )}
