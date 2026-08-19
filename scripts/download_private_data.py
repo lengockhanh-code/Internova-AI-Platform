@@ -96,15 +96,12 @@ def download_archive() -> bytes:
 
     url = (
         f"{SUPABASE_URL}"
-        f"/storage/v1/object/"
+        f"/storage/v1/object/authenticated/"
         f"{RAG_DATA_BUCKET}/"
         f"{RAG_DATA_OBJECT}"
     )
 
     headers = {
-        "Authorization": (
-            f"Bearer {SUPABASE_SECRET_KEY}"
-        ),
         "apikey": SUPABASE_SECRET_KEY,
     }
 
@@ -135,7 +132,6 @@ def download_archive() -> bytes:
         )
 
         return response.content
-
 
 # ============================================================
 # SAFE EXTRACTION
