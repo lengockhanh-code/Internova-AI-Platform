@@ -519,6 +519,7 @@ def strip_wrapping_quotes(value: str) -> str:
 # =============================================================================
 
 IntentName = Literal[
+    "personal_data",
     "conversation",
     "general_support",
     "internship_eligibility",
@@ -538,6 +539,7 @@ IntentName = Literal[
 ]
 
 SourceScope = Literal[
+    "personal",
     "conversation",
     "general_support",
     "internship",
@@ -576,6 +578,24 @@ class SemanticRouteOutput(BaseModel):
         ),
     )
 
+    personal_sections: list[Literal["profile", "internship", "deadlines", "checklist", "reports"]] = Field(
+        default_factory=list,
+        description=(
+            "For personal_data only: exact DB sections explicitly requested by the user. "
+            "Must be empty for every non-personal intent."
+        ),
+    )
+
+    personal_profile_fields: list[Literal[
+        "full_name", "email", "student_code", "faculty", "major", "cohort", "gpa", "skills"
+    ]] = Field(default_factory=list)
+
+    personal_internship_fields: list[Literal[
+        "company_name", "position_title", "lecturer_name", "semester", "start_date", "end_date", "status"
+    ]] = Field(default_factory=list)
+
+    personal_reports_pending_only: bool = False
+
     reason: str = Field(
         description=(
             "Brief explanation of the routing and language decision."
@@ -602,11 +622,6 @@ ALL_ROUTED_DOCUMENT_TYPES = [
     *CAPSTONE_DOCUMENT_TYPES,
 ]
 
-# Bump this whenever routing policy/prompt semantics change. Including it in
-# the Redis route-cache key prevents old broad general_support decisions from
-# surviving after a deployment that tightens the supported domain.
-ROUTER_POLICY_VERSION = "internship-domain-v2"
-
 
 class RouteDecision(BaseModel):
     intent: IntentName
@@ -614,6 +629,10 @@ class RouteDecision(BaseModel):
     language: QueryLanguage = "unknown"
     allowed_document_types: list[str] = Field(default_factory=list)
     blocked_document_types: list[str] = Field(default_factory=list)
+    personal_sections: list[str] = Field(default_factory=list)
+    personal_profile_fields: list[str] = Field(default_factory=list)
+    personal_internship_fields: list[str] = Field(default_factory=list)
+    personal_reports_pending_only: bool = False
     reason: str
 
     @property
@@ -626,10 +645,18 @@ class RouteDecision(BaseModel):
 
 
 def route_query_rules(query: str) -> RouteDecision:
-    """Fallback router using the legacy deterministic keyword rules."""
+    """Fallback router using deterministic rules with the same domain policy."""
     normalized = normalize_for_routing(query)
 
     intent, reason = classify_intent(normalized)
+
+    # Defense-in-depth for LLM/API outages: legacy broad writing/advice keywords
+    # must not turn unrelated requests into general_support. Preserve greetings
+    # and all document routes, but narrow general support to the product domains.
+    if intent == "general_support" and not is_allowed_general_support_query(normalized):
+        intent = "out_of_scope"
+        reason = "general support request is outside internship/CV/company scope"
+
     scope = scope_for_intent(intent)
     allowed = allowed_document_types_for_scope(scope)
 
@@ -742,6 +769,10 @@ def _route_query_uncached(
             language=semantic_result.language,
             allowed_document_types=allowed,
             blocked_document_types=blocked,
+            personal_sections=(semantic_result.personal_sections if intent == "personal_data" else []),
+            personal_profile_fields=(semantic_result.personal_profile_fields if intent == "personal_data" else []),
+            personal_internship_fields=(semantic_result.personal_internship_fields if intent == "personal_data" else []),
+            personal_reports_pending_only=(semantic_result.personal_reports_pending_only if intent == "personal_data" else False),
             reason=(
                 "semantic_router: "
                 f"{semantic_result.reason}"
@@ -769,7 +800,9 @@ def route_query(
         "query": redis_cache.normalize_query(query),
         "conversation_context": conversation_context or "",
         "model": settings.openai_chat_model or settings.model_name,
-        "router_policy_version": ROUTER_POLICY_VERSION,
+        # Bump when routing/domain policy changes so stale Redis decisions cannot
+        # bypass a newly tightened scope policy.
+        "routing_policy_version": 3,
     }
 
     cached = redis_cache.get_json(
@@ -950,6 +983,9 @@ def classify_intent(
 
 
 def scope_for_intent(intent: IntentName) -> SourceScope:
+    if intent == "personal_data":
+        return "personal"
+
     if intent == "conversation":
         return "conversation"
 
@@ -982,7 +1018,7 @@ def allowed_document_types_for_scope(
     if scope == "capstone":
         return list(CAPSTONE_DOCUMENT_TYPES)
 
-    if scope in {"conversation", "general_support", "out_of_scope"}:
+    if scope in {"personal", "conversation", "general_support", "out_of_scope"}:
         return []
 
     return []
@@ -1257,54 +1293,89 @@ CONVERSATION_EXACT = {
     "bye",
     "thanks",
 }
+ALLOWED_GENERAL_SUPPORT_DOMAIN_PATTERNS = (
+    # Internship / internship workplace support
+    "thuc tap", "internship", "intern", "noi thuc tap", "ky thuc tap",
+    "supervisor", "mentor", "workplace", "noi lam viec",
+
+    # CV / resume and matching
+    "cv", "resume", "curriculum vitae", "matching cv", "match cv",
+    "cv matching", "cv match", "job description", "jd",
+
+    # Company/employer matching and internship/job-seeking communication
+    "cong ty", "doanh nghiep", "company", "employer", "recruiter",
+    "nha tuyen dung", "ung tuyen", "apply", "application", "job",
+    "viec lam", "vi tri", "position", "role", "phong van", "interview",
+)
+
+
+def is_allowed_general_support_query(normalized_query: str) -> bool:
+    """Return True only for the intentionally supported general-help domains.
+
+    This helper is used only by the deterministic fallback. The semantic router
+    remains authoritative when available and is instructed to judge the real
+    requested outcome rather than keyword presence.
+    """
+    return contains_any(normalized_query, ALLOWED_GENERAL_SUPPORT_DOMAIN_PATTERNS)
+
+
 GENERAL_SUPPORT_PATTERNS = (
-    # CV / resume
+    "giup toi viet",
+    "giup minh viet",
+    "viet email",
+    "viet mail",
+    "soan email",
+    "soan tin nhan",
     "viet cv",
     "sua cv",
     "review cv",
     "chuan bi cv",
+    "toi nen lam gi",
+    "minh nen lam gi",
+    "nen lam gi",
+    "toi nen chuan bi",
+    "minh nen chuan bi",
+    "nen chuan bi gi",
+    "toi dang lo",
+    "toi hoi lo",
+    "minh dang lo",
+    "lo lang",
+    "cho toi loi khuyen",
+    "cho minh loi khuyen",
+    "giai thich giup",
+    "giai thich cho toi",
+    "giup toi hieu",
+    "help me write",
+    "write an email",
+    "write a message",
     "help with my cv",
     "review my cv",
-    "resume",
-
-    # Internship/career preparation
+    "what should i do",
+    "what should i prepare",
+    "i am worried",
+    "advice",
+    # Câu hỏi tổng quan / giới thiệu — sinh viên mới
+    "sinh vien moi",
     "lan dau di thuc tap",
     "chua di thuc tap",
     "chuan bi tim noi thuc tap",
     "nen biet gi ve thuc tap",
+    "thuc tap o vin nhu nao",
     "moi truong lam viec",
     "van hoa cong ty",
     "kinh nghiem thuc tap",
     "loi khuyen thuc tap",
-    "chuan bi phong van",
-    "phong van thuc tap",
-    "internship interview",
-    "internship preparation",
-    "career advice",
-    "job interview",
-
-    # Company / opportunity matching
-    "matching cong ty",
-    "match cong ty",
-    "cong ty phu hop",
-    "vi tri phu hop",
-    "co hoi thuc tap phu hop",
-    "company matching",
-    "matching company",
-    "suitable company",
-    "suitable internship",
-
-    # Workplace / recruiter / supervisor communication
-    "email recruiter",
-    "email cong ty",
-    "email supervisor",
-    "email lecturer",
-    "tin nhan recruiter",
-    "tin nhan cong ty",
-    "workplace communication",
-    "communicate with recruiter",
-    "communicate with supervisor",
+    "cho minh biet ve thuc tap",
+    "gioi thieu ve thuc tap",
+    "tong quan thuc tap",
+    "hay cho toi biet",
+    "hay cho minh biet",
+    "tell me about",
+    "give me an overview",
+    "introduce internship",
+    "what is internship like",
 )
+
 
 
 def _serialize_retrieval_result(
@@ -1442,6 +1513,7 @@ class QueryPipeline:
         on_token: Callable[[str], None] | None = None,
         on_status: Callable[[str, dict], None] | None = None,
         should_cancel: Callable[[], bool] | None = None,
+        precomputed_route: RouteDecision | None = None,
     ) -> QueryResult:
         """Execute the full online RAG query pipeline."""
         opts = options_override or self.options
@@ -1721,11 +1793,15 @@ class QueryPipeline:
                 )
             )
 
-        route = observed_call(
-            "rag.route",
-            route_query,
-            query=contextual_query,
-            conversation_context=conversation_history,
+        route = (
+            precomputed_route
+            if precomputed_route is not None
+            else observed_call(
+                "rag.route",
+                route_query,
+                query=contextual_query,
+                conversation_context=conversation_history,
+            )
         )
         route_ms = _stage_ms(route_started)
 
@@ -1780,6 +1856,32 @@ class QueryPipeline:
 # ------------------------------------------------------------------
 # Conversation: trả lời trực tiếp, không chạy RAG
 # ------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # Personal DB access is dispatched only by the authenticated API layer.
+        # The RAG pipeline itself has no DB authorization context, so fail closed.
+        # ------------------------------------------------------------------
+        if route.scope == "personal":
+            return QueryResult(
+                query=query,
+                answer=(
+                    "Không thể truy cập dữ liệu cá nhân trong ngữ cảnh này."
+                    if answer_language == "vi"
+                    else "Personal account data cannot be accessed in this context."
+                ),
+                answer_status="out_of_scope",
+                answer_language=answer_language,
+                confidence=0.0,
+                sources=[],
+                route_intent=route.intent,
+                route_scope=route.scope,
+                guardrail_passed=True,
+                guardrail_reason="personal_requires_authenticated_dispatch",
+                cache_hit=False,
+                groundedness_status="skip",
+                groundedness_reason="personal_requires_authenticated_dispatch",
+                latency_ms=_elapsed_ms(t0),
+            )
+
         # ------------------------------------------------------------------
 # Semantic language gate
 # ------------------------------------------------------------------

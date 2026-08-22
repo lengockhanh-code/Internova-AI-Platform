@@ -12,6 +12,7 @@ from src.rag.memory import ConversationMemory
 from src.rag.query_pipeline import (
     PipelineOptions,
     QueryPipeline,
+    RouteDecision,
     detect_query_language,
     route_query,
 )
@@ -274,6 +275,28 @@ class ChatService:
 
         return result
 
+    def prepare_route(
+        self,
+        message: str,
+        session_id: str | None = None,
+    ) -> RouteDecision:
+        """Run the existing semantic router exactly once for this request.
+
+        Uses the same conversation context/follow-up resolution that QueryPipeline
+        would use, so the returned RouteDecision can be safely passed downstream.
+        """
+        message = message.strip()
+        if not message:
+            raise ValueError("Message không được để trống.")
+
+        memory = self._get_memory(session_id)
+        conversation_history = memory.get_context_window() if memory else ""
+        contextual_query = memory.resolve_followup_query(message) if memory else message
+        return route_query(
+            contextual_query,
+            conversation_context=conversation_history,
+        )
+
     def classify_query(
         self,
         message: str,
@@ -376,6 +399,7 @@ class ChatService:
         on_token: Callable[[str], None] | None = None,
         on_status: Callable[[str, dict], None] | None = None,
         should_cancel: Callable[[], bool] | None = None,
+        precomputed_route: RouteDecision | None = None,
     ) -> QueryResult:
         """Send a question through the RAG pipeline, optionally streaming model chunks."""
 
@@ -418,6 +442,7 @@ class ChatService:
                 on_token=on_token,
                 on_status=on_status,
                 should_cancel=should_cancel,
+                precomputed_route=precomputed_route,
             )
 
         cache_payload = self._result_cache_payload(
@@ -510,6 +535,7 @@ class ChatService:
                 on_token=on_token,
                 on_status=on_status,
                 should_cancel=should_cancel,
+                precomputed_route=precomputed_route,
             )
 
             if (
@@ -534,6 +560,7 @@ class ChatService:
         on_status: Callable[[str, dict], None] | None = None,
         should_cancel: Callable[[], bool] | None = None,
         user_id: str | None = None,
+        precomputed_route: RouteDecision | None = None,
     ) -> QueryResult:
         """Root production trace including Redis cache hits and the full chat request."""
         normalized_message = message.strip()
@@ -551,6 +578,7 @@ class ChatService:
                 on_token=on_token,
                 on_status=on_status,
                 should_cancel=should_cancel,
+                precomputed_route=precomputed_route,
             )
             record_trace_result(root, result)
             return result

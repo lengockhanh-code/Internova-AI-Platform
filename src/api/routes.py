@@ -39,7 +39,6 @@ from src.services.chat_service import (
 )
 from src.services.student_personal_chat_service import (
     answer_student_personal_question,
-    classify_student_personal_scope,
 )
 from src.rag.generation.answer_generator import StreamingCancelled
 from src.services.redis_cache_service import (
@@ -60,35 +59,6 @@ RAG_SCOPES = {
     "career",
     "capstone",
 }
-
-
-def _classify_personal_scope_for_user(
-    current_user: dict,
-    message: str,
-) -> str:
-    """Classify before touching personal DB; non-students always use normal routing."""
-    if str(current_user.get("role") or "").upper() != "STUDENT":
-        return "policy"
-    return classify_student_personal_scope(message)
-
-
-def _answer_personal_if_applicable(
-    db: Session,
-    current_user: dict,
-    message: str,
-    on_token=None,
-):
-    """Only query personal tables after the intent classifier says PERSONAL."""
-    personal_scope = _classify_personal_scope_for_user(current_user, message)
-    if personal_scope != "personal":
-        return None
-    return answer_student_personal_question(
-        db,
-        current_user,
-        message,
-        personal_scope="personal",
-        on_token=on_token,
-    )
 
 
 
@@ -504,46 +474,19 @@ async def classify_chat_route(
         current_user,
     )
 
-    personal_scope = await run_in_threadpool(
-        _classify_personal_scope_for_user,
-        current_user,
-        message,
-    )
-
-    if personal_scope == "personal":
-        return {
-            "needs_retrieval": False,
-            "route_intent": "personal_student_info",
-            "route_scope": "personal_student",
-        }
-
     try:
-        result = (
-            await run_in_threadpool(
-                chat_service
-                .classify_query,
-                message,
-            )
-        )
-
-        route_scope = result.get(
-            "route_scope"
+        # Use the same shared semantic router as /chat and /chat/stream.
+        # No keyword/personal pre-classifier and no extra LLM call.
+        route_decision = await run_in_threadpool(
+            chat_service.prepare_route,
+            message,
+            request.session_id,
         )
 
         return {
-            "needs_retrieval":
-                (
-                    route_scope
-                    in RAG_SCOPES
-                ),
-
-            "route_intent":
-                result.get(
-                    "route_intent"
-                ),
-
-            "route_scope":
-                route_scope,
+            "needs_retrieval": route_decision.scope in RAG_SCOPES,
+            "route_intent": route_decision.intent,
+            "route_scope": route_decision.scope,
         }
 
     except ValueError as exc:
@@ -598,22 +541,34 @@ async def chat(
         current_user,
     )
 
-    personal_result = await run_in_threadpool(
-        _answer_personal_if_applicable,
-        db,
-        current_user,
+    # One semantic-router decision for the whole request. This same decision is
+    # reused for personal DB dispatch or passed into the normal RAG pipeline.
+    route_decision = await run_in_threadpool(
+        chat_service.prepare_route,
         message,
+        request.session_id,
     )
 
-    if personal_result is not None:
-        structured_result = build_chat_result(
-            personal_result
+    if (
+        str(current_user.get("role") or "").upper() == "STUDENT"
+        and route_decision.scope == "personal"
+        and route_decision.intent == "personal_data"
+    ):
+        personal_result = await run_in_threadpool(
+            lambda: answer_student_personal_question(
+                db,
+                current_user,
+                message,
+                personal_route=route_decision,
+            )
         )
-        return ChatResponse(
-            response=structured_result.answer,
-            session_id=request.session_id,
-            result=structured_result,
-        )
+        if personal_result is not None:
+            structured_result = build_chat_result(personal_result)
+            return ChatResponse(
+                response=structured_result.answer,
+                session_id=request.session_id,
+                result=structured_result,
+            )
 
     try:
         # Whole synchronous RAG pipeline runs
@@ -624,6 +579,7 @@ async def chat(
                     message=message,
                     session_id=request.session_id,
                     user_id=get_observability_user_id(current_user),
+                    precomputed_route=route_decision,
                 )
             )
         )
@@ -695,15 +651,19 @@ async def chat_stream(
         current_user,
     )
 
-    # Classify first, but do not execute the personal DB+LLM answer before the
-    # StreamingResponse exists. This lets the UI show "thinking" immediately.
-    personal_scope = await run_in_threadpool(
-        _classify_personal_scope_for_user,
-        current_user,
+    # Reuse the same semantic router for privacy + RAG routing. No dedicated
+    # personal-classifier LLM call is made.
+    route_decision = await run_in_threadpool(
+        chat_service.prepare_route,
         message,
+        request.session_id,
     )
 
-    if personal_scope == "personal":
+    if (
+        str(current_user.get("role") or "").upper() == "STUDENT"
+        and route_decision.scope == "personal"
+        and route_decision.intent == "personal_data"
+    ):
         async def personal_event_generator():
             personal_started = time.perf_counter()
 
@@ -725,6 +685,7 @@ async def chat_stream(
                     current_user,
                     message,
                     personal_scope="personal",
+                    personal_route=route_decision,
                 )
             )
 
@@ -832,6 +793,7 @@ async def chat_stream(
                         on_status=on_status,
                         should_cancel=cancelled.is_set,
                         user_id=get_observability_user_id(current_user),
+                        precomputed_route=route_decision,
                     )
                 )
                 enqueue("result", result)
