@@ -393,106 +393,22 @@ def delete_avatar(
 # PASSWORD
 # ============================================================
 
+from src.services.auth_service import change_user_password
+
+
 def change_password(
     db: Session,
     student_id: int,
     current_password: str,
     new_password: str,
 ):
-
-    user = db.execute(
-        text(
-            """
-            SELECT
-                password_hash
-
-            FROM users
-
-            WHERE id = :student_id
-
-              AND role = 'STUDENT'
-
-            LIMIT 1
-            """
-        ),
-        {
-            "student_id":
-                student_id,
-        },
-    ).mappings().first()
-
-
-
-    if user is None:
-        raise ValueError(
-            "Không tìm thấy tài khoản."
-        )
-
-
-
-    password_hash = user[
-        "password_hash"
-    ]
-
-
-
-    if not password_hash:
-        raise ValueError(
-            "Tài khoản chưa có mật khẩu."
-        )
-
-
-
-    if not verify_password(
-        current_password,
-        password_hash,
-    ):
-        raise ValueError(
-            "Mật khẩu hiện tại không chính xác."
-        )
-
-
-
-    if verify_password(
-        new_password,
-        password_hash,
-    ):
-        raise ValueError(
-            "Mật khẩu mới phải khác mật khẩu hiện tại."
-        )
-
-
-
-    new_hash = hash_password(
-        new_password
+    return change_user_password(
+        db=db,
+        user_id=student_id,
+        current_password=current_password,
+        new_password=new_password,
     )
 
-
-
-    db.execute(
-        text(
-            """
-            UPDATE users
-
-            SET
-                password_hash = :password_hash,
-
-                updated_at = NOW()
-
-            WHERE id = :student_id
-            """
-        ),
-        {
-            "student_id":
-                student_id,
-
-            "password_hash":
-                new_hash,
-        },
-    )
-
-
-    db.commit()
 
 
 

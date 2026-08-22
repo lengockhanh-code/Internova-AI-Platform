@@ -239,6 +239,9 @@ def delete_lecturer_avatar(db: Session, lecturer_id: int) -> None:
     db.commit()
 
 
+from src.services.auth_service import change_user_password
+
+
 def change_lecturer_password(
     db: Session,
     lecturer_id: int,
@@ -246,39 +249,13 @@ def change_lecturer_password(
     current_password: str,
     new_password: str,
 ) -> None:
-    user = db.execute(
-        text(
-            """
-            SELECT password_hash
-            FROM public.users
-            WHERE id = :lecturer_id
-              AND role = 'LECTURER'
-              AND is_active = TRUE
-            LIMIT 1
-            """
-        ),
-        {"lecturer_id": lecturer_id},
-    ).mappings().first()
-
-    if user is None or user["password_hash"] is None:
-        raise ValueError("Tài khoản này không hỗ trợ đổi mật khẩu trực tiếp.")
-    if not verify_password(current_password, user["password_hash"]):
-        raise ValueError("Mật khẩu hiện tại không đúng.")
-    if current_password == new_password:
-        raise ValueError("Mật khẩu mới phải khác mật khẩu hiện tại.")
-
-    db.execute(
-        text(
-            """
-            UPDATE public.users
-            SET password_hash = :password_hash,
-                updated_at = NOW()
-            WHERE id = :lecturer_id
-            """
-        ),
-        {"lecturer_id": lecturer_id, "password_hash": hash_password(new_password)},
+    change_user_password(
+        db=db,
+        user_id=lecturer_id,
+        current_password=current_password,
+        new_password=new_password,
     )
-    db.commit()
+
 
 
 def update_lecturer_notifications(

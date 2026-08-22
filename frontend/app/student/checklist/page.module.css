@@ -1060,3 +1060,91 @@
         animation: none;
     }
 }
+
+:global(.dark) .layout,
+:global(.dark) .main,
+:global(.dark) .checklistPage {
+    background: #0b1020;
+    color: #f8fafc;
+}
+
+:global(.dark) .pageHeader h1,
+:global(.dark) .statCard strong,
+:global(.dark) .groupHeader h2,
+:global(.dark) .taskTitle,
+:global(.dark) .sideHeader h2,
+:global(.dark) .deadlineMain strong,
+:global(.dark) .modalHeader h2 {
+    color: #f8fafc;
+}
+
+:global(.dark) .pageHeader p,
+:global(.dark) .statCard p,
+:global(.dark) .statCard div > span,
+:global(.dark) .filterLabel,
+:global(.dark) .groupHeader p,
+:global(.dark) .taskDescription,
+:global(.dark) .taskMeta,
+:global(.dark) .overviewStats p,
+:global(.dark) .deadlineMain p,
+:global(.dark) .deadlineMain small,
+:global(.dark) .modalHeader p,
+:global(.dark) .formGroup label {
+    color: #cbd5e1;
+}
+
+:global(.dark) .statCard,
+:global(.dark) .toolbar,
+:global(.dark) .taskGroup,
+:global(.dark) .taskItem,
+:global(.dark) .overviewCard,
+:global(.dark) .deadlineCard,
+:global(.dark) .modal {
+    border-color: #334155;
+    background: #1f2937;
+    color: #f8fafc;
+}
+
+:global(.dark) .titleIcon,
+:global(.dark) .statIcon {
+    background: #0f2f5f;
+    color: #bfdbfe;
+}
+
+:global(.dark) .filterButton,
+:global(.dark) .sortButton,
+:global(.dark) .cancelButton {
+    border-color: #475569;
+    background: #111827;
+    color: #dbeafe;
+}
+
+:global(.dark) .filterButtonActive,
+:global(.dark) .sortButtonActive {
+    border-color: #1d4ed8;
+    background: #0f2f5f;
+    color: #dbeafe;
+}
+
+:global(.dark) .addButton,
+:global(.dark) .submitButton {
+    background: #020617;
+    color: #ffffff;
+}
+
+:global(.dark) .groupProgressTrack,
+:global(.dark) .progressCircle {
+    background: #334155;
+}
+
+:global(.dark) .formGroup input,
+:global(.dark) .formGroup select,
+:global(.dark) .formGroup textarea {
+    border-color: #475569;
+    background: #111827;
+    color: #f8fafc;
+}
+
+:global(.dark) .noDeadline {
+    color: #cbd5e1;
+}

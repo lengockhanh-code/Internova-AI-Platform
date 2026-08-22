@@ -1246,3 +1246,93 @@
         bottom: 104px;
     }
 }
+
+:global(.dark) .layout,
+:global(.dark) .main,
+:global(.dark) .chatPage {
+    background: #0b1020;
+    color: #f8fafc;
+}
+
+:global(.dark) .titleRow h1,
+:global(.dark) .emptyState h2,
+:global(.dark) .messageBubble strong,
+:global(.dark) .sourceInfo strong,
+:global(.dark) .formResourceInfo strong,
+:global(.dark) .promptNavigatorTitle,
+:global(.dark) .promptNavigatorText {
+    color: #f8fafc;
+}
+
+:global(.dark) .chatHeader p,
+:global(.dark) .emptyState p,
+:global(.dark) .assistantMessage,
+:global(.dark) .markdownContent,
+:global(.dark) .sourceMeta,
+:global(.dark) .sourceQuote,
+:global(.dark) .formResourceInfo span {
+    color: #cbd5e1;
+}
+
+:global(.dark) .titleIcon,
+:global(.dark) .emptyIcon,
+:global(.dark) .promptNavigatorIndex {
+    background: #0f2f5f;
+    color: #bfdbfe;
+    box-shadow: none;
+}
+
+:global(.dark) .chatStatus,
+:global(.dark) .suggestionList button,
+:global(.dark) .chatComposer,
+:global(.dark) .assistantBubble,
+:global(.dark) .sources,
+:global(.dark) .sourceItem,
+:global(.dark) .formResourceCard,
+:global(.dark) .promptNavigatorButton,
+:global(.dark) .promptNavigatorPanel,
+:global(.dark) .promptNavigatorItem {
+    border-color: #334155;
+    background: #1f2937;
+    color: #f8fafc;
+}
+
+:global(.dark) .suggestionList button:hover,
+:global(.dark) .promptNavigatorItem:hover {
+    border-color: #1d4ed8;
+    background: #0f2f5f;
+    color: #dbeafe;
+}
+
+:global(.dark) .chatComposer textarea,
+:global(.dark) .chatComposer input {
+    background: transparent;
+    color: #f8fafc;
+}
+
+:global(.dark) .chatComposer textarea::placeholder,
+:global(.dark) .chatComposer input::placeholder {
+    color: #94a3b8;
+}
+
+:global(.dark) .sendButton,
+:global(.dark) .stopButton,
+:global(.dark) .jumpToLatestButton,
+:global(.dark) .formPreviewButton,
+:global(.dark) .formDownloadButton {
+    border-color: #475569;
+    background: #111827;
+    color: #dbeafe;
+}
+
+:global(.dark) .userBubble {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+:global(.dark) .tableResponsive,
+:global(.dark) .codeResponsive,
+:global(.dark) .formPreviewWrapper {
+    border-color: #334155;
+    background: #111827;
+}

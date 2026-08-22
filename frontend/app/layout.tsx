@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SettingsProvider } from "@/context/settings-provider";
 
 export const metadata: Metadata = {
   title: "Internova",
@@ -14,8 +15,11 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body>
-        {children}
+        <SettingsProvider>
+          {children}
+        </SettingsProvider>
       </body>
     </html>
   );
 }
+

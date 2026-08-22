@@ -151,6 +151,14 @@ export default function LoginPage() {
                 )
             );
 
+            localStorage.setItem(
+                "internova_theme",
+                "light"
+            );
+            document.documentElement.classList.remove(
+                "dark"
+            );
+
 
             const requestedPath =
                 new URLSearchParams(
@@ -632,7 +640,15 @@ export default function LoginPage() {
                     </div>
 
 
-                    
+                    <p
+                        className={
+                            styles.terms
+                        }
+                    >
+                        Trang đăng ký công khai chỉ
+                        dành cho sinh viên. Tài khoản
+                        giảng viên do hệ thống cấp.
+                    </p>
                 </div>
             </section>
         </main>

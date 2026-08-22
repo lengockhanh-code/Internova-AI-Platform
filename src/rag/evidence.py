@@ -8,13 +8,17 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 import unicodedata
+from functools import lru_cache
 from typing import Literal, Protocol
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 from src.config import get_settings
 from src.rag.prompts import (
+    SEMANTIC_EVIDENCE_COMBINED_SYSTEM_PROMPT,
+    SEMANTIC_EVIDENCE_COMBINED_USER_TEMPLATE,
     SEMANTIC_EVIDENCE_PLANNER_SYSTEM_PROMPT,
     SEMANTIC_EVIDENCE_PLANNER_USER_TEMPLATE,
     SEMANTIC_EVIDENCE_SELECTOR_SYSTEM_PROMPT,
@@ -23,6 +27,27 @@ from src.rag.prompts import (
 
 from src.rag.retrieval.retriever import RetrievalHit
 logger = logging.getLogger(__name__)
+@lru_cache(maxsize=4)
+def _get_evidence_llm(model_name: str) -> ChatOpenAI:
+    """
+    Reuse the Evidence LLM client and its underlying HTTP connection pool.
+
+    This is a latency-only optimization:
+    - same model
+    - same temperature
+    - same prompts
+    - same structured output schemas
+    """
+    settings = get_settings()
+
+    if not settings.openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY is not configured")
+
+    return ChatOpenAI(
+        model=model_name,
+        api_key=settings.openai_api_key,
+        temperature=0,
+    )
 
 
 # =============================================================================
@@ -94,10 +119,145 @@ MAX_EVIDENCE_CHUNKS = 5
 # First pass prefers one chunk per document so citations are document-diverse.
 MAX_CHUNKS_PER_DOCUMENT = 1
 
-# Keep console diagnostics enabled while validating the fix.
-# Change to False after the pipeline is stable.
-DEBUG_EVIDENCE = True
+# Console diagnostics flag for development/testing.
+# Set to False in production to avoid verbose console dumps.
+DEBUG_EVIDENCE = False
+# Temporary optimization switch.
+# False = original 2-call semantic evidence flow.
+# True  = combined 1-call semantic evidence flow.
+USE_COMBINED_SEMANTIC_EVIDENCE = True
 
+# Shadow test only.
+# Fast planner is compared with the LLM planner but NEVER used for answering.
+ENABLE_FAST_PLAN_SHADOW = True
+
+ENABLE_DETERMINISTIC_EVIDENCE_FAST_PATH = True
+
+# Conservative gate for questions whose correctness depends on semantic
+# relationships between multiple conditions, exceptions, eligibility,
+# authority, or case-specific adjudication. These questions keep the
+# semantic evidence path; they are NOT answered by the fast deterministic path.
+_COMPLEX_EVIDENCE_MARKERS = (
+    "nếu ",
+    "neu ",
+    "nếu như",
+    "trong khi",
+    "nhưng ",
+    "tuy nhiên",
+    "ngoại lệ",
+    "ngoai le",
+    "exception",
+    "được phép",
+    "duoc phep",
+    "có được",
+    "co duoc",
+    "can i ",
+    "may i ",
+    "am i eligible",
+    "eligible",
+    "đủ điều kiện",
+    "du dieu kien",
+    "rút ",
+    "rut ",
+    "withdraw",
+    "withdrawal",
+    "khiếu nại",
+    "khieu nai",
+    "grievance",
+    "thẩm quyền",
+    "tham quyen",
+    "authority",
+    "approve",
+    "approval",
+    "phê duyệt",
+    "phe duyet",
+    "bệnh",
+    "benh",
+    "medical",
+    "health",
+    "muộn",
+    "muon",
+    "late ",
+    "vi phạm",
+    "vi pham",
+    "conflict",
+)
+
+
+def _can_use_deterministic_fast_path(
+    query: str,
+    route: RouteLike,
+    allowed_hits: list[RetrievalHit],
+    result: EvidenceCheckResult,
+) -> bool:
+    """Return True only for high-confidence direct-evidence questions.
+
+    The fast path is intentionally conservative:
+    - it never handles exception/eligibility/adjudication-style questions;
+    - it requires at least one explicit deterministic evidence requirement;
+    - every hard requirement must have a direct matching retrieved chunk;
+    - the legacy checker must already have usable evidence and no missing facts.
+
+    Anything uncertain falls through to the semantic evidence model.
+    """
+    if not ENABLE_DETERMINISTIC_EVIDENCE_FAST_PATH:
+        return False
+
+    normalized = normalize_text(query)
+
+    if any(
+        marker in normalized
+        for marker in _COMPLEX_EVIDENCE_MARKERS
+    ):
+        return False
+
+    # Route families where a seemingly simple answer may still require
+    # interpreting conditions or an approval procedure.
+    risky_intent_terms = (
+        "withdraw",
+        "grievance",
+        "eligibility",
+        "exception",
+        "appeal",
+    )
+    route_intent = normalize_text(
+        getattr(route, "intent", "") or ""
+    )
+    if any(term in route_intent for term in risky_intent_terms):
+        return False
+
+    if (
+        result.evidence_status != "sufficient"
+        or not result.used_chunk_ids
+        or result.missing_evidence
+    ):
+        return False
+
+    requirements = infer_required_evidence(
+        query=query,
+        route=route,
+    )
+
+    # Do not trust the generic "pick diverse chunks" legacy path as a semantic
+    # proof. At least one explicit requirement must actually match.
+    if not requirements:
+        return False
+
+    matched_count = 0
+    for requirement in requirements:
+        matched_hit = find_matching_hit(
+            requirement,
+            allowed_hits,
+        )
+
+        if matched_hit is not None:
+            matched_count += 1
+            continue
+
+        if requirement.required:
+            return False
+
+    return matched_count > 0
 
 EvidenceMethod = Literal[
     "semantic",
@@ -314,6 +474,21 @@ class SemanticEvidenceSelection(BaseModel):
 
     reason: str
 
+class SemanticEvidenceCombinedResult(BaseModel):
+    """
+    Combined output for one-call semantic evidence processing.
+
+    The plan and selection remain separate structured objects so the
+    existing deterministic validator can be reused unchanged.
+    """
+
+    evidence_plan: SemanticEvidencePlan
+    selection: SemanticEvidenceSelection
+
+
+
+
+
 def summarize_semantic_support(
     evidence_plan: SemanticEvidencePlan,
     support_by_need: dict[
@@ -398,14 +573,12 @@ def plan_semantic_evidence(
 
     settings = get_settings()
 
-    if not settings.openai_api_key:
-        raise RuntimeError("OPENAI_API_KEY is not configured")
-
-    llm = ChatOpenAI(
-        model=settings.openai_chat_model or settings.model_name,
-        api_key=settings.openai_api_key,
-        temperature=0,
+    model_name = (
+        settings.openai_chat_model
+        or settings.model_name
     )
+
+    llm = _get_evidence_llm(model_name)
 
     structured_planner = llm.with_structured_output(
         SemanticEvidencePlan
@@ -480,6 +653,78 @@ def format_semantic_evidence_candidates(
     return "\n\n---\n\n".join(blocks)
 
 
+def evaluate_semantic_evidence_combined(
+    query: str,
+    route: RouteLike,
+    hits: list[RetrievalHit],
+    conversation_context: str = "",
+) -> SemanticEvidenceCombinedResult:
+    """
+    Plan evidence needs and evaluate retrieved candidates in one LLM call.
+
+    The output intentionally preserves the original
+    SemanticEvidencePlan + SemanticEvidenceSelection structures so the
+    existing deterministic validation layer remains unchanged.
+    """
+
+    if not (query or "").strip():
+        raise ValueError("Query must not be empty")
+
+    if not hits:
+        raise ValueError(
+            "Combined semantic evidence evaluation requires candidate hits"
+        )
+
+    settings = get_settings()
+
+    model_name = (
+        settings.openai_chat_model
+        or settings.model_name
+    )
+
+    llm = _get_evidence_llm(model_name)
+
+    structured_evaluator = llm.with_structured_output(
+        SemanticEvidenceCombinedResult
+    )
+
+    candidate_chunks = format_semantic_evidence_candidates(
+        hits
+    )
+
+    user_prompt = (
+        SEMANTIC_EVIDENCE_COMBINED_USER_TEMPLATE.format(
+            route_intent=route.intent,
+            route_scope=route.scope,
+            conversation_context=(
+                conversation_context
+                or "No previous conversation."
+            ),
+            query=query,
+            candidate_chunks=candidate_chunks,
+        )
+    )
+
+    result = structured_evaluator.invoke(
+        [
+            (
+                "system",
+                SEMANTIC_EVIDENCE_COMBINED_SYSTEM_PROMPT,
+            ),
+            (
+                "human",
+                user_prompt,
+            ),
+        ]
+    )
+
+    if isinstance(result, dict):
+        result = SemanticEvidenceCombinedResult.model_validate(
+            result
+        )
+
+    return result
+
 def select_semantic_evidence(
     query: str,
     evidence_plan: SemanticEvidencePlan,
@@ -520,20 +765,12 @@ def select_semantic_evidence(
 
     settings = get_settings()
 
-    if not settings.openai_api_key:
-        raise RuntimeError(
-            "OPENAI_API_KEY is not configured"
-        )
-
-    llm = ChatOpenAI(
-        model=(
-            settings.openai_chat_model
-            or settings.model_name
-        ),
-        api_key=settings.openai_api_key,
-        temperature=0,
+    model_name = (
+        settings.openai_chat_model
+        or settings.model_name
     )
 
+    llm = _get_evidence_llm(model_name)
     structured_selector = llm.with_structured_output(
         SemanticEvidenceSelection
     )
@@ -892,17 +1129,156 @@ def check_evidence(
             ],
         )
 
+    evidence_total_started = time.perf_counter()
+
+    # =========================================================
+    # E0: Deterministic high-confidence fast path
+    # =========================================================
+    #
+    # Run the existing deterministic checker first. It is local Python work
+    # (regex/topic/metadata matching) and is normally sub-millisecond to a few
+    # milliseconds. We only accept it when the conservative gate proves that
+    # every hard requirement has a direct supporting hit.
+    #
+    # Complex/ambiguous questions fall through unchanged to semantic evidence.
+    deterministic_started = time.perf_counter()
+    deterministic_result = check_evidence_legacy(
+        query=query,
+        hits=hits,
+        route=route,
+    )
+    deterministic_ms = round(
+        (time.perf_counter() - deterministic_started) * 1000.0,
+        1,
+    )
+
+    if _can_use_deterministic_fast_path(
+        query=query,
+        route=route,
+        allowed_hits=allowed_hits,
+        result=deterministic_result,
+    ):
+        evidence_total_ms = round(
+            (time.perf_counter() - evidence_total_started) * 1000.0,
+            1,
+        )
+        logger.info(
+            "Evidence latency stages ms mode=deterministic "
+            "deterministic=%s total=%s candidates=%s",
+            deterministic_ms,
+            evidence_total_ms,
+            len(allowed_hits),
+        )
+        return deterministic_result
+
+    # =========================================================
+    # E2: Combined semantic evidence flow
+    # =========================================================
+    # =========================================================
+    if USE_COMBINED_SEMANTIC_EVIDENCE:
+        try:
+            combined_started = time.perf_counter()
+
+            combined = evaluate_semantic_evidence_combined(
+                query=query,
+                route=route,
+                hits=allowed_hits,
+                conversation_context=conversation_context,
+            )
+
+            combined_ms = round(
+                (time.perf_counter() - combined_started) * 1000.0,
+                1,
+            )
+
+            evidence_plan = combined.evidence_plan
+            selection = combined.selection
+
+            if DEBUG_EVIDENCE:
+                print(
+                    "\n===== COMBINED SEMANTIC EVIDENCE PLAN =====",
+                    flush=True,
+                )
+                print(
+                    evidence_plan.model_dump_json(indent=2),
+                    flush=True,
+                )
+
+                print(
+                    "\n===== COMBINED SEMANTIC EVIDENCE SELECTION =====",
+                    flush=True,
+                )
+                print(
+                    selection.model_dump_json(indent=2),
+                    flush=True,
+                )
+
+            validation_started = time.perf_counter()
+
+            result = validate_semantic_evidence_selection(
+                evidence_plan=evidence_plan,
+                selection=selection,
+                allowed_hits=allowed_hits,
+            )
+
+            validation_ms = round(
+                (time.perf_counter() - validation_started) * 1000.0,
+                1,
+            )
+
+            evidence_total_ms = round(
+                (time.perf_counter() - evidence_total_started) * 1000.0,
+                1,
+            )
+
+            logger.info(
+                "Evidence latency stages ms mode=combined "
+                "combined=%s validation=%s total=%s "
+                "candidates=%s needs=%s",
+                combined_ms,
+                validation_ms,
+                evidence_total_ms,
+                len(allowed_hits),
+                len(evidence_plan.needs),
+            )
+
+            return result
+
+        except Exception as combined_exc:
+            logger.warning(
+                "Combined semantic evidence failed; "
+                "falling back to original split semantic flow: %s",
+                combined_exc,
+            )
+
+    # =========================================================
+    # Original split semantic flow
+    # =========================================================
     try:
+        plan_started = time.perf_counter()
+
         evidence_plan = plan_semantic_evidence(
             query=query,
             route=route,
             conversation_context=conversation_context,
         )
 
+        plan_ms = round(
+            (time.perf_counter() - plan_started) * 1000.0,
+            1,
+        )
+
+        selection_started = time.perf_counter()
+
         selection = select_semantic_evidence(
             query=query,
             evidence_plan=evidence_plan,
             hits=allowed_hits,
+        )
+
+        selection_ms = round(
+            (time.perf_counter() - selection_started) * 1000.0,
+            1,
         )
 
         if DEBUG_EVIDENCE:
@@ -911,9 +1287,7 @@ def check_evidence(
                 flush=True,
             )
             print(
-                evidence_plan.model_dump_json(
-                    indent=2
-                ),
+                evidence_plan.model_dump_json(indent=2),
                 flush=True,
             )
 
@@ -922,17 +1296,41 @@ def check_evidence(
                 flush=True,
             )
             print(
-                selection.model_dump_json(
-                    indent=2
-                ),
+                selection.model_dump_json(indent=2),
                 flush=True,
             )
 
-        return validate_semantic_evidence_selection(
+        validation_started = time.perf_counter()
+
+        result = validate_semantic_evidence_selection(
             evidence_plan=evidence_plan,
             selection=selection,
             allowed_hits=allowed_hits,
         )
+
+        validation_ms = round(
+            (time.perf_counter() - validation_started) * 1000.0,
+            1,
+        )
+
+        evidence_total_ms = round(
+            (time.perf_counter() - evidence_total_started) * 1000.0,
+            1,
+        )
+
+        logger.info(
+            "Evidence latency stages ms mode=split "
+            "plan=%s selection=%s validation=%s total=%s "
+            "candidates=%s needs=%s",
+            plan_ms,
+            selection_ms,
+            validation_ms,
+            evidence_total_ms,
+            len(allowed_hits),
+            len(evidence_plan.needs),
+        )
+
+        return result
 
     except Exception as exc:
         logger.warning(
@@ -941,15 +1339,12 @@ def check_evidence(
             exc,
         )
 
-        return check_evidence_legacy(
-            query=query,
-            hits=hits,
-            route=route,
-        )
+    return check_evidence_legacy(
+        query=query,
+        hits=hits,
+        route=route,
+    )
 
-# =============================================================================
-# Main evidence check
-# =============================================================================
 
 def check_evidence_legacy(
     query: str,

@@ -73,10 +73,16 @@ def get_registration(
         require_student
     ),
 ):
-    return serialize_registration(
-        db,
-        current_user["id"],
-    )
+    try:
+        return serialize_registration(
+            db,
+            current_user["id"],
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
 
 
 @router.put("/draft")

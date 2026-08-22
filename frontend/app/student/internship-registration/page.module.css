@@ -1507,3 +1507,165 @@
         animation: none;
     }
 }
+
+:global(.dark) .layout,
+:global(.dark) .main,
+:global(.dark) .registrationPage {
+    background: #0b1020;
+    color: #f8fafc;
+}
+
+:global(.dark) .pageHeader h1,
+:global(.dark) .formSectionHeader h2,
+:global(.dark) .sideCardHeader h2,
+:global(.dark) .stepText strong,
+:global(.dark) .timelineItem strong,
+:global(.dark) .reviewSection h3,
+:global(.dark) .uploadContent strong,
+:global(.dark) .statePage h2 {
+    color: #f8fafc;
+}
+
+:global(.dark) .pageHeader p,
+:global(.dark) .formSectionHeader p,
+:global(.dark) .fieldGroup label,
+:global(.dark) .timelineItem p,
+:global(.dark) .requirementList li,
+:global(.dark) .reviewRow span,
+:global(.dark) .uploadContent small,
+:global(.dark) .statePage {
+    color: #cbd5e1;
+}
+
+:global(.dark) .stepCard,
+:global(.dark) .formCard,
+:global(.dark) .statusCard,
+:global(.dark) .requirementCard,
+:global(.dark) .reviewSection {
+    border-color: #334155;
+    background: #1f2937;
+    color: #f8fafc;
+}
+
+:global(.dark) .formSectionHeader,
+:global(.dark) .formActions,
+:global(.dark) .reviewRow {
+    border-color: #475569;
+    background: transparent;
+}
+
+:global(.dark) .stepProgress {
+    background: #334155;
+}
+
+:global(.dark) .stepItem {
+    background: transparent;
+    color: #cbd5e1;
+}
+
+:global(.dark) .stepItem:hover,
+:global(.dark) .stepActive {
+    background: #0f2f5f;
+    color: #bfdbfe;
+}
+
+:global(.dark) .stepCompleted {
+    color: #6ee7b7;
+}
+
+:global(.dark) .stepIcon,
+:global(.dark) .titleIcon,
+:global(.dark) .formSectionHeader > span,
+:global(.dark) .uploadIcon {
+    border-color: #475569;
+    background: #111827;
+    color: #bfdbfe;
+}
+
+:global(.dark) .inputWrapper,
+:global(.dark) .selectWrapper,
+:global(.dark) .fieldGroup textarea {
+    border-color: #64748b;
+    background: #111827;
+    color: #e5e7eb;
+}
+
+:global(.dark) .inputWrapper input,
+:global(.dark) .selectWrapper select,
+:global(.dark) .fieldGroup textarea {
+    background: transparent;
+    color: #f8fafc;
+}
+
+:global(.dark) .inputWrapper:has(input:disabled),
+:global(.dark) .selectWrapper:has(select:disabled),
+:global(.dark) .fieldGroup textarea:disabled {
+    background: #172033;
+}
+
+:global(.dark) .inputWrapper input:disabled,
+:global(.dark) .selectWrapper select:disabled,
+:global(.dark) .fieldGroup textarea:disabled {
+    color: #e5e7eb;
+    opacity: 1;
+}
+
+:global(.dark) .formInfo,
+:global(.dark) .confirmBox,
+:global(.dark) .uploadArea {
+    border-color: #1d4ed8;
+    background: #0f2f5f;
+    color: #dbeafe;
+}
+
+:global(.dark) .secondaryButton,
+:global(.dark) .uploadButton,
+:global(.dark) .uploadActions button {
+    border-color: #475569;
+    background: #111827;
+    color: #dbeafe;
+}
+
+:global(.dark) .primaryButton {
+    background: #020617;
+    color: #ffffff;
+}
+
+:global(.dark) .statusBadge {
+    background: #111827;
+    color: #e5e7eb;
+}
+
+:global(.dark) .statusApproved {
+    background: #064e3b;
+    color: #d1fae5;
+}
+
+:global(.dark) .statusSubmitted {
+    background: #1e3a8a;
+    color: #dbeafe;
+}
+
+:global(.dark) .statusReview {
+    background: #7c2d12;
+    color: #ffedd5;
+}
+
+:global(.dark) .statusRejected {
+    background: #7f1d1d;
+    color: #fee2e2;
+}
+
+:global(.dark) .reviewRow strong {
+    color: #f8fafc;
+}
+
+:global(.dark) .submittedMessage {
+    border-color: #047857;
+    background: #064e3b;
+    color: #d1fae5;
+}
+
+:global(.dark) .submittedMessage p {
+    color: #bbf7d0;
+}

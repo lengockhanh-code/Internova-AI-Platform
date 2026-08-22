@@ -270,7 +270,17 @@ export default function SettingsPage() {
             return;
         }
 
-        redirectLogin();
+        localStorage.removeItem(
+            "internova_access_token"
+        );
+
+        localStorage.removeItem(
+            "internova_user"
+        );
+
+        router.push(
+            "/auth/login"
+        );
     }
 
 
@@ -1975,6 +1985,7 @@ function PasswordModal({
                             JSON.stringify({
                                 currentPassword,
                                 newPassword,
+                                confirmPassword,
                             }),
                     }
                 );

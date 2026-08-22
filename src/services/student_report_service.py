@@ -66,6 +66,50 @@ def get_current_internship(
     ).mappings().first()
 
 
+def sync_report_progress(
+    db: Session,
+    internship_id: int,
+) -> float:
+    row = db.execute(
+        text(
+            """
+            WITH report_stats AS (
+                SELECT
+                    COUNT(*)::FLOAT AS total,
+                    COUNT(*) FILTER (
+                        WHERE status IN (
+                            'SUBMITTED',
+                            'LATE',
+                            'UNDER_REVIEW',
+                            'REVISION_REQUIRED',
+                            'APPROVED'
+                        )
+                    )::FLOAT AS submitted
+                FROM weekly_reports
+                WHERE internship_id = :internship_id
+            )
+            UPDATE internships
+            SET
+                progress_percentage = CASE
+                    WHEN report_stats.total > 0
+                        THEN ROUND((report_stats.submitted / report_stats.total * 100)::NUMERIC, 1)
+                    ELSE 0
+                END,
+                updated_at = NOW()
+            FROM report_stats
+            WHERE internships.id = :internship_id
+            RETURNING internships.progress_percentage
+            """
+        ),
+        {
+            "internship_id":
+                internship_id,
+        },
+    ).scalar_one_or_none()
+
+    return float(row or 0)
+
+
 # ============================================================
 # RESOLVE REPORT DEADLINE
 # ============================================================
@@ -641,7 +685,12 @@ def get_reports(
                 title,
                 report_type,
                 week_number,
-                due_at
+                due_at,
+                CASE
+                    WHEN due_at <= NOW() THEN 'OVERDUE'
+                    WHEN due_at <= NOW() + INTERVAL '1 day' THEN 'DUE_NOW'
+                    ELSE 'UPCOMING'
+                END AS deadline_status
 
             FROM weekly_reports
 
@@ -650,14 +699,17 @@ def get_reports(
 
               AND due_at IS NOT NULL
 
-              AND due_at >= NOW()
-
               AND status IN (
                     'DRAFT',
                     'REVISION_REQUIRED'
               )
 
-            ORDER BY due_at ASC
+            ORDER BY
+                CASE
+                    WHEN due_at <= NOW() THEN 0
+                    ELSE 1
+                END,
+                due_at ASC
 
             LIMIT 1
             """
@@ -722,6 +774,11 @@ def get_reports(
                         next_deadline[
                             "due_at"
                         ].isoformat(),
+
+                    "deadline_status":
+                        next_deadline[
+                            "deadline_status"
+                        ],
                 }
 
                 if next_deadline
@@ -881,6 +938,14 @@ def create_report(
         ).scalar_one()
 
 
+        sync_report_progress(
+            db,
+            internship[
+                "id"
+            ],
+        )
+
+
         db.commit()
 
 
@@ -942,7 +1007,7 @@ def update_report(
                     'REVISION_REQUIRED'
               )
 
-            RETURNING wr.id
+            RETURNING i.id AS internship_id
             """
         ),
         {
@@ -1003,7 +1068,7 @@ def delete_report(
               AND wr.status =
                 'DRAFT'
 
-            RETURNING wr.id
+            RETURNING i.id AS internship_id
             """
         ),
         {
@@ -1019,6 +1084,12 @@ def delete_report(
     if not result:
 
         return False
+
+
+    sync_report_progress(
+        db,
+        int(result[0]),
+    )
 
 
     db.commit()
@@ -1332,7 +1403,9 @@ def get_report_for_ai(
 
                 wr.mime_type,
 
-                wr.status
+                wr.status,
+
+                i.id AS internship_id
 
             FROM weekly_reports AS wr
 
@@ -1387,7 +1460,9 @@ def submit_report(
 
                 wr.due_at,
 
-                wr.status
+                wr.status,
+
+                i.id AS internship_id
 
             FROM weekly_reports AS wr
 

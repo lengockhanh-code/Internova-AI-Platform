@@ -385,7 +385,7 @@ function PasswordModal({ saving, onClose, onError, onSaved, setSaving }: { savin
       const response = await lecturerFetch(`${API_BASE_URL}/api/v1/lecturers/settings/password`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({ currentPassword, newPassword, confirmPassword: confirmation }),
       });
       if (!response.ok) throw await apiError(response);
       onSaved();

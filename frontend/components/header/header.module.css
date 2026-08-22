@@ -27,6 +27,20 @@
     gap: 11px;
 }
 
+.logoBrandLink {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 11px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.logoBrandLink:hover {
+    opacity: 0.85;
+}
+
 .logoIcon {
     display: flex;
     width: 40px;
@@ -335,3 +349,655 @@
         max-width: 85px;
     }
 }
+
+
+/* ==========================================================
+   USER MENU DROPDOWN & POPUPS
+========================================================== */
+
+.userMenuContainer {
+    position: relative;
+}
+
+.headerUserActive {
+    border-color: #cbd5e1 !important;
+    background: #f1f5f9 !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+}
+
+.chevronRotated {
+    transform: rotate(180deg);
+}
+
+.dropdownMenu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 1000;
+
+    width: 280px;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 20px 25px -5px rgba(15, 23, 42, 0.1),
+        0 8px 10px -6px rgba(15, 23, 42, 0.05);
+
+    animation: dropdownIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropdownIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.dropdownHeader {
+    padding: 14px 16px 12px;
+}
+
+.dropdownUserCard {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.dropdownAvatar {
+    display: flex;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-weight: 700;
+}
+
+.dropdownAvatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.dropdownUserMeta {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dropdownUserMeta strong {
+    overflow: hidden;
+    color: #0f172a;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dropdownRoleBadge {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 6px;
+    padding: 2px 8px;
+    border: 1px solid #dbeafe;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.dropdownDivider {
+    height: 1px;
+    margin: 4px 0;
+    background: #f1f5f9;
+}
+
+.dropdownGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px;
+}
+
+.dropdownItem {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 10px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #334155;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dropdownItem:hover {
+    background: #f8fafc;
+}
+
+.dropdownItemStatic {
+    cursor: default;
+}
+
+.dropdownItemStatic:hover {
+    background: transparent;
+}
+
+.itemIcon {
+    display: flex;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: #f1f5f9;
+    color: #64748b;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dropdownItem:hover .itemIcon {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.itemText {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.itemText strong {
+    color: #1e293b;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.itemText small {
+    color: #94a3b8;
+    font-size: 11px;
+    line-height: 1.2;
+}
+
+.roleTag {
+    flex-shrink: 0;
+    padding: 3px 8px;
+    border: 1px solid #dbeafe;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.dangerItem {
+    color: #dc2626;
+}
+
+.dangerItem:hover {
+    background: #fef2f2;
+}
+
+.dangerItem .itemIcon {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.dangerItem:hover .itemIcon {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.dangerItem .itemText strong {
+    color: #dc2626;
+}
+
+/* Modal styles */
+.modalBackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modalContent {
+    position: relative;
+    width: 100%;
+    max-width: 440px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow:
+        0 25px 50px -12px rgba(15, 23, 42, 0.25);
+    animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPop {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modalHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.modalTitleGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.modalTitleGroup h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.modalTitleGroup p {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.modalCloseButton {
+    display: flex;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 10px;
+    background: #f1f5f9;
+    color: #64748b;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.modalCloseButton:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.modalBody {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 24px;
+}
+
+.formField {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.formField span {
+    color: #334155;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.formInput,
+.formSelect,
+.formTextarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #0f172a;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.formInput:focus,
+.formSelect:focus,
+.formTextarea:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.formTextarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.modalFooter {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid #f1f5f9;
+    background: #f8fafc;
+}
+
+.cancelButton {
+    padding: 9px 16px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #475569;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.cancelButton:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.submitButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 20px;
+    border: none;
+    border-radius: 10px;
+    background: #2563eb;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.submitButton:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+.submitButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.alertSuccess {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+    font-size: 13px;
+}
+
+.alertError {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    font-size: 13px;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ==========================================================
+   THEME & LANGUAGE SWITCHER STYLES
+   ========================================================== */
+
+/* Vạch ngăn dọc */
+.verticalDivider {
+    width: 1px;
+    height: 24px;
+    background-color: #cbd5e1; /* Màu line sáng */
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+:global(.dark) .verticalDivider {
+    background-color: #475569; /* Màu line tối */
+}
+
+/* Container của nút tiếng Anh/tiếng Việt (Dạng Pill) */
+.langPillContainer {
+    display: flex;
+    align-items: center;
+    background-color: #f1f5f9;
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+:global(.dark) .langPillContainer {
+    background-color: #334155;
+    border-color: #475569;
+}
+
+/* Định dạng chung nút bấm ngôn ngữ */
+.langButton {
+    padding: 4px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    outline: none;
+}
+
+/* Khi EN hoạt động: màu chữ xanh dương trên nền xám nhẹ/trong suốt */
+.langActiveEN {
+    background-color: #ffffff;
+    color: #2563eb; /* Màu xanh lam thương hiệu VinUni */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+:global(.dark) .langActiveEN {
+    background-color: #1e293b;
+    color: #3b82f6;
+}
+
+/* Khi VI hoạt động: màu chữ trắng trên nền đỏ thương hiệu VinUni */
+.langActiveVI {
+    background-color: #bd1b21; /* Màu đỏ thẫm VinUni */
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* Nút chuyển đổi Theme */
+.langButton:disabled,
+.themeToggleButton:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.themeToggleButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #64748b; /* Icon màu xám nhẹ */
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.themeToggleButton:hover {
+    background-color: #f1f5f9;
+    color: #0f172a;
+}
+
+:global(.dark) .themeToggleButton {
+    color: #94a3b8;
+}
+
+:global(.dark) .themeToggleButton:hover {
+    background-color: #334155;
+    color: #f8fafc;
+}
+
+:global(.dark) .header {
+    border-color: #334155;
+    background: #111827;
+    color: #f8fafc;
+}
+
+:global(.dark) .logoIcon,
+:global(.dark) .headerBadge,
+:global(.dark) .dropdownRoleBadge,
+:global(.dark) .roleTag {
+    border-color: #1d4ed8;
+    background: #0f2f5f;
+    color: #dbeafe;
+}
+
+:global(.dark) .logoText strong,
+:global(.dark) .userInfo strong,
+:global(.dark) .dropdownUserMeta strong,
+:global(.dark) .itemText strong,
+:global(.dark) .modalTitleGroup h3 {
+    color: #f8fafc;
+}
+
+:global(.dark) .logoText span,
+:global(.dark) .userInfo small,
+:global(.dark) .dropdownUserMeta,
+:global(.dark) .itemText small,
+:global(.dark) .modalTitleGroup p {
+    color: #cbd5e1;
+}
+
+:global(.dark) .mobileMenuButton,
+:global(.dark) .notificationButton,
+:global(.dark) .headerUser,
+:global(.dark) .modalCloseButton,
+:global(.dark) .cancelButton {
+    border-color: #334155;
+    background: #1f2937;
+    color: #e5e7eb;
+}
+
+:global(.dark) .mobileMenuButton:hover,
+:global(.dark) .notificationButton:hover,
+:global(.dark) .headerUser:hover,
+:global(.dark) .headerUserActive {
+    border-color: #475569 !important;
+    background: #273449 !important;
+    color: #f8fafc;
+}
+
+:global(.dark) .headerAvatar,
+:global(.dark) .dropdownAvatar,
+:global(.dark) .itemIcon {
+    background: #273449;
+    color: #cbd5e1;
+}
+
+:global(.dark) .dropdownMenu,
+:global(.dark) .modalContent,
+:global(.dark) .modalBody,
+:global(.dark) .modalFooter {
+    border-color: #334155;
+    background: #111827;
+    color: #f8fafc;
+}
+
+:global(.dark) .dropdownDivider,
+:global(.dark) .modalHeader {
+    border-color: #334155;
+    background: transparent;
+}
+
+:global(.dark) .dropdownItem {
+    color: #e5e7eb;
+}
+
+:global(.dark) .dropdownItem:hover {
+    background: #1f2937;
+}
+
+:global(.dark) .formField span {
+    color: #cbd5e1;
+}
+
+:global(.dark) .formInput,
+:global(.dark) .formSelect,
+:global(.dark) .formTextarea {
+    border-color: #475569;
+    background: #0b1020;
+    color: #f8fafc;
+}
+
+:global(.dark) .dangerItem,
+:global(.dark) .dangerItem .itemText strong {
+    color: #fca5a5;
+}
+
+:global(.dark) .dangerItem:hover {
+    background: #3f1518;
+}
+
+

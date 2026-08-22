@@ -135,6 +135,8 @@ class ConversationMemory:
                 self.state.active_subject,
                 self.state.active_form_number,
                 self.state.active_entity,
+                self.preferences.language,
+                self.preferences.style,
             )
         ):
             return ""
@@ -166,6 +168,22 @@ class ConversationMemory:
                 "constraints. A previous failed assistant answer does NOT erase "
                 "or invalidate the user's earlier facts/topic, and history is "
                 "never documentary evidence."
+            ),
+            "",
+            "[Response Preferences]",
+            (
+                f"Preferred language: {self.preferences.language}"
+                if self.preferences.language
+                else "Preferred language: follow the current user message"
+            ),
+            (
+                f"Preferred style: {self.preferences.style}"
+                if self.preferences.style
+                else "Preferred style: normal"
+            ),
+            (
+                "These are presentation preferences only; they must never change "
+                "routing, factual requirements, evidence, or policy conclusions."
             ),
             "",
             "[Recent Conversation]",

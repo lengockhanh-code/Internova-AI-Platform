@@ -12,7 +12,10 @@ from src.observability.langfuse_api import LangfuseAPI, LangfuseAPIError
 RANGES = {
     "1h": timedelta(hours=1),
     "24h": timedelta(hours=24),
+    "2d": timedelta(days=2),
+    "3d": timedelta(days=3),
     "7d": timedelta(days=7),
+    "14d": timedelta(days=14),
     "30d": timedelta(days=30),
 }
 
@@ -39,9 +42,14 @@ PIPELINE_ORDER = [
 
 
 def window(range_name: str) -> tuple[datetime, datetime]:
+    now = datetime.now(timezone.utc)
+
+    if range_name == "yesterday":
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        return today_start - timedelta(days=1), today_start
+
     delta = RANGES.get(range_name, RANGES["24h"])
-    end = datetime.now(timezone.utc)
-    return end - delta, end
+    return now - delta, now
 
 
 def _dt(value: Any) -> datetime | None:
@@ -146,7 +154,16 @@ def score_summary(scores: list[dict[str, Any]]) -> dict[str, dict[str, float | i
 
 
 def _traffic(roots: list[dict[str, Any]], range_name: str) -> dict[str, Any]:
-    bucket_minutes = {"1h": 5, "24h": 60, "7d": 360, "30d": 1440}.get(range_name, 60)
+    bucket_minutes = {
+        "1h": 5,
+        "24h": 60,
+        "yesterday": 60,
+        "2d": 120,
+        "3d": 180,
+        "7d": 360,
+        "14d": 720,
+        "30d": 1440,
+    }.get(range_name, 60)
     buckets: Counter[datetime] = Counter()
     for row in roots:
         ts = _dt(row.get("startTime"))
@@ -313,15 +330,25 @@ def build_rag_analytics(range_name: str = "24h") -> dict[str, Any]:
     rows, truncated = api.observations(start=start, end=end)
     scores, score_truncated = api.scores(start=start, end=end)
     all_roots = _root_requests(rows)
+    root_meta = [_metadata(r) for r in all_roots]
+
+    def has_retrieval_meta(meta: dict[str, Any]) -> bool:
+        return any(
+            _num(meta.get(key)) > 0
+            for key in ("vector_hits", "bm25_hits", "reranked_hits", "source_count")
+        )
+
     rag_roots = [
         r for r in all_roots
-        if str(_metadata(r).get("route_scope") or "").lower() in RAG_SCOPES
+        if (
+            str(_metadata(r).get("route_scope") or "").lower() in RAG_SCOPES
+            or has_retrieval_meta(_metadata(r))
+        )
     ]
     quality = score_summary(scores)
 
     retrieval_rows = [r for r in rows if r.get("name") == "rag.retrieve"]
     rerank_rows = [r for r in rows if r.get("name") == "rag.rerank"]
-    root_meta = [_metadata(r) for r in all_roots]
     intent_counts = Counter(str(m.get("route_intent")) for m in root_meta if m.get("route_intent"))
     scope_counts = Counter(str(m.get("route_scope")) for m in root_meta if m.get("route_scope"))
 
@@ -334,10 +361,28 @@ def build_rag_analytics(range_name: str = "24h") -> dict[str, Any]:
             no_answer += 1
 
     retrieval_outputs = [_io_object(r.get("output")) for r in retrieval_rows]
-    vector_counts = [_num(o.get("vector_hits")) for o in retrieval_outputs if o]
-    bm25_counts = [_num(o.get("bm25_hits")) for o in retrieval_outputs if o]
-    fused_counts = [_num(o.get("fused_hits")) for o in retrieval_outputs if o]
-    zero_result_calls = sum(1 for o in retrieval_outputs if o and _num(o.get("fused_hits")) <= 0)
+    root_retrieval_outputs = [
+        {
+            "vector_hits": _num(meta.get("vector_hits")),
+            "bm25_hits": _num(meta.get("bm25_hits")),
+            "fused_hits": _num(
+                meta.get("reranked_hits"),
+                _num(meta.get("source_count")),
+            ),
+        }
+        for meta in (_metadata(r) for r in rag_roots)
+        if has_retrieval_meta(meta)
+    ]
+    effective_retrieval_outputs = retrieval_outputs or root_retrieval_outputs
+
+    vector_counts = [_num(o.get("vector_hits")) for o in effective_retrieval_outputs if o]
+    bm25_counts = [_num(o.get("bm25_hits")) for o in effective_retrieval_outputs if o]
+    fused_counts = [_num(o.get("fused_hits")) for o in effective_retrieval_outputs if o]
+    zero_result_calls = sum(
+        1
+        for o in effective_retrieval_outputs
+        if o and _num(o.get("fused_hits")) <= 0
+    )
 
     rerank_outputs = [_io_object(r.get("output")) for r in rerank_rows]
     fallback_calls = sum(1 for o in rerank_outputs if o and o.get("fallback_reason"))
@@ -351,13 +396,17 @@ def build_rag_analytics(range_name: str = "24h") -> dict[str, Any]:
         "quality": quality,
         "no_answer_rate_pct": round(100 * no_answer / len(rag_roots), 2) if rag_roots else 0.0,
         "fallback_rate_pct": round(100 * fallback / len(rerank_rows), 2) if rerank_rows else 0.0,
-        "retrieval_calls": len(retrieval_rows),
-        "rerank_calls": len(rerank_rows),
+        "retrieval_calls": len(retrieval_rows) or len(root_retrieval_outputs),
+        "rerank_calls": len(rerank_rows) or sum(
+            1
+            for item in root_retrieval_outputs
+            if _num(item.get("fused_hits")) > 0
+        ),
         "retrieval": {
             "avg_vector_hits": round(mean(vector_counts), 2) if vector_counts else 0.0,
             "avg_bm25_hits": round(mean(bm25_counts), 2) if bm25_counts else 0.0,
             "avg_fused_hits": round(mean(fused_counts), 2) if fused_counts else 0.0,
-            "zero_result_rate_pct": round(100 * zero_result_calls / len(retrieval_outputs), 2) if retrieval_outputs else 0.0,
+            "zero_result_rate_pct": round(100 * zero_result_calls / len(effective_retrieval_outputs), 2) if effective_retrieval_outputs else 0.0,
         },
         "rerank": {
             "used_llm_calls": used_llm_calls,

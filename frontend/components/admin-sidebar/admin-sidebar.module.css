@@ -37,9 +37,16 @@
 }
 
 
-/* ============================================================
-   BRAND
-============================================================ */
+.brandLink {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: opacity 0.2s ease;
+}
+
+.brandLink:hover {
+    opacity: 0.85;
+}
 
 .brand {
     height: 82px;

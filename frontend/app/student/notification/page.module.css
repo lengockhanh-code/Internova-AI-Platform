@@ -85,3 +85,119 @@
   .realtimeStatus, .refreshButton { justify-content: center; }
 }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+:global(.dark) .layout,
+:global(.dark) .main,
+:global(.dark) .page {
+  background: #0b1020;
+  color: #f8fafc;
+}
+
+:global(.dark) .pageHeader h1 {
+  color: #f8fafc;
+}
+
+:global(.dark) .eyebrow {
+  color: #93c5fd;
+}
+
+:global(.dark) .pageHeader p:not(.eyebrow) {
+  color: #cbd5e1;
+}
+
+:global(.dark) .realtimeStatus,
+:global(.dark) .refreshButton,
+:global(.dark) .tabs,
+:global(.dark) .summaryGrid > div,
+:global(.dark) .notificationPanel,
+:global(.dark) .calendarPanel,
+:global(.dark) .statePanel {
+  border-color: #334155;
+  background: #111827;
+  color: #e5e7eb;
+}
+
+:global(.dark) .summaryGrid > div {
+  border-color: #334155;
+  background: #1f2937;
+  color: #93c5fd;
+}
+
+:global(.dark) .summaryGrid > div:nth-child(2) {
+  color: #c4b5fd;
+}
+
+:global(.dark) .summaryGrid > div:nth-child(3) {
+  color: #6ee7b7;
+}
+
+:global(.dark) .summaryGrid span {
+  color: #cbd5e1;
+}
+
+:global(.dark) .summaryGrid strong {
+  color: #f8fafc;
+}
+
+:global(.dark) .tabs .activeTab {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+:global(.dark) .notificationPanel > header,
+:global(.dark) .calendarPanel > header {
+  border-color: #334155;
+  background: #111827;
+}
+
+:global(.dark) .notificationPanel header p,
+:global(.dark) .notificationContent > p,
+:global(.dark) .eventList article p {
+  color: #cbd5e1;
+}
+
+:global(.dark) .notificationPanel header button {
+  border-color: #475569;
+  background: #1f2937;
+  color: #e5e7eb;
+}
+
+:global(.dark) .notificationItem,
+:global(.dark) .eventList article {
+  border-color: #334155;
+  background: #111827;
+  color: #f8fafc;
+}
+
+:global(.dark) .notificationItem:hover {
+  background: #172033;
+}
+
+:global(.dark) .notificationItem.unread {
+  background: #10213a;
+}
+
+:global(.dark) .notificationItem.lecturerMessage {
+  background: #1b1730;
+}
+
+:global(.dark) .titleRow strong,
+:global(.dark) .eventList article h3 {
+  color: #f8fafc;
+}
+
+:global(.dark) .notificationContent small,
+:global(.dark) .eventList article div > small {
+  color: #94a3b8;
+}
+
+:global(.dark) .readState {
+  background: #1f2937;
+  color: #cbd5e1;
+}
+
+:global(.dark) .inlineError {
+  border-color: #7f1d1d;
+  background: #450a0a;
+  color: #fecaca;
+}

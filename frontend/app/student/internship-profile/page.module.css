@@ -561,3 +561,84 @@
         flex: 1;
     }
 }
+
+:global(.dark) .layout,
+:global(.dark) .main,
+:global(.dark) .profilePage {
+    background: #0b1020;
+    color: #f8fafc;
+}
+
+:global(.dark) .pageHeader h1,
+:global(.dark) .studentCard h2,
+:global(.dark) .cardHeader h2,
+:global(.dark) .infoItem strong,
+:global(.dark) .mentorBox strong,
+:global(.dark) .documentTitle p,
+:global(.dark) .progressCircle strong,
+:global(.dark) .statePage h2 {
+    color: #f8fafc;
+}
+
+:global(.dark) .pageHeader p,
+:global(.dark) .studentCode,
+:global(.dark) .contactList div,
+:global(.dark) .infoItem p,
+:global(.dark) .mentorBox p,
+:global(.dark) .mentorBox span,
+:global(.dark) .uploadHint,
+:global(.dark) .documentTitle span,
+:global(.dark) .documentTitle small,
+:global(.dark) .progressText,
+:global(.dark) .statePage {
+    color: #cbd5e1;
+}
+
+:global(.dark) .studentCard,
+:global(.dark) .infoCard,
+:global(.dark) .documentCard,
+:global(.dark) .progressCard,
+:global(.dark) .infoItem,
+:global(.dark) .documentItem {
+    border-color: #334155;
+    background: #1f2937;
+    color: #f8fafc;
+}
+
+:global(.dark) .contactList {
+    border-color: #334155;
+}
+
+:global(.dark) .avatar,
+:global(.dark) .infoIcon,
+:global(.dark) .mentorAvatar {
+    background: #0f2f5f;
+    color: #bfdbfe;
+}
+
+:global(.dark) .mentorBox {
+    border-color: #1d4ed8;
+    background: #0f2f5f;
+}
+
+:global(.dark) .statusPill {
+    background: #064e3b;
+    color: #d1fae5;
+}
+
+:global(.dark) .uploadButton,
+:global(.dark) .viewButton {
+    border-color: #475569;
+    background: #111827;
+    color: #dbeafe;
+}
+
+:global(.dark) .deleteButton {
+    border-color: #7f1d1d;
+    background: #3f1518;
+    color: #fecaca;
+}
+
+:global(.dark) .progressBar {
+    background: #334155;
+}

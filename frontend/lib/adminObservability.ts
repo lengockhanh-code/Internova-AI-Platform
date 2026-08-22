@@ -1,6 +1,20 @@
-export type TimeRange = "1h" | "24h" | "7d" | "30d";
+export type TimeRange = "1h" | "24h" | "yesterday" | "2d" | "3d" | "7d" | "14d" | "30d";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
+
+export class ApiError extends Error {
+  status: number;
+  retryAfterSeconds: number | null;
+  rateLimited: boolean;
+
+  constructor(message: string, status: number, retryAfterSeconds: number | null = null) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.retryAfterSeconds = retryAfterSeconds;
+    this.rateLimited = status === 429;
+  }
+}
 
 function authHeaders(): HeadersInit {
   if (typeof window === "undefined") return {};
@@ -26,11 +40,29 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     let message = `HTTP ${response.status}`;
+    let retryAfterSeconds: number | null = null;
+
     try {
       const body = await response.json();
-      message = body?.detail ?? message;
+      const detail = body?.detail;
+
+      if (typeof detail === "string") {
+        message = detail;
+      } else if (detail && typeof detail === "object") {
+        message = detail.message ?? message;
+        retryAfterSeconds = typeof detail.retryAfterSeconds === "number"
+          ? detail.retryAfterSeconds
+          : null;
+      }
     } catch {}
-    throw new Error(message);
+
+    const retryAfterHeader = response.headers.get("retry-after");
+    if (!retryAfterSeconds && retryAfterHeader) {
+      const parsed = Number(retryAfterHeader);
+      retryAfterSeconds = Number.isFinite(parsed) ? parsed : null;
+    }
+
+    throw new ApiError(message, response.status, retryAfterSeconds);
   }
   return response.json() as Promise<T>;
 }

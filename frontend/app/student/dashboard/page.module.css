@@ -70,6 +70,7 @@
     border: 1px solid #e2e8f0;
     border-radius: 16px;
     padding: 32px 24px;
+    height: 100%;
 }
 
 .featureIcon {
@@ -82,6 +83,32 @@
     background: #eff6ff;
     color: #2563eb;
     margin-bottom: 20px;
+}
+
+.featureIconWrapper {
+    position: relative;
+    display: inline-flex;
+    margin-bottom: 20px;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.featureIconWrapper .featureIcon {
+    margin-bottom: 0;
+}
+
+.devBadge {
+    position: absolute;
+    top: -8px;
+    right: -18px;
+    background: #f59e0b;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+    box-shadow: 0 8px 18px rgba(245, 158, 11, 0.22);
 }
 
 .featureCard h3 {
@@ -101,8 +128,13 @@
 .featureCta {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    margin-top: 24px;
+    width: 190px;
+    min-height: 44px;
+    box-sizing: border-box;
+    margin-top: auto;
+    align-self: center;
     background: #0f172a;
     color: #ffffff;
     border: none;
@@ -115,6 +147,13 @@
 
 .featureCta:hover {
     background: #1e293b;
+}
+
+.featureCtaDisabled {
+    background: #cbd5e1 !important;
+    color: #64748b !important;
+    cursor: not-allowed !important;
+    pointer-events: none;
 }
 
 .statusGrid {
@@ -410,4 +449,89 @@
     margin: 0;
     font-size: 12px;
     line-height: 1.5;
+}
+
+:global(.dark) .layout,
+:global(.dark) .main,
+:global(.dark) .dashboard {
+    background: #0b1020;
+    color: #f8fafc;
+}
+
+:global(.dark) .dashboardWelcome h1,
+:global(.dark) .featureCard h3,
+:global(.dark) .statusCardHeader h4,
+:global(.dark) .deadlineTitle,
+:global(.dark) .progressHeader p,
+:global(.dark) .statePage h2 {
+    color: #f8fafc;
+}
+
+:global(.dark) .dashboardWelcome p,
+:global(.dark) .featureCard p,
+:global(.dark) .statusRow dt,
+:global(.dark) .deadlineSubtitle,
+:global(.dark) .progressHeader p span,
+:global(.dark) .emptyCard,
+:global(.dark) .statePage {
+    color: #cbd5e1;
+}
+
+:global(.dark) .dashboardPanel,
+:global(.dark) .featureCard,
+:global(.dark) .statusCard {
+    border-color: #334155;
+    background: #1f2937;
+    color: #f8fafc;
+}
+
+:global(.dark) .statusList,
+:global(.dark) .statusRow,
+:global(.dark) .deadlineInfo,
+:global(.dark) .deadlineDate,
+:global(.dark) .progressHeader,
+:global(.dark) .emptyCard {
+    background: transparent;
+}
+
+:global(.dark) .statusRow dd,
+:global(.dark) .checklist li {
+    color: #e5e7eb;
+}
+
+:global(.dark) .featureIcon,
+:global(.dark) .statusPill,
+:global(.dark) .progressBadge {
+    background: #0f2f5f;
+    color: #bfdbfe;
+}
+
+:global(.dark) .featureCta,
+:global(.dark) .statusCta {
+    border-color: #475569;
+    background: #0b1020;
+    color: #f8fafc;
+}
+
+:global(.dark) .featureCta:hover,
+:global(.dark) .statusCta:hover {
+    background: #111827;
+}
+
+:global(.dark) .featureCtaDisabled {
+    background: #334155 !important;
+    color: #94a3b8 !important;
+}
+
+:global(.dark) .progressBar {
+    background: #334155;
+}
+
+:global(.dark) .tipBanner {
+    border-color: #1d4ed8;
+    background: #0f2f5f;
+}
+
+:global(.dark) .tipBanner p {
+    color: #dbeafe;
 }

@@ -13,6 +13,7 @@ import remarkGfm from "remark-gfm";
 
 import Header from "@/components/header/header";
 import Sidebar from "@/components/sidebar/sidebar";
+import FormAgentPanel from "@/components/FormAgentPanel";
 
 import {
     Bot,
@@ -83,7 +84,7 @@ function findScrollableParent(
             )
             &&
             current.scrollHeight >
-                current.clientHeight
+            current.clientHeight
         ) {
             return current;
         }
@@ -128,8 +129,8 @@ type Message = {
     id: string;
 
     role:
-        | "user"
-        | "assistant";
+    | "user"
+    | "assistant";
 
     content: string;
 
@@ -142,6 +143,22 @@ type Message = {
     status?: string;
 
     streamPhase?: ChatPhase;
+
+    // ── FORM AGENT: kết quả kiểm tra độc lập, không phụ thuộc vào
+    // cách backend gắn nhãn document_type cho sources ────────────────
+    detectedForm?: string | null;
+
+    // Mỗi lượt của agent điền đơn là 1 tin nhắn assistant riêng, y hệt
+    // tin nhắn RAG bình thường — không còn 1 panel cố định tách biệt.
+    isFormAgentMessage?: boolean;
+    formAgentPhase?: "confirm" | "working";
+    formAgentSessionId?: string | null;
+    formAgentStatus?: string | null;
+    formAgentDetectedName?: string;
+    formAgentDocxReady?: boolean;
+    formAgentLoading?: boolean;
+    formAgentErrorMsg?: string | null;
+    // ── HẾT PHẦN FORM AGENT ──────────────────────────────────────────
 };
 
 
@@ -271,6 +288,230 @@ export default function RagChatPage() {
         setLoading,
     ] =
         useState(false);
+
+
+    // ── FORM AGENT: mỗi lượt là 1 tin nhắn assistant bình thường,
+    // hiện tự nhiên trong dòng chat — không còn panel cố định.
+    // activeFormAgentConfirmMessageId: đang chờ sinh viên gõ Có/Không
+    // (chưa gọi API gì cả). activeFormAgentSessionId/Status: phiên đã
+    // bắt đầu thật, đang chờ trả lời bù thông tin.
+    const [activeFormAgentConfirmMessageId, setActiveFormAgentConfirmMessageId] = useState<string | null>(null);
+    const [activeFormAgentSessionId, setActiveFormAgentSessionId] = useState<string | null>(null);
+    const [activeFormAgentStatus, setActiveFormAgentStatus] = useState<string | null>(null);
+
+    // Nhận diện Có/Không theo TỪ NGUYÊN VẸN (không phải "chuỗi con"
+    // nằm bên trong từ khác) — tránh lặp lại lỗi "chuyên" (chứa "huy")
+    // từng gặp trước đây. "co" khớp đúng từ "có", không khớp bên
+    // trong "công" hay "còn".
+    function parseYesNo(text: string): "yes" | "no" | "unclear" {
+        const normalized = text
+            .toLowerCase()
+            .replace(/đ/g, "d")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+
+        const tokens = normalized.split(/\s+/).filter(Boolean);
+
+        const noWords = ["khong", "thoi", "khoi", "no"];
+        const yesWords = ["co", "ok", "duoc", "u", "vang", "yes", "dong", "giup"];
+
+        if (tokens.some(t => noWords.includes(t))) return "no";
+        if (tokens.some(t => yesWords.includes(t))) return "yes";
+        return "unclear";
+    }
+
+    function updateMessageById(
+        messageId: string,
+        updater: (current: Message) => Message,
+    ) {
+        setMessages(current =>
+            current.map(item =>
+                item.id === messageId ? updater(item) : item
+            )
+        );
+    }
+
+    // Bấm nút gợi ý dưới câu trả lời RAG → THÊM 1 tin nhắn mới (câu
+    // hỏi xác nhận, KHÔNG có nút) → chờ sinh viên gõ trả lời ở ô nhập
+    // chính.
+    function handleFormAgentRequest(formName?: string) {
+        const newId = crypto.randomUUID();
+        setMessages(current => [
+            ...current,
+            {
+                id: newId,
+                role: "assistant",
+                content: "",
+                isFormAgentMessage: true,
+                formAgentPhase: "confirm",
+                formAgentDetectedName: formName,
+            },
+        ]);
+        setActiveFormAgentConfirmMessageId(newId);
+        requestAnimationFrame(() => scrollToBottom("smooth"));
+    }
+
+    // Sinh viên gõ Có → thực sự gọi API, cập nhật ĐÚNG tin nhắn xác
+    // nhận đó thành bước "working" với câu hỏi đầu tiên. `extraContext`
+    // là chính câu trả lời của sinh viên — có thể vừa xác nhận vừa
+    // chứa luôn thông tin (vd "ừ, công ty là FPT"), nên gộp vào luôn.
+    async function handleFormAgentConfirmYes(messageId: string, extraContext?: string) {
+        const seedText = [
+            ...messages.filter(m => m.role === "user").map(m => m.content),
+            extraContext ?? "",
+        ]
+            .filter(Boolean)
+            .join("\n");
+
+        updateMessageById(messageId, m => ({ ...m, formAgentLoading: true }));
+
+        try {
+            const res = await fetch(`${API_URL}/api/v1/form-agent/turn`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ session_id: null, message: seedText }),
+            });
+            if (!res.ok) throw new Error(`Lỗi server: ${res.status}`);
+            const data = await res.json();
+
+            updateMessageById(messageId, m => ({
+                ...m,
+                formAgentPhase: "working",
+                formAgentSessionId: data.session_id,
+                formAgentStatus: data.status,
+                content: data.ask_message || data.review_summary_markdown || "",
+                formAgentDocxReady: data.docx_ready,
+                formAgentLoading: false,
+                formAgentErrorMsg: data.error ?? null,
+            }));
+
+            setActiveFormAgentSessionId(data.session_id);
+            setActiveFormAgentStatus(data.status);
+            setActiveFormAgentConfirmMessageId(null);
+        } catch (err) {
+            updateMessageById(messageId, m => ({
+                ...m,
+                formAgentPhase: "working",
+                formAgentLoading: false,
+                formAgentErrorMsg: err instanceof Error ? err.message : "Đã có lỗi xảy ra",
+            }));
+            setActiveFormAgentConfirmMessageId(null);
+        }
+    }
+
+    function handleFormAgentConfirmNo(messageId: string) {
+        updateMessageById(messageId, m => ({
+            ...m,
+            formAgentPhase: "working",
+            formAgentStatus: "cancelled",
+        }));
+        setActiveFormAgentConfirmMessageId(null);
+    }
+
+    // Sinh viên gõ câu trả lời cho agent NGAY TẠI Ô NHẬP CHÍNH →
+    // THÊM 1 tin nhắn assistant mới (không sửa tin nhắn cũ) chứa
+    // câu hỏi/kết quả tiếp theo — giống hệt cách chat RAG bình
+    // thường thêm tin nhắn mới mỗi lượt.
+    async function continueFormAgentTurn(userText: string) {
+        const newId = crypto.randomUUID();
+
+        setMessages(current => [
+            ...current,
+            {
+                id: newId,
+                role: "assistant",
+                content: "",
+                isFormAgentMessage: true,
+                formAgentPhase: "working",
+                formAgentSessionId: activeFormAgentSessionId,
+                formAgentStatus: activeFormAgentStatus,
+                formAgentLoading: true,
+            },
+        ]);
+
+        requestAnimationFrame(() => scrollToBottom("smooth"));
+
+        try {
+            const res = await fetch(`${API_URL}/api/v1/form-agent/turn`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    session_id: activeFormAgentSessionId,
+                    message: userText,
+                }),
+            });
+            if (!res.ok) throw new Error(`Lỗi server: ${res.status}`);
+            const data = await res.json();
+
+            updateMessageById(newId, m => ({
+                ...m,
+                formAgentSessionId: data.session_id,
+                formAgentStatus: data.status,
+                content: data.ask_message || data.review_summary_markdown || "",
+                formAgentDocxReady: data.docx_ready,
+                formAgentLoading: false,
+                formAgentErrorMsg: data.error ?? null,
+            }));
+
+            setActiveFormAgentStatus(data.status);
+            if (data.status === "approved" || data.status === "cancelled") {
+                setActiveFormAgentSessionId(null);
+                setActiveFormAgentStatus(null);
+            }
+        } catch (err) {
+            updateMessageById(newId, m => ({
+                ...m,
+                formAgentLoading: false,
+                formAgentErrorMsg: err instanceof Error ? err.message : "Đã có lỗi xảy ra",
+            }));
+        }
+    }
+
+    async function handleFormAgentApprove(messageId: string, sessionId: string) {
+        updateMessageById(messageId, m => ({ ...m, formAgentLoading: true }));
+        try {
+            const res = await fetch(`${API_URL}/api/v1/form-agent/confirm`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ session_id: sessionId }),
+            });
+            if (!res.ok) throw new Error(`Lỗi server: ${res.status}`);
+            const data = await res.json();
+            updateMessageById(messageId, m => ({
+                ...m,
+                formAgentStatus: data.status,
+                formAgentDocxReady: data.docx_ready,
+                formAgentLoading: false,
+            }));
+            setActiveFormAgentSessionId(null);
+            setActiveFormAgentStatus(null);
+        } catch (err) {
+            updateMessageById(messageId, m => ({
+                ...m,
+                formAgentLoading: false,
+                formAgentErrorMsg: err instanceof Error ? err.message : "Đã có lỗi xảy ra",
+            }));
+        }
+    }
+
+    async function handleFormAgentCancelSession(messageId: string, sessionId: string) {
+        updateMessageById(messageId, m => ({ ...m, formAgentLoading: true }));
+        try {
+            await fetch(`${API_URL}/api/v1/form-agent/cancel/${sessionId}`, {
+                method: "POST",
+            });
+        } finally {
+            updateMessageById(messageId, m => ({
+                ...m,
+                formAgentStatus: "cancelled",
+                formAgentLoading: false,
+            }));
+            setActiveFormAgentSessionId(null);
+            setActiveFormAgentStatus(null);
+        }
+    }
+    // ── HẾT PHẦN FORM AGENT ──────────────────────────────────────────
+
 
 
     const [
@@ -626,7 +867,7 @@ export default function RagChatPage() {
             Math.max(
                 0,
                 messages.length -
-                    visibleMessageCount
+                visibleMessageCount
             )
         );
 
@@ -634,7 +875,7 @@ export default function RagChatPage() {
         Math.max(
             0,
             messages.length -
-                visibleMessages.length
+            visibleMessages.length
         );
 
 
@@ -761,7 +1002,7 @@ export default function RagChatPage() {
                             Math.min(
                                 messages.length,
                                 current +
-                                    LOAD_OLDER_MESSAGES_STEP
+                                LOAD_OLDER_MESSAGES_STEP
                             )
                     );
                 },
@@ -1013,6 +1254,68 @@ export default function RagChatPage() {
             return;
         }
 
+        // ── FORM AGENT: nếu đang chờ trả lời Có/Không (bước xác nhận
+        // ban đầu), phân tích câu trả lời gõ tự nhiên ngay tại đây —
+        // không có nút bấm nào cả. ───────────────────────────────────
+        if (activeFormAgentConfirmMessageId) {
+            const confirmMessageId = activeFormAgentConfirmMessageId;
+            const intent = parseYesNo(message);
+
+            const userMessage: Message = {
+                id: crypto.randomUUID(),
+                role: "user",
+                content: message,
+            };
+
+            setMessages(current => [...current, userMessage]);
+            setInput("");
+            isNearBottomRef.current = true;
+            setShowJumpToLatest(false);
+
+            requestAnimationFrame(() => {
+                scrollToBottom("smooth");
+            });
+
+            if (intent === "no") {
+                handleFormAgentConfirmNo(confirmMessageId);
+            } else {
+                // "yes" hoặc "unclear" đều coi là đồng ý tiếp tục — gộp
+                // luôn câu trả lời của sinh viên vào ngữ cảnh, vì có
+                // thể họ vừa xác nhận vừa cho luôn thông tin trong 1
+                // câu (vd "ừ, công ty là FPT").
+                void handleFormAgentConfirmYes(confirmMessageId, message);
+            }
+            return;
+        }
+        // ── HẾT PHẦN FORM AGENT (xác nhận) ────────────────────────────
+
+        // ── FORM AGENT: nếu đang có phiên chờ trả lời (đang hỏi bù
+        // thông tin), ô nhập chính sẽ gửi thẳng cho agent thay vì
+        // chạy luồng RAG bình thường bên dưới. ─────────────────────
+        if (
+            activeFormAgentSessionId &&
+            activeFormAgentStatus === "collecting_info"
+        ) {
+            const userMessage: Message = {
+                id: crypto.randomUUID(),
+                role: "user",
+                content: message,
+            };
+
+            setMessages(current => [...current, userMessage]);
+            setInput("");
+            isNearBottomRef.current = true;
+            setShowJumpToLatest(false);
+
+            requestAnimationFrame(() => {
+                scrollToBottom("smooth");
+            });
+
+            void continueFormAgentTurn(message);
+            return;
+        }
+        // ── HẾT PHẦN FORM AGENT ──────────────────────────────────────
+
 
         if (
             !sessionIdRef.current
@@ -1130,6 +1433,36 @@ export default function RagChatPage() {
                 nextMessages
             );
         };
+
+        // ── FORM AGENT: kiểm tra độc lập, tách biệt hoàn toàn khỏi
+        // luồng chat/auth chính — lỗi ở đây không bao giờ ảnh hưởng
+        // tới việc gửi/nhận tin nhắn bình thường.
+        const checkFormRelevance = async (
+            contextText: string,
+        ) => {
+            try {
+                const res = await fetch(
+                    `${API_URL}/api/v1/form-agent/detect`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ text: contextText }),
+                    }
+                );
+                if (!res.ok) return;
+                const data: { detected_form?: string | null } =
+                    await res.json();
+                if (data.detected_form) {
+                    updateAssistantMessage(current => ({
+                        ...current,
+                        detectedForm: data.detected_form,
+                    }));
+                }
+            } catch {
+                // Im lặng bỏ qua — chỉ là gợi ý phụ.
+            }
+        };
+        // ── HẾT PHẦN FORM AGENT ────────────────────────────────────────
 
         const flushStreamBuffer = () => {
             const chunk =
@@ -1384,6 +1717,16 @@ export default function RagChatPage() {
                             })
                         );
 
+                        // ── FORM AGENT: kiểm tra độc lập ngay sau khi
+                        // có câu trả lời cuối cùng ─────────────────────
+                        void checkFormRelevance(
+                            `${message}\n${event.result?.answer ??
+                            event.response ??
+                            ""
+                            }`
+                        );
+                        // ── HẾT PHẦN FORM AGENT ────────────────────────
+
                         continue;
                     }
 
@@ -1465,6 +1808,15 @@ export default function RagChatPage() {
                                 "done",
                         })
                     );
+
+                    // ── FORM AGENT: kiểm tra độc lập (nhánh dự phòng) ──
+                    void checkFormRelevance(
+                        `${message}\n${event.result?.answer ??
+                        event.response ??
+                        ""
+                        }`
+                    );
+                    // ── HẾT PHẦN FORM AGENT ─────────────────────────────
                 }
             }
 
@@ -1557,7 +1909,7 @@ export default function RagChatPage() {
 
         if (
             event.key ===
-                "Enter"
+            "Enter"
             &&
             !event.shiftKey
         ) {
@@ -1706,8 +2058,9 @@ export default function RagChatPage() {
                                 messageListRef
                             }
                             className={
-                                styles.messageList
+                                `${styles.messageList} notranslate`
                             }
+                            translate="no"
                             onScroll={
                                 handleChatScroll
                             }
@@ -1726,27 +2079,27 @@ export default function RagChatPage() {
 
                             {hiddenMessageCount >
                                 0 && (
-                                <div
-                                    style={{
-                                        textAlign:
-                                            "center",
-                                        fontSize:
-                                            12,
-                                        opacity:
-                                            0.55,
-                                        padding:
-                                            "4px 0 8px",
-                                        userSelect:
-                                            "none",
-                                    }}
-                                >
-                                    Cuộn lên để xem{" "}
-                                    {
-                                        hiddenMessageCount
-                                    }{" "}
-                                    tin nhắn cũ
-                                </div>
-                            )}
+                                    <div
+                                        style={{
+                                            textAlign:
+                                                "center",
+                                            fontSize:
+                                                12,
+                                            opacity:
+                                                0.55,
+                                            padding:
+                                                "4px 0 8px",
+                                            userSelect:
+                                                "none",
+                                        }}
+                                    >
+                                        Cuộn lên để xem{" "}
+                                        {
+                                            hiddenMessageCount
+                                        }{" "}
+                                        tin nhắn cũ
+                                    </div>
+                                )}
 
                             {visibleMessages.map(
                                 message => (
@@ -1762,6 +2115,11 @@ export default function RagChatPage() {
                                     >
                                         <MessageBubble
                                             message={message}
+                                            onFillRequest={(formName) => handleFormAgentRequest(formName)}
+                                            onFormAgentConfirmYes={handleFormAgentConfirmYes}
+                                            onFormAgentConfirmNo={handleFormAgentConfirmNo}
+                                            onFormAgentApprove={handleFormAgentApprove}
+                                            onFormAgentCancelSession={handleFormAgentCancelSession}
                                         />
                                     </div>
 
@@ -1775,41 +2133,42 @@ export default function RagChatPage() {
                             {messages.length ===
                                 1 && (
 
-                                <div
-                                    className={
-                                        styles.suggestionList
-                                    }
-                                >
+                                    <div
+                                        className={
+                                            `${styles.suggestionList} notranslate`
+                                        }
+                                        translate="no"
+                                    >
 
-                                    {suggestions.map(
-                                        suggestion => (
+                                        {suggestions.map(
+                                            suggestion => (
 
-                                            <button
-                                                key={
-                                                    suggestion
-                                                }
-                                                type="button"
-                                                disabled={
-                                                    loading
-                                                }
-                                                onClick={
-                                                    () =>
-                                                        void sendMessage(
-                                                            suggestion
-                                                        )
-                                                }
-                                            >
-                                                {
-                                                    suggestion
-                                                }
-                                            </button>
+                                                <button
+                                                    key={
+                                                        suggestion
+                                                    }
+                                                    type="button"
+                                                    disabled={
+                                                        loading
+                                                    }
+                                                    onClick={
+                                                        () =>
+                                                            void sendMessage(
+                                                                suggestion
+                                                            )
+                                                    }
+                                                >
+                                                    {
+                                                        suggestion
+                                                    }
+                                                </button>
 
-                                        )
-                                    )}
+                                            )
+                                        )}
 
-                                </div>
+                                    </div>
 
-                            )}
+                                )}
 
                             <div
                                 ref={
@@ -1914,8 +2273,9 @@ export default function RagChatPage() {
 
                                 <div
                                     className={
-                                        styles.chatComposer
+                                    `${styles.chatComposer} notranslate`
                                     }
+                                translate="no"
                                 >
 
                                     <textarea
@@ -1935,7 +2295,12 @@ export default function RagChatPage() {
                                             handleKeyDown
                                         }
                                         placeholder={
-                                            "Nhập câu hỏi của bạn về học vụ, quy định, thủ tục thực tập..."
+                                            activeFormAgentConfirmMessageId
+                                                ? "Gõ 'có' hoặc 'không'..."
+                                                : activeFormAgentSessionId &&
+                                                    activeFormAgentStatus === "collecting_info"
+                                                    ? "Nhập thông tin bổ sung cho đơn..."
+                                                    : "Nhập câu hỏi của bạn về học vụ, quy định, thủ tục thực tập..."
                                         }
                                     />
 
@@ -1984,8 +2349,18 @@ export default function RagChatPage() {
 
 const MessageBubble = memo(function MessageBubble({
     message,
+    onFillRequest,
+    onFormAgentConfirmYes,
+    onFormAgentConfirmNo,
+    onFormAgentApprove,
+    onFormAgentCancelSession,
 }: {
     message: Message;
+    onFillRequest?: (formName?: string) => void;
+    onFormAgentConfirmYes?: (messageId: string) => void;
+    onFormAgentConfirmNo?: (messageId: string) => void;
+    onFormAgentApprove?: (messageId: string, sessionId: string) => void;
+    onFormAgentCancelSession?: (messageId: string, sessionId: string) => void;
 }) {
 
     const isUser =
@@ -1997,31 +2372,31 @@ const MessageBubble = memo(function MessageBubble({
         typeof message.confidence
             === "number"
             ? Math.max(
-                  0,
-                  Math.min(
-                      100,
-                      Math.round(
-                          message.confidence * 100
-                      )
-                  )
-              )
+                0,
+                Math.min(
+                    100,
+                    Math.round(
+                        message.confidence * 100
+                    )
+                )
+            )
             : null;
 
 
     const formSource =
         !isUser
             ? message.sources?.find(
-                  source =>
-                      source.document_type === "form"
-                      &&
-                      (
-                          source.file_name
-                          ||
-                          source.preview_url
-                          ||
-                          source.download_url
-                      )
-              )
+                source =>
+                    source.document_type === "form"
+                    &&
+                    (
+                        source.file_name
+                        ||
+                        source.preview_url
+                        ||
+                        source.download_url
+                    )
+            )
             : undefined;
 
 
@@ -2119,6 +2494,8 @@ const MessageBubble = memo(function MessageBubble({
                     ||
                     formSource
                     ||
+                    message.isFormAgentMessage
+                    ||
                     (
                         message.sources
                         &&
@@ -2146,12 +2523,36 @@ const MessageBubble = memo(function MessageBubble({
                                 }
                             </p>
 
+                        ) : message.isFormAgentMessage ? (
+
+                            <FormAgentPanel
+                                phase={message.formAgentPhase ?? "confirm"}
+                                detectedFormName={message.formAgentDetectedName}
+                                status={message.formAgentStatus}
+                                displayText={message.content}
+                                loading={message.formAgentLoading}
+                                error={message.formAgentErrorMsg}
+                                docxReady={message.formAgentDocxReady}
+                                sessionId={message.formAgentSessionId}
+                                onConfirmYes={() => onFormAgentConfirmYes?.(message.id)}
+                                onConfirmNo={() => onFormAgentConfirmNo?.(message.id)}
+                                onApprove={() =>
+                                    message.formAgentSessionId &&
+                                    onFormAgentApprove?.(message.id, message.formAgentSessionId)
+                                }
+                                onCancelSession={() =>
+                                    message.formAgentSessionId &&
+                                    onFormAgentCancelSession?.(message.id, message.formAgentSessionId)
+                                }
+                            />
+
                         ) : hasRenderableContent ? (
 
                             <div
                                 className={
-                                    styles.markdownContent
+                                    `${styles.markdownContent} notranslate`
                                 }
+                                translate="no"
                             >
 
                                 <ReactMarkdown
@@ -2182,11 +2583,41 @@ const MessageBubble = memo(function MessageBubble({
                         {!isUser &&
                             formSource && (
 
-                            <FormResourceCard
-                                source={formSource}
-                            />
+                                <FormResourceCard
+                                    source={formSource}
+                                    onFillRequest={onFillRequest}
+                                />
 
-                        )}
+                            )}
+
+                        {/* ── FORM AGENT: gợi ý độc lập, không phụ thuộc
+                             formSource — chỉ hiện khi CHƯA có
+                             FormResourceCard ở trên ────────────────────── */}
+                        {!isUser &&
+                            !formSource &&
+                            message.detectedForm && (
+
+                                <button
+                                    type="button"
+                                    onClick={() => onFillRequest?.(message.detectedForm ?? undefined)}
+                                    style={{
+                                        marginTop: 10,
+                                        width: "100%",
+                                        padding: "8px 14px",
+                                        borderRadius: 8,
+                                        border: "1px solid #93c5fd",
+                                        background: "#eff6ff",
+                                        color: "#1d4ed8",
+                                        cursor: "pointer",
+                                        fontSize: 13,
+                                        fontWeight: 500,
+                                    }}
+                                >
+                                    🤖 Cần mình giúp điền {message.detectedForm} luôn không?
+                                </button>
+
+                            )}
+                        {/* ── HẾT PHẦN FORM AGENT ──────────────────────── */}
 
 
                         {!isUser &&
@@ -2194,60 +2625,61 @@ const MessageBubble = memo(function MessageBubble({
                             confidencePercent !== null &&
                             confidencePercent > 0 && (
 
-                            <div
-                                className={
-                                    styles.answerMeta
-                                }
-                            >
-
-                                <span>
-                                    Độ tin cậy
-                                </span>
-
-
                                 <div
                                     className={
-                                        styles.confidenceTrack
+                                        styles.answerMeta
                                     }
-                                    aria-hidden="true"
                                 >
+
+                                    <span>
+                                        Độ tin cậy
+                                    </span>
+
 
                                     <div
                                         className={
-                                            styles.confidenceFill
+                                            styles.confidenceTrack
                                         }
-                                        style={{
-                                            width:
-                                                `${confidencePercent}%`,
-                                        }}
-                                    />
+                                        aria-hidden="true"
+                                    >
+
+                                        <div
+                                            className={
+                                                styles.confidenceFill
+                                            }
+                                            style={{
+                                                width:
+                                                    `${confidencePercent}%`,
+                                            }}
+                                        />
+
+                                    </div>
+
+
+                                    <strong>
+                                        {
+                                            confidencePercent
+                                        }
+                                        %
+                                    </strong>
 
                                 </div>
 
-
-                                <strong>
-                                    {
-                                        confidencePercent
-                                    }
-                                    %
-                                </strong>
-
-                            </div>
-
-                        )}
+                            )}
 
 
                         {!isUser &&
                             message.sources &&
                             message.sources.length > 0 && (
 
-                            <Sources
-                                sources={
-                                    message.sources
-                                }
-                            />
+                                <Sources
+                                    sources={
+                                        message.sources
+                                    }
+                                    onFillRequest={onFillRequest}
+                                />
 
-                        )}
+                            )}
 
                     </div>
 
@@ -2267,8 +2699,10 @@ const MessageBubble = memo(function MessageBubble({
 
 function Sources({
     sources,
+    onFillRequest,
 }: {
     sources: Source[];
+    onFillRequest?: (formName?: string) => void;
 }) {
 
     const [
@@ -2402,14 +2836,14 @@ function Sources({
                                         {source
                                             .document_type && (
 
-                                            <span>
-                                                {
-                                                    source
-                                                        .document_type
-                                                }
-                                            </span>
+                                                <span>
+                                                    {
+                                                        source
+                                                            .document_type
+                                                    }
+                                                </span>
 
-                                        )}
+                                            )}
 
 
                                         {source.page && (
@@ -2441,21 +2875,21 @@ function Sources({
                                     {source
                                         .quote_original && (
 
-                                        <p
-                                            className={
-                                                styles
-                                                    .sourceQuote
-                                            }
-                                        >
-                                            “
-                                            {
-                                                source
-                                                    .quote_original
-                                            }
-                                            ”
-                                        </p>
+                                            <p
+                                                className={
+                                                    `${styles.sourceQuote} notranslate`
+                                                }
+                                                translate="no"
+                                            >
+                                                “
+                                                {
+                                                    source
+                                                        .quote_original
+                                                }
+                                                ”
+                                            </p>
 
-                                    )}
+                                        )}
 
 
                                     {source.document_type ===
@@ -2468,13 +2902,14 @@ function Sources({
                                             source.download_url
                                         ) && (
 
-                                        <FormResourceCard
-                                            source={
-                                                source
-                                            }
-                                        />
+                                            <FormResourceCard
+                                                source={
+                                                    source
+                                                }
+                                                onFillRequest={onFillRequest}
+                                            />
 
-                                    )}
+                                        )}
 
                                 </div>
 
@@ -2498,8 +2933,10 @@ function Sources({
 
 function FormResourceCard({
     source,
+    onFillRequest,
 }: {
     source: Source;
+    onFillRequest?: (formName?: string) => void;
 }) {
     const [
         previewOpen,
@@ -2611,40 +3048,63 @@ function FormResourceCard({
             {previewOpen &&
                 previewUrl && (
 
-                <div
-                    className={
-                        styles.formPreviewWrapper
-                    }
-                >
-                    <iframe
-                        src={
-                            previewUrl
-                        }
-                        title={
-                            source.document_name
-                            ??
-                            "Form preview"
-                        }
+                    <div
                         className={
-                            styles.formPreviewFrame
-                        }
-                    />
-
-                    <a
-                        href={
-                            previewUrl
-                        }
-                        target="_blank"
-                        rel="noreferrer"
-                        className={
-                            styles.formOpenNewTab
+                            styles.formPreviewWrapper
                         }
                     >
-                        Mở bản xem trước
-                        trong tab mới
-                    </a>
-                </div>
+                        <iframe
+                            src={
+                                previewUrl
+                            }
+                            title={
+                                source.document_name
+                                ??
+                                "Form preview"
+                            }
+                            className={
+                                styles.formPreviewFrame
+                            }
+                        />
+
+                        <a
+                            href={
+                                previewUrl
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                            className={
+                                styles.formOpenNewTab
+                            }
+                        >
+                            Mở bản xem trước
+                            trong tab mới
+                        </a>
+                    </div>
+                )}
+
+            {/* ── FORM AGENT: nút gợi ý điền đơn ngay tại đây ─────────── */}
+            {onFillRequest && (
+                <button
+                    type="button"
+                    onClick={() => onFillRequest(source.document_name)}
+                    style={{
+                        marginTop: 10,
+                        width: "100%",
+                        padding: "8px 14px",
+                        borderRadius: 8,
+                        border: "1px solid #93c5fd",
+                        background: "#eff6ff",
+                        color: "#1d4ed8",
+                        cursor: "pointer",
+                        fontSize: 13,
+                        fontWeight: 500,
+                    }}
+                >
+                    🤖 Cần mình giúp điền {source.document_name ?? "đơn này"} luôn không?
+                </button>
             )}
+            {/* ── HẾT PHẦN FORM AGENT ──────────────────────────────────── */}
         </div>
     );
 }

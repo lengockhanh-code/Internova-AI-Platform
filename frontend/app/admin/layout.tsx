@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import AdminSidebar from "@/components/admin-sidebar/admin-sidebar";
 
 export default function AdminLayout({
   children,
@@ -89,5 +90,16 @@ export default function AdminLayout({
     return null;
   }
 
-  return <>{children}</>;
+  if (pathname === "/admin/login") {
+    return <>{children}</>;
+  }
+
+  return (
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f6f8fb" }}>
+      <AdminSidebar />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {children}
+      </div>
+    </div>
+  );
 }

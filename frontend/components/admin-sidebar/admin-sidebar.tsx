@@ -221,16 +221,18 @@ export default function AdminSidebar() {
 
     return (
         <aside className={styles.sidebar}>
-            <div className={styles.brand}>
-                <div className={styles.brandIcon}>
-                    <Sparkles size={20} />
-                </div>
+            <Link href="/admin" className={styles.brandLink}>
+                <div className={styles.brand}>
+                    <div className={styles.brandIcon}>
+                        <Sparkles size={20} />
+                    </div>
 
-                <div className={styles.brandText}>
-                    <strong>Internova</strong>
-                    <span>Admin Console</span>
+                    <div className={styles.brandText}>
+                        <strong>Internova</strong>
+                        <span>Admin Console</span>
+                    </div>
                 </div>
-            </div>
+            </Link>
 
             <div className={styles.adminBadge}>
                 <div className={styles.adminBadgeIcon}>
@@ -368,6 +370,14 @@ export default function AdminSidebar() {
                     type="button"
                     className={styles.logoutButton}
                     onClick={() => {
+                        const confirmed = window.confirm(
+                            "Bạn có chắc chắn muốn đăng xuất?"
+                        );
+
+                        if (!confirmed) {
+                            return;
+                        }
+
                         localStorage.removeItem("internova_access_token");
                         localStorage.removeItem("internova_user");
                         router.push("/admin/login");

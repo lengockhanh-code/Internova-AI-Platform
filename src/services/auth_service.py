@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -8,7 +10,6 @@ from src.security.auth import (
     hash_password,
     verify_password,
 )
-
 
 # ============================================================
 # EXCEPTIONS
@@ -30,11 +31,8 @@ class StudentCodeNotFoundError(Exception):
 class InvalidVinuniEmailError(Exception):
     pass
 
-
 class InvalidCredentialsError(Exception):
     pass
-
-
 # ============================================================
 # HELPERS
 # ============================================================
@@ -58,7 +56,6 @@ def normalize_vinuni_email(email: str) -> str:
         )
 
     return normalized_email
-
 
 # ============================================================
 # RESPONSE BUILDER
@@ -266,7 +263,7 @@ def register_user(
 # ============================================================
 # LOGIN
 # Backend reads the REAL role from users.
-# The client does not send role anymore.
+# Public login defaults to student/lecturer; admin login must request ADMIN.
 # ============================================================
 
 
@@ -274,6 +271,7 @@ def login_user(
     db: Session,
     email: str,
     password: str,
+    requested_role: str | None = None,
 ):
     normalized_email = (
         email.strip().lower()
@@ -306,15 +304,20 @@ def login_user(
             "Email hoặc mật khẩu không đúng."
         )
 
-    # Public login page is only for student + lecturer.
-    if user["role"] not in (
-        "STUDENT",
-        "LECTURER",
-    ):
-        raise InvalidCredentialsError(
-            "Tài khoản này không được phép đăng nhập tại cổng sinh viên/giảng viên."
+    if requested_role == "ADMIN":
+        allowed_roles = ("ADMIN",)
+        role_error = "Tài khoản này không được phép đăng nhập tại cổng quản trị."
+    else:
+        allowed_roles = (
+            "STUDENT",
+            "LECTURER",
         )
+        role_error = "Tài khoản này không được phép đăng nhập tại cổng sinh viên/giảng viên."
 
+    if user["role"] not in allowed_roles:
+        raise InvalidCredentialsError(
+            role_error
+        )
     if not user["is_active"]:
         raise InvalidCredentialsError(
             "Tài khoản đã bị khóa."
@@ -336,3 +339,84 @@ def login_user(
     return build_auth_response(
         user
     )
+
+
+# ============================================================
+# CHANGE PASSWORD
+# ============================================================
+
+def change_user_password(
+    db: Session,
+    user_id: int,
+    current_password: str,
+    new_password: str,
+    confirm_password: str | None = None,
+) -> dict:
+    if not current_password or not current_password.strip():
+        raise ValueError("Vui lòng nhập mật khẩu hiện tại.")
+
+    if not new_password or not new_password.strip():
+        raise ValueError("Vui lòng nhập mật khẩu mới.")
+
+    if confirm_password is not None and confirm_password != new_password:
+        raise ValueError("Mật khẩu mới và xác nhận mật khẩu không trùng khớp.")
+
+    if len(new_password) < 8:
+        raise ValueError("Mật khẩu mới phải có ít nhất 8 ký tự.")
+
+    if not re.search(r"[a-zA-Z]", new_password):
+        raise ValueError("Mật khẩu mới phải chứa ít nhất 1 chữ cái.")
+
+    if not re.search(r"\d", new_password):
+        raise ValueError("Mật khẩu mới phải chứa ít nhất 1 chữ số.")
+
+    user = db.execute(
+        text(
+            """
+            SELECT
+                id,
+                password_hash,
+                is_active
+            FROM users
+            WHERE id = :user_id
+            LIMIT 1
+            """
+        ),
+        {"user_id": user_id},
+    ).mappings().first()
+
+    if user is None:
+        raise ValueError("Không tìm thấy thông tin người dùng.")
+
+    if not user["is_active"]:
+        raise ValueError("Tài khoản của bạn đã bị vô hiệu hóa.")
+
+    password_hash = user["password_hash"]
+    if not password_hash or not verify_password(current_password, password_hash):
+        raise ValueError("Mật khẩu hiện tại không chính xác.")
+
+    if current_password == new_password or verify_password(new_password, password_hash):
+        raise ValueError("Mật khẩu mới không được trùng với mật khẩu hiện tại.")
+
+    new_hash = hash_password(new_password)
+
+    db.execute(
+        text(
+            """
+            UPDATE users
+            SET password_hash = :password_hash,
+                updated_at = NOW()
+            WHERE id = :user_id
+            """
+        ),
+        {
+            "user_id": user_id,
+            "password_hash": new_hash,
+        },
+    )
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Đổi mật khẩu thành công.",
+    }

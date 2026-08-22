@@ -13,6 +13,33 @@ class LangfuseAPIError(RuntimeError):
     pass
 
 
+class LangfuseRateLimitError(LangfuseAPIError):
+    def __init__(self, message: str, retry_after_seconds: int | None = None) -> None:
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
+
+
+def _parse_retry_after(response: httpx.Response, body: str) -> int | None:
+    retry_after_header = response.headers.get("retry-after")
+    if retry_after_header:
+        try:
+            return max(1, int(float(retry_after_header)))
+        except ValueError:
+            pass
+
+    try:
+        payload = json.loads(body)
+    except ValueError:
+        return None
+
+    details = payload.get("details") if isinstance(payload, dict) else None
+    retry_after = details.get("retryAfterSeconds") if isinstance(details, dict) else None
+    try:
+        return max(1, int(float(retry_after)))
+    except (TypeError, ValueError):
+        return None
+
+
 class LangfuseAPI:
     """Small read-only client for Langfuse Public API v2/v3.
 
@@ -45,8 +72,17 @@ class LangfuseAPI:
             return payload if isinstance(payload, dict) else {"data": payload}
         except httpx.HTTPStatusError as exc:
             body = exc.response.text[:500]
+            status_code = exc.response.status_code
+
+            if status_code == 429:
+                retry_after = _parse_retry_after(exc.response, body)
+                raise LangfuseRateLimitError(
+                    "Langfuse rate limit exceeded. Showing cached data if available.",
+                    retry_after_seconds=retry_after,
+                ) from exc
+
             raise LangfuseAPIError(
-                f"Langfuse API returned HTTP {exc.response.status_code}: {body}"
+                f"Langfuse API returned HTTP {status_code}: {body}"
             ) from exc
         except (httpx.HTTPError, ValueError) as exc:
             raise LangfuseAPIError(f"Langfuse API request failed: {exc}") from exc

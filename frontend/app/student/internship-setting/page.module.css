@@ -629,3 +629,109 @@
 
     padding: 0 22px 22px;
 }   
+
+:global(.dark) .layout,
+:global(.dark) .main,
+:global(.dark) .page {
+    background: #0b1020;
+    color: #f8fafc;
+}
+
+:global(.dark) .pageHeader h1,
+:global(.dark) .cardHeader h2,
+:global(.dark) .avatarSection h3,
+:global(.dark) .accountBlock h3,
+:global(.dark) .preferenceRow h3,
+:global(.dark) .securityNotice strong,
+:global(.dark) .modalHeader h2,
+:global(.dark) .statePage h2 {
+    color: #f8fafc;
+}
+
+:global(.dark) .pageHeader p,
+:global(.dark) .cardHeader p,
+:global(.dark) .avatarSection p,
+:global(.dark) .accountBlock p,
+:global(.dark) .preferenceRow p,
+:global(.dark) .securityNotice p,
+:global(.dark) .fieldGroup label,
+:global(.dark) .passwordFields label,
+:global(.dark) .modalHeader p,
+:global(.dark) .statePage {
+    color: #cbd5e1;
+}
+
+:global(.dark) .settingsMenu,
+:global(.dark) .settingsCard,
+:global(.dark) .avatarSection,
+:global(.dark) .accountBlock,
+:global(.dark) .preferenceRow,
+:global(.dark) .passwordModal {
+    border-color: #334155;
+    background: #1f2937;
+    color: #f8fafc;
+}
+
+:global(.dark) .settingsMenuItem {
+    background: transparent;
+    color: #cbd5e1;
+}
+
+:global(.dark) .settingsMenuItem:hover,
+:global(.dark) .active {
+    background: #0f2f5f;
+    color: #dbeafe;
+}
+
+:global(.dark) .avatar,
+:global(.dark) .accountIcon {
+    background: #0f2f5f;
+    color: #bfdbfe;
+}
+
+:global(.dark) .inputWrapper,
+:global(.dark) .passwordFields input {
+    border-color: #475569;
+    background: #111827;
+    color: #f8fafc;
+}
+
+:global(.dark) .inputWrapper input {
+    color: #f8fafc;
+}
+
+:global(.dark) .inputWrapper input:disabled {
+    color: #cbd5e1;
+}
+
+:global(.dark) .secondaryButton,
+:global(.dark) .modalHeader > button {
+    border-color: #475569;
+    background: #111827;
+    color: #dbeafe;
+}
+
+:global(.dark) .saveButton {
+    background: #020617;
+    color: #ffffff;
+}
+
+:global(.dark) .securityNotice {
+    border-color: #1d4ed8;
+    background: #0f2f5f;
+    color: #dbeafe;
+}
+
+:global(.dark) .savedBadge,
+:global(.dark) .verifiedBadge {
+    background: #064e3b;
+    color: #d1fae5;
+}
+
+:global(.dark) .switch {
+    background: #475569;
+}
+
+:global(.dark) .switchActive {
+    background: #2563eb;
+}

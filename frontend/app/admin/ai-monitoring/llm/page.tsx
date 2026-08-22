@@ -11,7 +11,7 @@ export default function LlmUsagePage() {
   const state = useResource(() => observabilityApi.llm(range), [range]);
   const d = state.data;
   return <PageShell title="LLM Usage & Cost" description="Theo dõi generation/embedding calls, token, USD cost, model mix, P95 và lỗi provider." range={range} setRange={setRange} refreshing={state.refreshing} onRefresh={state.refresh}>
-    {state.error && <ErrorBox error={state.error}/>} {state.loading && !d ? <Loading/> : d && <>
+    {state.error && <ErrorBox error={state.error}/>} {state.loading && !d ? <Loading/> : !d ? <div className={styles.emptyBox}>Chưa có dữ liệu LLM trong khoảng thời gian này.</div> : <>
       <div className={styles.grid4}>
         <MetricCard label="LLM Calls" value={formatNumber(d.calls)} icon={Bot}/>
         <MetricCard label="Total Tokens" value={formatNumber(d.tokens)} icon={Coins}/>

@@ -653,6 +653,17 @@
     font-weight: 650;
 }
 
+.deadlineContent .deadlineStatus {
+    width: fit-content;
+    margin-top: 5px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: #fff7ed;
+    color: #c2410c;
+    font-size: 10px;
+    font-weight: 750;
+}
+
 .noDeadline {
     display: flex;
     min-height: 120px;
@@ -842,6 +853,89 @@
 
 .fullWidth {
     grid-column: 1 / -1;
+}
+
+.createFileUpload {
+    position: relative;
+    display: flex;
+    min-height: 92px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 18px;
+    border: 1px dashed #93c5fd;
+    border-radius: 12px;
+    background: #f8fbff;
+    color: #2563eb;
+    text-align: center;
+    cursor: pointer;
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        color 0.2s ease;
+}
+
+.createFileUpload:hover {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.createFileUpload span {
+    color: #1e3a8a;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.createFileUpload small {
+    color: #64748b;
+    font-size: 9px;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+.createFileUpload input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.selectedCreateFile {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    margin-top: 9px;
+    padding: 9px 10px;
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.selectedCreateFile span {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    font-size: 10px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.selectedCreateFile button {
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    color: #2563eb;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.selectedCreateFile button:hover {
+    color: #1d4ed8;
 }
 
 
@@ -1300,4 +1394,96 @@
     .spinner {
         animation: none;
     }
+}
+
+:global(.dark) .layout,
+:global(.dark) .main,
+:global(.dark) .reportPage {
+    background: #0b1020;
+    color: #f8fafc;
+}
+
+:global(.dark) .pageHeader h1,
+:global(.dark) .cardHeader h2,
+:global(.dark) .statContent strong,
+:global(.dark) .reportCard h3,
+:global(.dark) .modalHeader h2,
+:global(.dark) .reviewSection h3,
+:global(.dark) .feedbackText h3 {
+    color: #f8fafc;
+}
+
+:global(.dark) .pageHeader p,
+:global(.dark) .policyNotice p,
+:global(.dark) .statContent p,
+:global(.dark) .statContent span,
+:global(.dark) .cardHeader p,
+:global(.dark) .reportMeta,
+:global(.dark) .reportContent,
+:global(.dark) .modalHeader p,
+:global(.dark) .feedbackText p {
+    color: #cbd5e1;
+}
+
+:global(.dark) .policyNotice,
+:global(.dark) .statCard,
+:global(.dark) .reportListCard,
+:global(.dark) .progressCard,
+:global(.dark) .deadlineCard,
+:global(.dark) .aiInfoCard,
+:global(.dark) .reportCard,
+:global(.dark) .reportModal,
+:global(.dark) .aiReviewModal,
+:global(.dark) .feedbackModal,
+:global(.dark) .reviewSection {
+    border-color: #334155;
+    background: #1f2937;
+    color: #f8fafc;
+}
+
+:global(.dark) .policyNotice,
+:global(.dark) .aiDisclaimer,
+:global(.dark) .aiSupportNotice {
+    border-color: #1d4ed8;
+    background: #0f2f5f;
+    color: #dbeafe;
+}
+
+:global(.dark) .statIcon,
+:global(.dark) .typeIcon {
+    background: #0f2f5f;
+    color: #bfdbfe;
+}
+
+:global(.dark) .cardHeader,
+:global(.dark) .reportCard,
+:global(.dark) .modalHeader {
+    border-color: #334155;
+}
+
+:global(.dark) .filterSelect,
+:global(.dark) .reportForm input,
+:global(.dark) .reportForm select,
+:global(.dark) .reportForm textarea {
+    border-color: #475569;
+    background: #111827;
+    color: #f8fafc;
+}
+
+:global(.dark) .secondaryButton,
+:global(.dark) .reportActions button {
+    border-color: #475569;
+    background: #111827;
+    color: #dbeafe;
+}
+
+:global(.dark) .primaryButton,
+:global(.dark) .createButton {
+    background: #020617;
+    color: #ffffff;
+}
+
+:global(.dark) .progressTrack,
+:global(.dark) .progressBar {
+    background: #334155;
 }

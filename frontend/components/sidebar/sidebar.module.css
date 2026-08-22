@@ -29,10 +29,25 @@
 .sidebarLogo {
     display: flex;
     align-items: center;
-    gap: 12px;
+    justify-content: space-between;
 
     padding: 0 8px;
     margin-bottom: 30px;
+}
+
+.logoBrandLink {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    text-decoration: none;
+    cursor: pointer;
+
+    transition: opacity 0.2s ease;
+}
+
+.logoBrandLink:hover {
+    opacity: 0.85;
 }
 
 .sidebarLogo img {
@@ -302,4 +317,49 @@
     .sidebarNavItem:hover svg {
         transform: none;
     }
+}
+
+:global(.dark) .sidebar {
+    border-color: #334155;
+    background: #111827;
+    color: #f8fafc;
+}
+
+:global(.dark) .sidebarLogo span,
+:global(.dark) .sidebarFooterTitle {
+    color: #f8fafc;
+}
+
+:global(.dark) .navGroupTitle {
+    color: #94a3b8;
+}
+
+:global(.dark) .sidebarNavItem {
+    color: #cbd5e1;
+}
+
+:global(.dark) .sidebarNavItem:hover {
+    background: #1f2937;
+    color: #f8fafc;
+}
+
+:global(.dark) .active,
+:global(.dark) .active:hover {
+    background: #0f2f5f;
+    color: #dbeafe;
+}
+
+:global(.dark) .active svg {
+    color: #93c5fd;
+}
+
+:global(.dark) .sidebarFooterCard,
+:global(.dark) .mobileCloseButton {
+    border-color: #334155;
+    background: #1f2937;
+    color: #e5e7eb;
+}
+
+:global(.dark) .sidebarFooterDesc {
+    color: #cbd5e1;
 }

@@ -2,16 +2,12 @@ from __future__ import annotations
 
 import logging
 import time
-from functools import lru_cache
 from pathlib import Path
 from threading import Lock
 from typing import Callable
 
 from src.config import get_settings
-from src.rag.generation.answer_generator import (
-    infer_preference_intent,
-    StreamingCancelled,
-)
+from src.rag.generation.answer_generator import StreamingCancelled
 from src.rag.memory import ConversationMemory
 from src.rag.query_pipeline import (
     PipelineOptions,
@@ -39,50 +35,81 @@ RAG_SCOPES = {
 }
 
 
-@lru_cache(maxsize=1024)
-def _cached_preference_intent(
-    message: str,
-    model_name: str,
-) -> tuple[str | None, str | None]:
-    """
-    Exact two-level cache for the semantic preference classifier.
+def _normalize_preference_text(message: str) -> str:
+    """Cheap normalization for explicit preference commands only."""
+    import unicodedata
 
-    L1: in-process LRU
-    L2: Redis across workers/restarts
-
-    A cache miss still runs the exact same semantic classifier, so this changes
-    latency only and does not replace semantic behavior with keyword rules.
-    """
-    settings = get_settings()
-    payload = {
-        "message": redis_cache.normalize_query(message),
-        "model": model_name,
-    }
-
-    cached = redis_cache.get_json(
-        "preference",
-        payload,
+    lowered = " ".join((message or "").strip().lower().split())
+    ascii_text = "".join(
+        ch
+        for ch in unicodedata.normalize("NFD", lowered.replace("đ", "d"))
+        if unicodedata.category(ch) != "Mn"
     )
-    if isinstance(cached, dict):
-        intent = cached.get("intent")
-        language = cached.get("language")
-        if intent is not None and not isinstance(intent, str):
-            intent = None
-        if language not in {None, "vi", "en"}:
-            language = None
-        return intent, language
+    return f"{lowered} {ascii_text}"
 
-    result = infer_preference_intent(message)
-    redis_cache.set_json(
-        "preference",
-        payload,
-        {
-            "intent": result[0],
-            "language": result[1],
-        },
-        settings.redis_route_cache_ttl_seconds,
+
+def _detect_explicit_preference(message: str) -> str | None:
+    """Detect only clear, persistent response preferences without an LLM.
+
+    Ambiguous natural-language requests are intentionally left to the main chat
+    model, which already receives the current query and conversation history.
+    This removes a dedicated network round-trip without reducing the semantic
+    understanding of the actual answering model.
+    """
+    text = _normalize_preference_text(message)
+
+    language_en = (
+        "tra loi bang tieng anh",
+        "tra loi tieng anh",
+        "dung tieng anh",
+        "noi tieng anh",
+        "answer in english",
+        "respond in english",
+        "reply in english",
+        "use english",
     )
-    return result
+    language_vi = (
+        "tra loi bang tieng viet",
+        "tra loi tieng viet",
+        "dung tieng viet",
+        "noi tieng viet",
+        "answer in vietnamese",
+        "respond in vietnamese",
+        "reply in vietnamese",
+        "use vietnamese",
+    )
+    shorter = (
+        "tra loi ngan hon",
+        "tra loi ngan gon",
+        "noi ngan hon",
+        "viet ngan hon",
+        "ngan hon di",
+        "keep it shorter",
+        "make it shorter",
+        "be more concise",
+        "more concise",
+    )
+    simpler = (
+        "giai thich don gian hon",
+        "giai thich de hieu hon",
+        "noi de hieu hon",
+        "viet de hieu hon",
+        "don gian hon di",
+        "explain more simply",
+        "make it simpler",
+        "simpler explanation",
+        "easier to understand",
+    )
+
+    if any(phrase in text for phrase in language_en):
+        return "language_en"
+    if any(phrase in text for phrase in language_vi):
+        return "language_vi"
+    if any(phrase in text for phrase in shorter):
+        return "shorter"
+    if any(phrase in text for phrase in simpler):
+        return "simpler"
+    return None
 
 
 class ChatService:
@@ -277,11 +304,10 @@ class ChatService:
         if memory is None:
             return
 
-        settings = get_settings()
-        model_name = settings.openai_chat_model or settings.model_name
-        preference_intent, _preference_language = (
-            _cached_preference_intent(message, model_name)
-        )
+        # No dedicated semantic-preference LLM call here. Clear persistent
+        # preferences are captured locally; nuanced/ambiguous wording is left
+        # to the main answer model, which already sees the query + history.
+        preference_intent = _detect_explicit_preference(message)
 
         detected_language = detect_query_language(
             message

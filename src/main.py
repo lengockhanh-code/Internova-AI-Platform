@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -57,7 +58,7 @@ from src.api.admin_observability_routes import (
 # ============================================================
 # Chatbot / RAG
 from src.api.routes import router as chat_router
-
+from src.api.form_agent_routes import router as form_agent_router
 # Student
 from src.api.student_dashboard_routes import (
     router as student_dashboard_router,
@@ -80,6 +81,8 @@ from src.config import get_settings
 async def lifespan(app: FastAPI):
     settings = get_settings()
 
+    configure_rag_logging()
+
     print(
         f"Starting {settings.app_name} "
         f"in {settings.app_env} mode"
@@ -88,6 +91,41 @@ async def lifespan(app: FastAPI):
     yield
 
     print("Shutting down...")
+
+# ============================================================
+# RAG BASELINE LOGGING
+# ============================================================
+
+def configure_rag_logging() -> None:
+    formatter = logging.Formatter(
+        "%(asctime)s %(levelname)s %(name)s - %(message)s"
+    )
+
+    logger_levels = {
+        "src.rag.query_pipeline": logging.INFO,
+        "src.rag.evidence": logging.INFO,
+        "src.services.chat_service": logging.DEBUG,
+    }
+
+    for logger_name, level in logger_levels.items():
+        target_logger = logging.getLogger(logger_name)
+        target_logger.setLevel(level)
+
+        # Tránh thêm handler nhiều lần khi app reload/import lại.
+        if not any(
+            getattr(handler, "_internova_rag_handler", False)
+            for handler in target_logger.handlers
+        ):
+            handler = logging.StreamHandler()
+            handler.setLevel(level)
+            handler.setFormatter(formatter)
+            handler._internova_rag_handler = True  # type: ignore[attr-defined]
+
+            target_logger.addHandler(handler)
+
+        # Không truyền tiếp lên root logger để tránh log bị in 2 lần.
+        target_logger.propagate = False
+
 
 
 # ============================================================
@@ -234,6 +272,11 @@ app.include_router(
 
 app.include_router(
     admin_observability_router,
+)
+
+app.include_router(
+    form_agent_router,
+    prefix="/api/v1",
 )
 
 # ============================================================

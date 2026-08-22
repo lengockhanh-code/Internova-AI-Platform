@@ -19,6 +19,22 @@ import {
 } from "lucide-react";
 
 import styles from "./sidebar.module.css";
+import { useSettings } from "@/context/settings-provider";
+
+const translationMap: Record<string, string> = {
+    "TỔNG QUAN": "sidebar.overview",
+    "THỰC TẬP": "sidebar.internship",
+    "HỖ TRỢ AI": "sidebar.ai_support",
+    "CÁ NHÂN": "sidebar.personal",
+    "Dashboard": "sidebar.dashboard",
+    "Đăng ký thực tập": "sidebar.register",
+    "Hồ sơ thực tập": "sidebar.profile",
+    "Báo cáo": "sidebar.report",
+    "Checklist": "sidebar.checklist",
+    "Hỏi đáp AI": "sidebar.chatbot",
+    "Lịch & Thông báo": "sidebar.notifications",
+    "Cài đặt": "sidebar.settings"
+};
 
 const navGroups = [
     {
@@ -85,6 +101,7 @@ const navGroups = [
 
 export default function Sidebar() {
     const pathname = usePathname();
+    const { t } = useSettings();
 
     const [mobileOpen, setMobileOpen] =
         useState(false);
@@ -126,7 +143,8 @@ export default function Sidebar() {
                     mobileOpen
                         ? styles.mobileOpen
                         : ""
-                }`}
+                } notranslate`}
+                translate="no"
             >
                 <div>
                     <div
@@ -134,17 +152,29 @@ export default function Sidebar() {
                             styles.sidebarLogo
                         }
                     >
-                        <Image
-                            src="/vinuni-internship-logo.svg"
-                            alt="Internova for VinUni logo"
-                            width={40}
-                            height={40}
-                            priority
-                        />
+                        <Link
+                            href="/student/dashboard"
+                            className={
+                                styles.logoBrandLink
+                            }
+                            onClick={() =>
+                                setMobileOpen(
+                                    false
+                                )
+                            }
+                        >
+                            <Image
+                                src="/vinuni-internship-logo.svg"
+                                alt="Internova for VinUni logo"
+                                width={40}
+                                height={40}
+                                priority
+                            />
 
-                        <span>
-                            Internova
-                        </span>
+                            <span>
+                                Internova
+                            </span>
+                        </Link>
 
                         <button
                             aria-label="Đóng menu"
@@ -183,7 +213,7 @@ export default function Sidebar() {
                                         }
                                     >
                                         {
-                                            group.title
+                                            t(translationMap[group.title] || group.title)
                                         }
                                     </p>
 
@@ -229,7 +259,7 @@ export default function Sidebar() {
 
                                                     <span>
                                                         {
-                                                            label
+                                                            t(translationMap[label] || label)
                                                         }
                                                     </span>
                                                 </Link>
@@ -267,8 +297,7 @@ export default function Sidebar() {
                             styles.sidebarFooterDesc
                         }
                     >
-                        Nền tảng hỗ trợ thực tập
-                        sinh viên
+                        {t("sidebar.footer_desc")}
                     </p>
                 </div>
             </aside>

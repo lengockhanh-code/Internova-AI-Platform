@@ -17,7 +17,6 @@ import {
     Pencil,
     Plus,
     Send,
-    Sparkles,
     Trash2,
     UploadCloud,
     X,
@@ -62,19 +61,6 @@ type ReportStatus =
     | "UNDER_REVIEW"
     | "REVISION_REQUIRED"
     | "APPROVED";
-
-
-type AiReviewResult = {
-    completeness_score: number;
-
-    summary: string;
-
-    strengths: string[];
-
-    issues: string[];
-
-    suggestions: string[];
-};
 
 
 type ReportItem = {
@@ -139,6 +125,8 @@ type ReportsResponse = {
         week_number: number | null;
 
         due_at: string;
+
+        deadline_status: "OVERDUE" | "DUE_NOW" | "UPCOMING";
     } | null;
 };
 
@@ -230,6 +218,43 @@ function formatDate(
     ).format(
         new Date(value)
     );
+}
+
+
+function getDeadlineLabel(
+    value: string,
+    now: number
+) {
+    const dueAt = new Date(value).getTime();
+    const diffMs = dueAt - now;
+    const absMinutes = Math.max(
+        0,
+        Math.ceil(Math.abs(diffMs) / 60000)
+    );
+    const absHours = Math.ceil(absMinutes / 60);
+    const absDays = Math.ceil(absHours / 24);
+
+    if (diffMs <= 0) {
+        if (absMinutes < 60) {
+            return `Đến hạn ${absMinutes || 1} phút trước`;
+        }
+
+        if (absHours < 24) {
+            return `Đến hạn ${absHours} giờ trước`;
+        }
+
+        return `Quá hạn ${absDays} ngày`;
+    }
+
+    if (absMinutes < 60) {
+        return `Còn ${absMinutes} phút`;
+    }
+
+    if (absHours < 24) {
+        return `Còn ${absHours} giờ`;
+    }
+
+    return `Còn ${absDays} ngày`;
 }
 
 
@@ -347,6 +372,15 @@ export default function ReportsPage() {
 
 
     const [
+        selectedReportFile,
+        setSelectedReportFile,
+    ] =
+        useState<File | null>(
+            null
+        );
+
+
+    const [
         uploadReport,
         setUploadReport,
     ] =
@@ -383,52 +417,11 @@ export default function ReportsPage() {
 
 
     const [
-        reviewingId,
-        setReviewingId,
-    ] =
-        useState<
-            number |
-            null
-        >(
-            null
-        );
-
-
-    const [
         submittingId,
         setSubmittingId,
     ] =
         useState<
             number |
-            null
-        >(
-            null
-        );
-
-
-    /*
-     * AI REVIEW CHỈ GIỮ TRONG STATE.
-     * KHÔNG LƯU DATABASE.
-     */
-
-    const [
-        aiReviewReport,
-        setAiReviewReport,
-    ] =
-        useState<
-            ReportItem |
-            null
-        >(
-            null
-        );
-
-
-    const [
-        aiReviewResult,
-        setAiReviewResult,
-    ] =
-        useState<
-            AiReviewResult |
             null
         >(
             null
@@ -576,6 +569,85 @@ export default function ReportsPage() {
     );
 
 
+    const [
+        nowTick,
+        setNowTick,
+    ] =
+        useState(
+            () => Date.now()
+        );
+
+
+    useEffect(
+        () => {
+            const timer = window.setInterval(
+                () => {
+                    setNowTick(
+                        Date.now()
+                    );
+
+                    void loadReports();
+                },
+                60000
+            );
+
+            return () => window.clearInterval(
+                timer
+            );
+        },
+        []
+    );
+
+
+    const computedStatistics =
+        useMemo(
+            () => {
+                const reports = data?.reports ?? [];
+                const total = reports.length;
+                const submittedStatuses: ReportStatus[] = [
+                    "SUBMITTED",
+                    "LATE",
+                    "UNDER_REVIEW",
+                    "REVISION_REQUIRED",
+                    "APPROVED",
+                ];
+                const underReviewStatuses: ReportStatus[] = [
+                    "SUBMITTED",
+                    "LATE",
+                    "UNDER_REVIEW",
+                ];
+                const submitted = reports.filter(
+                    (report) => submittedStatuses.includes(
+                        report.status
+                    )
+                ).length;
+                const underReview = reports.filter(
+                    (report) => underReviewStatuses.includes(
+                        report.status
+                    )
+                ).length;
+                const approved = reports.filter(
+                    (report) => report.status === "APPROVED"
+                ).length;
+
+                return {
+                    total,
+                    submitted,
+                    under_review: underReview,
+                    approved,
+                    progress: total > 0
+                        ? Math.round(
+                            submitted / total * 100
+                        )
+                        : 0,
+                };
+            },
+            [
+                data?.reports,
+            ]
+        );
+
+
     /* ========================================================
        FILTER
     ======================================================== */
@@ -620,6 +692,10 @@ export default function ReportsPage() {
             null
         );
 
+        setSelectedReportFile(
+            null
+        );
+
         setForm(
             EMPTY_FORM
         );
@@ -652,6 +728,10 @@ export default function ReportsPage() {
 
         setEditingReport(
             report
+        );
+
+        setSelectedReportFile(
+            null
         );
 
 
@@ -705,6 +785,57 @@ export default function ReportsPage() {
                 [name]:
                     value,
             })
+        );
+    }
+
+
+    function handleCreateFileChange(
+        event: ChangeEvent<HTMLInputElement>
+    ) {
+        const file =
+            event.target.files?.[0]
+            ?? null;
+
+
+        if (!file) {
+            setSelectedReportFile(
+                null
+            );
+
+            return;
+        }
+
+
+        if (
+            file.size >
+            10 *
+            1024 *
+            1024
+        ) {
+            alert(
+                "File khong duoc vuot qua 10MB."
+            );
+
+            event.target.value =
+                "";
+
+            setSelectedReportFile(
+                null
+            );
+
+            return;
+        }
+
+
+        setSelectedReportFile(
+            file
+        );
+    }
+
+
+    function clearCreateFile() {
+        setSelectedReportFile(
+            null
         );
     }
 
@@ -796,6 +927,57 @@ export default function ReportsPage() {
                     );
 
             } else {
+                const formData =
+                    new FormData();
+
+
+                formData.append(
+                    "title",
+                    form.title.trim()
+                );
+
+
+                formData.append(
+                    "report_type",
+                    form.report_type
+                );
+
+
+                if (
+                    form.report_type ===
+                    "WEEKLY"
+                ) {
+                    formData.append(
+                        "week_number",
+                        String(
+                            Number(
+                                form.week_number
+                            )
+                        )
+                    );
+                }
+
+
+                const content =
+                    form.content.trim();
+
+
+                if (content) {
+                    formData.append(
+                        "content",
+                        content
+                    );
+                }
+
+
+                if (selectedReportFile) {
+                    formData.append(
+                        "file",
+                        selectedReportFile
+                    );
+                }
+
+
                 response =
                     await fetch(
                         `${API_URL}/api/v1/student/reports`,
@@ -804,36 +986,12 @@ export default function ReportsPage() {
                                 "POST",
 
                             headers: {
-                                "Content-Type":
-                                    "application/json",
-
                                 Authorization:
                                     `Bearer ${token}`,
                             },
 
                             body:
-                                JSON.stringify({
-                                    title:
-                                        form.title.trim(),
-
-                                    report_type:
-                                        form.report_type,
-
-                                    week_number:
-                                        (
-                                            form.report_type ===
-                                                "WEEKLY"
-                                                ? Number(
-                                                    form.week_number
-                                                )
-                                                : null
-                                        ),
-
-                                    content:
-                                        form.content.trim()
-                                        ||
-                                        null,
-                                }),
+                                formData,
                         }
                     );
             }
@@ -853,6 +1011,10 @@ export default function ReportsPage() {
 
             setReportModalOpen(
                 false
+            );
+
+            setSelectedReportFile(
+                null
             );
 
 
@@ -1331,109 +1493,6 @@ export default function ReportsPage() {
 
 
     /* ========================================================
-       AI REVIEW
-       CHỈ TRẢ RESULT TẠM THỜI
-    ======================================================== */
-
-    async function reviewWithAi(
-        report: ReportItem
-    ) {
-        const token =
-            getToken();
-
-
-        if (!token) {
-            redirectLogin();
-
-            return;
-        }
-
-
-        try {
-            setReviewingId(
-                report.id
-            );
-
-
-            setAiReviewReport(
-                null
-            );
-
-
-            setAiReviewResult(
-                null
-            );
-
-
-            const response =
-                await fetch(
-                    `${API_URL}/api/v1/student/reports/${report.id}/ai-review`,
-                    {
-                        method:
-                            "POST",
-
-                        headers: {
-                            Authorization:
-                                `Bearer ${token}`,
-                        },
-                    }
-                );
-
-
-            const payload =
-                await response.json();
-
-
-            if (!response.ok) {
-                throw new Error(
-                    payload.detail ??
-                    "AI Review thất bại."
-                );
-            }
-
-
-            /*
-             * CHỈ GIỮ TRONG STATE.
-             * KHÔNG SAVE DATABASE.
-             */
-
-            setAiReviewResult(
-                payload
-            );
-
-
-            setAiReviewReport(
-                report
-            );
-
-
-        } catch (err) {
-            alert(
-                err instanceof Error
-                    ? err.message
-                    : "AI Review thất bại."
-            );
-
-        } finally {
-            setReviewingId(
-                null
-            );
-        }
-    }
-
-
-    function closeAiReview() {
-        setAiReviewReport(
-            null
-        );
-
-        setAiReviewResult(
-            null
-        );
-    }
-
-
-    /* ========================================================
        SUBMIT
     ======================================================== */
 
@@ -1575,7 +1634,7 @@ export default function ReportsPage() {
                 "Tổng báo cáo",
 
             value:
-                data.statistics.total,
+                computedStatistics.total,
 
             description:
                 "Trong kỳ thực tập",
@@ -1589,7 +1648,7 @@ export default function ReportsPage() {
                 "Đã nộp",
 
             value:
-                data.statistics.submitted,
+                computedStatistics.submitted,
 
             description:
                 "Đã gửi Faculty Mentor",
@@ -1603,7 +1662,7 @@ export default function ReportsPage() {
                 "Đang xem xét",
 
             value:
-                data.statistics.under_review,
+                computedStatistics.under_review,
 
             description:
                 "Chờ phản hồi",
@@ -1617,7 +1676,7 @@ export default function ReportsPage() {
                 "Tiến độ",
 
             value:
-                `${data.statistics.progress}%`,
+                `${computedStatistics.progress}%`,
 
             description:
                 "Theo các báo cáo đã tạo",
@@ -1942,11 +2001,6 @@ export default function ReportsPage() {
                                                     report
                                                 }
 
-                                                reviewing={
-                                                    reviewingId ===
-                                                    report.id
-                                                }
-
                                                 uploading={
                                                     uploadingId ===
                                                     report.id
@@ -1990,12 +2044,6 @@ export default function ReportsPage() {
                                                         report.file_name ??
                                                         "report",
                                                         true
-                                                    )
-                                                }
-
-                                                onAiReview={() =>
-                                                    void reviewWithAi(
-                                                        report
                                                     )
                                                 }
 
@@ -2075,8 +2123,7 @@ export default function ReportsPage() {
                                     }
                                 >
                                     {
-                                        data.statistics
-                                            .progress
+                                        computedStatistics.progress
                                     }
                                     %
                                 </strong>
@@ -2093,7 +2140,7 @@ export default function ReportsPage() {
                                         }
                                         style={{
                                             width:
-                                                `${data.statistics.progress}%`,
+                                                `${computedStatistics.progress}%`,
                                         }}
                                     />
                                 </div>
@@ -2110,12 +2157,12 @@ export default function ReportsPage() {
 
                                     <strong>
                                         {
-                                            data.statistics
+                                            computedStatistics
                                                 .submitted
                                         }
                                         /
                                         {
-                                            data.statistics
+                                            computedStatistics
                                                 .total
                                         }
                                     </strong>
@@ -2133,7 +2180,7 @@ export default function ReportsPage() {
 
                                     <strong>
                                         {
-                                            data.statistics
+                                            computedStatistics
                                                 .approved
                                         }
                                     </strong>
@@ -2188,6 +2235,18 @@ export default function ReportsPage() {
                                                     .due_at
                                             )}
                                         </p>
+
+                                        <span
+                                            className={
+                                                styles.deadlineStatus
+                                            }
+                                        >
+                                            {getDeadlineLabel(
+                                                data.next_deadline
+                                                    .due_at,
+                                                nowTick
+                                            )}
+                                        </span>
                                     </div>
 
                                 ) : (
@@ -2207,30 +2266,6 @@ export default function ReportsPage() {
                                         </p>
                                     </div>
                                 )}
-                            </article>
-
-
-                            <article
-                                className={
-                                    styles.aiInfoCard
-                                }
-                            >
-                                <Sparkles
-                                    size={21}
-                                />
-
-                                <h2>
-                                    AI Review
-                                </h2>
-
-
-                                <p>
-                                    AI chỉ review khi bạn
-                                    bấm yêu cầu. Kết quả
-                                    không được lưu vào
-                                    database và không thay
-                                    Faculty Mentor đánh giá.
-                                </p>
                             </article>
                         </aside>
                     </section>
@@ -2259,57 +2294,37 @@ export default function ReportsPage() {
                         saving
                     }
 
+                    selectedFile={
+                        selectedReportFile
+                    }
+
                     onChange={
                         handleFormChange
+                    }
+
+                    onFileChange={
+                        handleCreateFileChange
+                    }
+
+                    onClearFile={
+                        clearCreateFile
                     }
 
                     onSubmit={
                         saveReport
                     }
 
-                    onClose={() =>
+                    onClose={() => {
                         setReportModalOpen(
                             false
-                        )
-                    }
+                        );
+
+                        setSelectedReportFile(
+                            null
+                        );
+                    }}
                 />
             )}
-
-
-            {/* ==============================================
-                AI REVIEW RESULT
-            ============================================== */}
-
-            {aiReviewReport &&
-                aiReviewResult && (
-
-                    <AiReviewModal
-                        report={
-                            aiReviewReport
-                        }
-
-                        review={
-                            aiReviewResult
-                        }
-
-                        onClose={
-                            closeAiReview
-                        }
-
-                        onEdit={() => {
-                            const report =
-                                aiReviewReport;
-
-
-                            closeAiReview();
-
-
-                            openEditReport(
-                                report
-                            );
-                        }}
-                    />
-                )}
 
 
             {/* ==============================================
@@ -2341,7 +2356,6 @@ export default function ReportsPage() {
 
 function ReportCard({
     report,
-    reviewing,
     uploading,
     submitting,
 
@@ -2350,7 +2364,6 @@ function ReportCard({
     onUpload,
     onView,
     onDownload,
-    onAiReview,
     onCompletionLetter,
     onViewCompletionLetter,
     onDownloadCompletionLetter,
@@ -2358,8 +2371,6 @@ function ReportCard({
     onSubmit,
 }: {
     report: ReportItem;
-
-    reviewing: boolean;
 
     uploading: boolean;
 
@@ -2374,8 +2385,6 @@ function ReportCard({
     onView: () => void;
 
     onDownload: () => void;
-
-    onAiReview: () => void;
 
     onCompletionLetter: () => void;
 
@@ -2695,40 +2704,6 @@ function ReportCard({
                 )}
 
 
-                {editable && (
-
-                    <button
-                        type="button"
-                        title="AI Review"
-                        className={
-                            styles.aiAction
-                        }
-                        disabled={
-                            reviewing
-                        }
-                        onClick={
-                            onAiReview
-                        }
-                    >
-                        {reviewing ? (
-
-                            <LoaderCircle
-                                size={16}
-                                className={
-                                    styles.spinner
-                                }
-                            />
-
-                        ) : (
-
-                            <Sparkles
-                                size={16}
-                            />
-                        )}
-                    </button>
-                )}
-
-
                 {report.lecturer_feedback && (
 
                     <button
@@ -2819,7 +2794,10 @@ function ReportModal({
     form,
     editing,
     saving,
+    selectedFile,
     onChange,
+    onFileChange,
+    onClearFile,
     onSubmit,
     onClose,
 }: {
@@ -2829,6 +2807,8 @@ function ReportModal({
 
     saving: boolean;
 
+    selectedFile: File | null;
+
     onChange: (
         event:
             ChangeEvent<
@@ -2837,6 +2817,13 @@ function ReportModal({
                 HTMLSelectElement
             >
     ) => void;
+
+    onFileChange: (
+        event:
+            ChangeEvent<HTMLInputElement>
+    ) => void;
+
+    onClearFile: () => void;
 
     onSubmit: (
         event:
@@ -3009,33 +2996,77 @@ function ReportModal({
                             }
                         />
                     </label>
+                    {!editing && (
 
+                        <div
+                            className={
+                                styles.fullWidth
+                            }
+                        >
+                            <label
+                                className={
+                                    styles.createFileUpload
+                                }
+                            >
+                                <UploadCloud
+                                    size={19}
+                                />
 
-                    <div
-                        className={
-                            styles.aiSupportNotice
-                        }
-                    >
-                        <Sparkles
-                            size={18}
-                        />
+                                <span>
+                                    Tai form bao cao len
+                                </span>
 
-                        <div>
-                            <strong>
-                                AI Review chỉ hỗ trợ
-                            </strong>
+                                <small>
+                                    Chon file PDF hoac DOCX,
+                                    toi da 10MB.
+                                </small>
 
+                                <input
+                                    type="file"
+                                    accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                    onChange={
+                                        onFileChange
+                                    }
+                                />
+                            </label>
 
-                            <p>
-                                Sau khi lưu bản nháp,
-                                bạn có thể dùng AI
-                                Review để kiểm tra nội
-                                dung. Kết quả AI chỉ
-                                tồn tại trong lần review
-                                đó và không lưu DB.
-                            </p>
+                            {selectedFile && (
+
+                                <div
+                                    className={
+                                        styles.selectedCreateFile
+                                    }
+                                >
+                                    <FileText
+                                        size={15}
+                                    />
+
+                                    <span>
+                                        {
+                                            selectedFile.name
+                                        }
+
+                                        {" - "}
+
+                                        {
+                                            formatFileSize(
+                                                selectedFile.size
+                                            )
+                                        }
+                                    </span>
+
+                                    <button
+                                        type="button"
+                                        onClick={
+                                            onClearFile
+                                        }
+                                    >
+                                        Bo file
+                                    </button>
+                                </div>
+                            )}
                         </div>
-                    </div>
+                    )}
                 </div>
 
 
@@ -3139,282 +3170,6 @@ function getReportPlaceholder(
                 + "điều bạn sẽ làm khác trong tương lai..."
             );
     }
-}
-
-
-/* ============================================================
-   AI REVIEW MODAL
-============================================================ */
-
-function AiReviewModal({
-    report,
-    review,
-    onClose,
-    onEdit,
-}: {
-    report: ReportItem;
-
-    review: AiReviewResult;
-
-    onClose: () => void;
-
-    onEdit: () => void;
-}) {
-    return (
-        <div
-            className={
-                styles.modalOverlay
-            }
-            onMouseDown={
-                onClose
-            }
-        >
-            <section
-                className={
-                    styles.aiReviewModal
-                }
-                onMouseDown={
-                    (
-                        event
-                    ) =>
-                        event.stopPropagation()
-                }
-            >
-                <div
-                    className={
-                        styles.modalHeader
-                    }
-                >
-                    <div>
-                        <h2>
-                            AI Review
-                        </h2>
-
-                        <p>
-                            {report.title}
-                        </p>
-                    </div>
-
-
-                    <button
-                        type="button"
-                        aria-label="Đóng"
-                        onClick={
-                            onClose
-                        }
-                    >
-                        <X
-                            size={20}
-                        />
-                    </button>
-                </div>
-
-
-                <div
-                    className={
-                        styles.aiReviewBody
-                    }
-                >
-                    <div
-                        className={
-                            styles.aiDisclaimer
-                        }
-                    >
-                        <Sparkles
-                            size={18}
-                        />
-
-                        <div>
-                            <strong>
-                                Kết quả tạm thời
-                            </strong>
-
-                            <p>
-                                Kết quả này chỉ tồn tại
-                                trong lần review hiện
-                                tại. Khi đóng cửa sổ,
-                                frontend sẽ xóa kết quả
-                                khỏi state và database
-                                không lưu gì.
-                            </p>
-                        </div>
-                    </div>
-
-
-                    <div
-                        className={
-                            styles.aiScore
-                        }
-                    >
-                        <div>
-                            <span>
-                                Mức độ hoàn thiện
-                            </span>
-
-                            <p>
-                                Không phải điểm học tập
-                            </p>
-                        </div>
-
-
-                        <strong>
-                            {
-                                review
-                                    .completeness_score
-                            }
-                            /100
-                        </strong>
-                    </div>
-
-
-                    <ReviewSection
-                        title="Nhận xét tổng quan"
-                        items={[
-                            review.summary
-                        ]}
-                        type="summary"
-                    />
-
-
-                    <ReviewSection
-                        title="Điểm tốt"
-                        items={
-                            review.strengths
-                        }
-                        type="good"
-                    />
-
-
-                    <ReviewSection
-                        title="Phần cần cải thiện"
-                        items={
-                            review.issues
-                        }
-                        type="warning"
-                    />
-
-
-                    <ReviewSection
-                        title="Gợi ý chỉnh sửa"
-                        items={
-                            review.suggestions
-                        }
-                        type="suggestion"
-                    />
-                </div>
-
-
-                <div
-                    className={
-                        styles.modalActions
-                    }
-                >
-                    <button
-                        type="button"
-                        className={
-                            styles.secondaryButton
-                        }
-                        onClick={
-                            onClose
-                        }
-                    >
-                        Đóng
-                    </button>
-
-
-                    <button
-                        type="button"
-                        className={
-                            styles.primaryButton
-                        }
-                        onClick={
-                            onEdit
-                        }
-                    >
-                        <Pencil
-                            size={16}
-                        />
-
-                        Quay lại chỉnh sửa
-                    </button>
-                </div>
-            </section>
-        </div>
-    );
-}
-
-
-/* ============================================================
-   REVIEW SECTION
-============================================================ */
-
-function ReviewSection({
-    title,
-    items,
-    type,
-}: {
-    title: string;
-
-    items: string[];
-
-    type:
-    | "summary"
-    | "good"
-    | "warning"
-    | "suggestion";
-}) {
-    if (
-        items.length ===
-        0
-    ) {
-        return null;
-    }
-
-
-    const className =
-        type ===
-            "good"
-            ? styles.reviewGood
-
-            : type ===
-                "warning"
-                ? styles.reviewWarning
-
-                : type ===
-                    "suggestion"
-                    ? styles.reviewSuggestion
-
-                    : styles.reviewSummary;
-
-
-    return (
-        <section
-            className={`${styles.reviewSection} ${className}`}
-        >
-            <h3>
-                {title}
-            </h3>
-
-
-            <ul>
-                {items.map(
-                    (
-                        item,
-                        index
-                    ) => (
-
-                        <li
-                            key={
-                                `${type}-${index}`
-                            }
-                        >
-                            {item}
-                        </li>
-                    )
-                )}
-            </ul>
-        </section>
-    );
 }
 
 

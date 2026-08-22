@@ -194,14 +194,23 @@ export default function RegisterPage() {
             return "Vui lòng nhập tên tài khoản email.";
         }
 
+        // Gmail-style local part:
+        // - Chỉ cho phép chữ cái, số và dấu chấm
+        // - Không được bắt đầu/kết thúc bằng dấu chấm
+        // - Không được có hai dấu chấm liên tiếp
+        const gmailLocalPartRegex =
+            /^(?!\.)(?!.*\.\.)(?!.*\.$)[a-zA-Z0-9.]+$/;
+
         if (
-            !/^[a-zA-Z0-9._-]+$/.test(
+            !gmailLocalPartRegex.test(
                 email
             )
         ) {
             return (
-                "Tên tài khoản email chỉ được chứa "
-                + "chữ, số, dấu chấm, gạch dưới hoặc gạch ngang."
+                "Tên tài khoản email không đúng định dạng. "
+                + "Chỉ được dùng chữ, số và dấu chấm; "
+                + "không được bắt đầu/kết thúc bằng dấu chấm "
+                + "hoặc có hai dấu chấm liên tiếp."
             );
         }
 

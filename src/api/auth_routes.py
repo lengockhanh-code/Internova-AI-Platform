@@ -4,41 +4,32 @@ from fastapi import (
     HTTPException,
     status,
 )
-
 from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
-
-from src.security.auth import (
-    get_current_user,
-)
-
 from src.models.auth import (
     AuthResponse,
+    ChangePasswordRequest,
+    ChangePasswordResponse,
     LoginRequest,
     RegisterRequest,
 )
-
+from src.security.auth import get_current_user
 from src.services.auth_service import (
     EmailAlreadyExistsError,
     InvalidCredentialsError,
     InvalidVinuniEmailError,
     StudentCodeAlreadyExistsError,
     StudentCodeNotFoundError,
+    change_user_password,
     login_user,
     register_user,
 )
-
 
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],
 )
-
-
-# ============================================================
-# REGISTER
-# ============================================================
 
 
 @router.post(
@@ -59,43 +50,31 @@ def register(
             email=str(payload.email),
             password=payload.password,
         )
-
     except EmailAlreadyExistsError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
-
     except StudentCodeAlreadyExistsError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
-
     except StudentCodeNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
-
     except InvalidVinuniEmailError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
-
     except InvalidCredentialsError as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=str(exc),
         ) from exc
-
-
-# ============================================================
-# LOGIN
-# STUDENT + LECTURER
-# Backend tự xác định role.
-# ============================================================
 
 
 @router.post(
@@ -111,8 +90,8 @@ def login(
             db=db,
             email=str(payload.email),
             password=payload.password,
+            requested_role=payload.role,
         )
-
     except InvalidCredentialsError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -120,30 +99,38 @@ def login(
         ) from exc
 
 
-# ============================================================
-# GET CURRENT USER
-# ============================================================
-
-
 @router.get("/me")
 def get_me(
-    current_user=Depends(
-        get_current_user
-    ),
+    current_user=Depends(get_current_user),
 ):
     return {
-        "id":
-            current_user["id"],
-
-        "email":
-            current_user["email"],
-
-        "fullName":
-            current_user["full_name"],
-
-        "role":
-            current_user["role"],
-
-        "avatarUrl":
-            current_user["avatar_url"],
+        "id": current_user["id"],
+        "email": current_user["email"],
+        "fullName": current_user["full_name"],
+        "role": current_user["role"],
+        "avatarUrl": current_user["avatar_url"],
     }
+
+
+@router.post(
+    "/change-password",
+    response_model=ChangePasswordResponse,
+)
+def change_password(
+    payload: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    try:
+        return change_user_password(
+            db=db,
+            user_id=current_user["id"],
+            current_password=payload.currentPassword,
+            new_password=payload.newPassword,
+            confirm_password=payload.confirmPassword,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc

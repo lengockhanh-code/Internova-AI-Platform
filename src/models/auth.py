@@ -70,7 +70,7 @@ class RegisterRequest(BaseModel):
 
 # ============================================================
 # LOGIN
-# Không cho client gửi role.
+# role is optional so the dedicated admin portal can request ADMIN login.
 # ============================================================
 
 
@@ -82,6 +82,11 @@ class LoginRequest(BaseModel):
         max_length=128,
     )
 
+    role: Literal[
+        "STUDENT",
+        "LECTURER",
+        "ADMIN",
+    ] | None = None
 
 # ============================================================
 # RESPONSE
@@ -98,8 +103,8 @@ class AuthUserResponse(BaseModel):
     role: Literal[
         "STUDENT",
         "LECTURER",
+        "ADMIN",
     ]
-
     avatarUrl: str | None = None
 
 
@@ -109,3 +114,31 @@ class AuthResponse(BaseModel):
     tokenType: str = "bearer"
 
     user: AuthUserResponse
+
+
+
+# ============================================================
+# CHANGE PASSWORD
+# ============================================================
+
+
+class ChangePasswordRequest(BaseModel):
+    currentPassword: str = Field(
+        min_length=1,
+        max_length=128,
+    )
+
+    newPassword: str = Field(
+        min_length=8,
+        max_length=128,
+    )
+
+    confirmPassword: str = Field(
+        min_length=8,
+        max_length=128,
+    )
+
+
+class ChangePasswordResponse(BaseModel):
+    success: bool
+    message: str

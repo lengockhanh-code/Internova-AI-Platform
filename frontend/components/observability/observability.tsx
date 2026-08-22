@@ -1,13 +1,13 @@
 "use client";
 
 import {
-  AlertTriangle, CheckCircle2, Clock3, Database,
+  Activity, AlertTriangle, CheckCircle2, Clock3, Database,
   Gauge, RefreshCw, ShieldCheck, Sparkles, Users, Workflow,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import AdminSidebar from "@/components/admin-sidebar/admin-sidebar";
-import { formatMs } from "@/lib/adminObservability";
+
+import { ApiError, formatMs } from "@/lib/adminObservability";
 import type { TimeRange } from "@/lib/adminObservability";
 import styles from "./observability.module.css";
 
@@ -25,7 +25,15 @@ export function useResource<T>(loader: () => Promise<T>, deps: unknown[] = [], r
       setData(await loader());
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const isRateLimited = e instanceof ApiError && e.rateLimited;
+
+      if (isRateLimited) {
+        const retryAfter = Math.max(1, e.retryAfterSeconds ?? 30);
+        window.setTimeout(() => void load(false), retryAfter * 1000);
+        setError(null);
+      } else {
+        setError(e instanceof Error ? e.message : String(e));
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -50,29 +58,26 @@ export function PageShell({
   status?: "healthy" | "warning" | "error";
 }) {
   return (
-    <div className={styles.layout}>
-      <AdminSidebar />
-      <main className={styles.main}>
-        <header className={styles.header}>
-          <div>
-            <h1>{title}</h1>
-            <p>{description}</p>
-          </div>
-          <div className={styles.actions}>
-            {status && (
-              <span className={`${styles.statusPill} ${status === "healthy" ? styles.good : status === "error" ? styles.bad : ""}`}>
-                {status === "healthy" ? <CheckCircle2 size={15}/> : <AlertTriangle size={15}/>} {status === "healthy" ? "Healthy" : status === "error" ? "Error" : "Degraded"}
-              </span>
-            )}
-            <select className={styles.rangeSelect} value={range} onChange={e => setRange(e.target.value as TimeRange)}>
-              <option value="1h">1 giờ</option><option value="24h">24 giờ</option><option value="7d">7 ngày</option><option value="30d">30 ngày</option>
-            </select>
-            {onRefresh && <button className={styles.button} onClick={onRefresh} disabled={refreshing} title="Refresh"><RefreshCw size={16} className={refreshing ? styles.spin : ""}/></button>}
-          </div>
-        </header>
-        {children}
-      </main>
-    </div>
+    <main className={styles.main}>
+      <header className={styles.header}>
+        <div>
+          <h1>{title}</h1>
+          <p>{description}</p>
+        </div>
+        <div className={styles.actions}>
+          {status && (
+            <span className={`${styles.statusPill} ${status === "healthy" ? styles.good : status === "error" ? styles.bad : ""}`}>
+              {status === "healthy" ? <CheckCircle2 size={15}/> : <AlertTriangle size={15}/>} {status === "healthy" ? "Healthy" : status === "error" ? "Error" : "Degraded"}
+            </span>
+          )}
+          <select className={styles.rangeSelect} value={range} onChange={e => setRange(e.target.value as TimeRange)}>
+            <option value="1h">1 giờ</option><option value="24h">24 giờ</option><option value="yesterday">Hôm qua</option><option value="2d">2 ngày</option><option value="3d">3 ngày</option><option value="7d">7 ngày</option><option value="14d">14 ngày</option><option value="30d">30 ngày</option>
+          </select>
+          {onRefresh && <button className={styles.button} onClick={onRefresh} disabled={refreshing} title="Refresh"><RefreshCw size={16} className={refreshing ? styles.spin : ""}/></button>}
+        </div>
+      </header>
+      {children}
+    </main>
   );
 }
 
@@ -132,4 +137,4 @@ export function Empty({ text }: {text:string}) { return <div className={styles.e
 export function ErrorBox({ error }: {error:string}) { return <div className={styles.errorBox}><strong>Không tải được dữ liệu.</strong> {error}</div>; }
 export function Loading() { return <div className={styles.loadingBox}><span className={styles.loadingSpinner}/><span>Đang tải dữ liệu…</span></div>; }
 
-export const icons = { AlertTriangle, Clock3, Database, ShieldCheck, Sparkles, Users, Workflow };
+export const icons = { Activity, AlertTriangle, Clock3, Database, ShieldCheck, Sparkles, Users, Workflow };

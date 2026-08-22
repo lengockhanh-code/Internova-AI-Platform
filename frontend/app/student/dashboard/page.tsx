@@ -2,6 +2,7 @@
 
 import Header from "@/components/header/header";
 import Sidebar from "@/components/sidebar/sidebar";
+import { useSettings } from "@/context/settings-provider";
 
 import {
     MessageSquare,
@@ -85,39 +86,46 @@ type StudentDashboardData = {
     };
 
     internship:
-    Internship | null;
+        Internship | null;
 
     deadlines:
-    DashboardDeadline[];
+        DashboardDeadline[];
 
     weeklyProgress: {
         weekNumber:
-        number | null;
+            number | null;
 
         startDate:
-        string | null;
+            string | null;
 
         endDate:
-        string | null;
+            string | null;
 
         progressPercentage:
-        number;
+            number;
 
         tasks:
-        WeeklyTask[];
+            WeeklyTask[];
     };
 };
 
 
+/* =========================================================
+   DATE FORMATTERS
+   ========================================================= */
+
 function formatDate(
-    value: string | null
+    value: string | null,
+    locale: string
 ) {
     if (!value) {
-        return "Chưa cập nhật";
+        return locale === "vi"
+            ? "Chưa cập nhật"
+            : "Not updated yet";
     }
 
     return new Intl.DateTimeFormat(
-        "vi-VN",
+        locale === "vi" ? "vi-VN" : "en-US",
         {
             day: "2-digit",
             month: "2-digit",
@@ -130,14 +138,15 @@ function formatDate(
 
 
 function formatShortDate(
-    value: string | null
+    value: string | null,
+    locale: string
 ) {
     if (!value) {
         return "—";
     }
 
     return new Intl.DateTimeFormat(
-        "vi-VN",
+        locale === "vi" ? "vi-VN" : "en-US",
         {
             day: "2-digit",
             month: "2-digit",
@@ -148,21 +157,26 @@ function formatShortDate(
 }
 
 
+/* =========================================================
+   INTERNSHIP STATUS
+   ========================================================= */
+
 function getInternshipStatus(
-    status: string
+    status: string,
+    t: (k: string) => string
 ) {
     switch (status) {
         case "IN_PROGRESS":
-            return "Đang thực tập";
+            return t("dashboard.status.in_progress");
 
         case "NOT_STARTED":
-            return "Chưa bắt đầu";
+            return t("dashboard.status.not_started");
 
         case "PAUSED":
-            return "Tạm dừng";
+            return t("dashboard.status.not_started");
 
         case "COMPLETED":
-            return "Đã hoàn thành";
+            return t("dashboard.status.completed");
 
         default:
             return status;
@@ -170,30 +184,60 @@ function getInternshipStatus(
 }
 
 
+/* =========================================================
+   DEADLINE COUNTDOWN
+   ========================================================= */
+
 function getDeadlineCountdown(
-    days: number
+    days: number,
+    locale: string
 ) {
-    if (days === 0) {
-        return "(Hôm nay)";
-    }
+    if (locale === "vi") {
+        if (days === 0) {
+            return "(Hôm nay)";
+        }
 
-    if (days === 1) {
-        return "(Ngày mai)";
-    }
+        if (days === 1) {
+            return "(Ngày mai)";
+        }
 
-    if (days > 1) {
-        return `(${days} ngày nữa)`;
-    }
+        if (days > 1) {
+            return `(${days} ngày nữa)`;
+        }
 
-    return `(Quá hạn ${Math.abs(
-        days
-    )} ngày)`;
+        return `(Quá hạn ${Math.abs(
+            days
+        )} ngày)`;
+    } else {
+        if (days === 0) {
+            return "(Today)";
+        }
+
+        if (days === 1) {
+            return "(Tomorrow)";
+        }
+
+        if (days > 1) {
+            return `(${days} days left)`;
+        }
+
+        return `(Overdue ${Math.abs(
+            days
+        )} days)`;
+    }
 }
 
+
+/* =========================================================
+   DASHBOARD
+   ========================================================= */
 
 export default function Dashboard() {
     const router =
         useRouter();
+
+    const { t, locale } =
+        useSettings();
 
 
     const [
@@ -220,6 +264,10 @@ export default function Dashboard() {
         useState("");
 
 
+    /* =====================================================
+       LOGOUT
+       ===================================================== */
+
     function logoutAndRedirect() {
         localStorage.removeItem(
             "internova_access_token"
@@ -229,13 +277,19 @@ export default function Dashboard() {
             "internova_user"
         );
 
-        window.alert("Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.");
+        window.alert(
+            "Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại."
+        );
 
         router.push(
             "/auth/login"
         );
     }
 
+
+    /* =====================================================
+       LOAD DASHBOARD
+       ===================================================== */
 
     async function loadDashboard() {
         try {
@@ -313,12 +367,22 @@ export default function Dashboard() {
     }
 
 
+    /* =====================================================
+       INITIAL LOAD
+       ===================================================== */
+
     useEffect(() => {
         // Initial client-side API synchronization.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         void loadDashboard();
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+
+    /* =====================================================
+       LOADING STATE
+       ===================================================== */
 
     if (loading) {
         return (
@@ -349,8 +413,11 @@ export default function Dashboard() {
                         />
 
                         <p>
-                            Đang tải
-                            dashboard...
+                            {
+                                locale === "vi"
+                                    ? "Đang tải dashboard..."
+                                    : "Loading dashboard..."
+                            }
                         </p>
                     </main>
                 </div>
@@ -358,6 +425,10 @@ export default function Dashboard() {
         );
     }
 
+
+    /* =====================================================
+       ERROR STATE
+       ===================================================== */
 
     if (
         error ||
@@ -388,8 +459,11 @@ export default function Dashboard() {
                         />
 
                         <h2>
-                            Không thể tải
-                            dashboard
+                            {
+                                locale === "vi"
+                                    ? "Không thể tải dashboard"
+                                    : "Unable to load dashboard"
+                            }
                         </h2>
 
                         <p>
@@ -402,7 +476,11 @@ export default function Dashboard() {
                                 void loadDashboard()
                             }
                         >
-                            Thử lại
+                            {
+                                t(
+                                    "dashboard.try_again"
+                                )
+                            }
                         </button>
                     </main>
                 </div>
@@ -418,6 +496,10 @@ export default function Dashboard() {
     const weekly =
         data.weeklyProgress;
 
+
+    /* =====================================================
+       MAIN DASHBOARD
+       ===================================================== */
 
     return (
         <div
@@ -442,7 +524,9 @@ export default function Dashboard() {
                     }
                 >
 
-                    {/* WELCOME */}
+                    {/* =====================================
+                        WELCOME
+                    ====================================== */}
 
                     <div
                         className={
@@ -450,11 +534,18 @@ export default function Dashboard() {
                         }
                     >
                         <h1>
-                            Xin chào,{" "}
+                            {
+                                t(
+                                    "dashboard.welcome"
+                                )
+                            }
+                            ,{" "}
+
                             {
                                 data.user
                                     .firstName
-                            }{" "}
+                            }
+                            {" "}
 
                             <span
                                 aria-hidden="true"
@@ -465,19 +556,24 @@ export default function Dashboard() {
 
 
                         <p>
-                            Internova đồng hành cùng
-                            bạn trong hành trình thực
-                            tập hiệu quả và chuyên
-                            nghiệp.
+                            {
+                                t(
+                                    "dashboard.welcome_sub"
+                                )
+                            }
                         </p>
                     </div>
 
 
-                    {/* AI FEATURES */}
+                    {/* =====================================
+                        AI FEATURES
+                    ====================================== */}
 
                     <section
                         className={`${styles.dashboardPanel} ${styles.featureGrid}`}
                     >
+
+                        {/* AI CONSULTING */}
 
                         <article
                             className={
@@ -499,17 +595,20 @@ export default function Dashboard() {
 
 
                             <h3>
-                                Tư vấn học vụ
-                                (RAG)
+                                {
+                                    t(
+                                        "dashboard.ai_consulting"
+                                    )
+                                }
                             </h3>
 
 
                             <p>
-                                Đặt câu hỏi về quy
-                                trình, quy định, thủ
-                                tục thực tập và nhận
-                                câu trả lời từ hệ
-                                thống.
+                                {
+                                    t(
+                                        "dashboard.ai_consulting_desc"
+                                    )
+                                }
                             </p>
 
 
@@ -524,7 +623,11 @@ export default function Dashboard() {
                                     )
                                 }
                             >
-                                Bắt đầu tư vấn
+                                {
+                                    t(
+                                        "dashboard.ai_consulting_btn"
+                                    )
+                                }
 
                                 <ArrowRight
                                     size={15}
@@ -533,6 +636,8 @@ export default function Dashboard() {
                         </article>
 
 
+                        {/* AI REVIEW */}
+
                         <article
                             className={
                                 styles.featureCard
@@ -540,43 +645,65 @@ export default function Dashboard() {
                         >
                             <div
                                 className={
-                                    styles.featureIcon
+                                    styles.featureIconWrapper
                                 }
                             >
-                                <FileCheck2
-                                    size={28}
-                                    strokeWidth={
-                                        2
+                                <div
+                                    className={
+                                        styles.featureIcon
                                     }
-                                />
+                                >
+                                    <FileCheck2
+                                        size={28}
+                                        strokeWidth={
+                                            2
+                                        }
+                                    />
+                                </div>
+
+                                <span
+                                    className={
+                                        styles.devBadge
+                                    }
+                                >
+                                    {
+                                        t(
+                                            "dashboard.ai_review_badge"
+                                        )
+                                    }
+                                </span>
                             </div>
 
 
                             <h3>
-                                AI Review báo cáo
+                                {
+                                    t(
+                                        "dashboard.ai_review"
+                                    )
+                                }
                             </h3>
 
 
                             <p>
-                                Kiểm tra báo cáo thực
-                                tập, phát hiện nội dung
-                                còn thiếu và nhận gợi ý
-                                cải thiện trước khi nộp.
+                                {
+                                    t(
+                                        "dashboard.ai_review_desc"
+                                    )
+                                }
                             </p>
 
 
                             <button
                                 type="button"
-                                className={
-                                    styles.featureCta
-                                }
-                                onClick={() =>
-                                    router.push(
-                                        "/student/internship-report"
+                                className={`${styles.featureCta} ${styles.featureCtaDisabled}`}
+                                disabled
+                                aria-disabled="true"
+                            >
+                                {
+                                    t(
+                                        "dashboard.ai_review_coming_soon"
                                     )
                                 }
-                            >
-                                Review báo cáo
 
                                 <ArrowRight
                                     size={15}
@@ -586,13 +713,17 @@ export default function Dashboard() {
                     </section>
 
 
-                    {/* STATUS GRID */}
+                    {/* =====================================
+                        STATUS GRID
+                    ====================================== */}
 
                     <section
                         className={`${styles.dashboardPanel} ${styles.statusGrid}`}
                     >
 
-                        {/* INTERNSHIP */}
+                        {/* =================================
+                            INTERNSHIP
+                        ================================== */}
 
                         <article
                             className={
@@ -609,8 +740,11 @@ export default function Dashboard() {
                                 />
 
                                 <h4>
-                                    Trạng thái
-                                    thực tập
+                                    {
+                                        t(
+                                            "dashboard.status_title"
+                                        )
+                                    }
                                 </h4>
                             </div>
 
@@ -622,9 +756,12 @@ export default function Dashboard() {
                                             styles.statusPill
                                         }
                                     >
-                                        {getInternshipStatus(
-                                            internship.status
-                                        )}
+                                        {
+                                            getInternshipStatus(
+                                                internship.status,
+                                                t
+                                            )
+                                        }
                                     </span>
 
 
@@ -633,57 +770,89 @@ export default function Dashboard() {
                                             styles.statusList
                                         }
                                     >
+                                        {/* COMPANY */}
+
                                         <div
                                             className={
                                                 styles.statusRow
                                             }
                                         >
                                             <dt>
-                                                Công ty:
+                                                {
+                                                    t(
+                                                        "dashboard.status_company"
+                                                    )
+                                                }
                                             </dt>
 
                                             <dd>
-                                                {internship.companyName ??
-                                                    "Chưa cập nhật"}
+                                                {
+                                                    internship.companyName ??
+                                                    t(
+                                                        "dashboard.status_not_update"
+                                                    )
+                                                }
                                             </dd>
                                         </div>
 
 
+                                        {/* POSITION */}
+
                                         <div
                                             className={
                                                 styles.statusRow
                                             }
                                         >
                                             <dt>
-                                                Vị trí:
+                                                {
+                                                    t(
+                                                        "dashboard.status_position"
+                                                    )
+                                                }
                                             </dt>
 
                                             <dd>
-                                                {internship.positionTitle ??
-                                                    "Chưa cập nhật"}
+                                                {
+                                                    internship.positionTitle ??
+                                                    t(
+                                                        "dashboard.status_not_update"
+                                                    )
+                                                }
                                             </dd>
                                         </div>
 
 
+                                        {/* DURATION */}
+
                                         <div
                                             className={
                                                 styles.statusRow
                                             }
                                         >
                                             <dt>
-                                                Thời gian:
+                                                {
+                                                    t(
+                                                        "dashboard.status_duration"
+                                                    )
+                                                }
                                             </dt>
 
                                             <dd>
-                                                {formatDate(
-                                                    internship.startDate
-                                                )}
+                                                {
+                                                    formatDate(
+                                                        internship.startDate,
+                                                        locale
+                                                    )
+                                                }
 
                                                 {" - "}
 
-                                                {formatDate(
-                                                    internship.endDate
-                                                )}
+                                                {
+                                                    formatDate(
+                                                        internship.endDate,
+                                                        locale
+                                                    )
+                                                }
                                             </dd>
                                         </div>
                                     </dl>
@@ -700,7 +869,11 @@ export default function Dashboard() {
                                             )
                                         }
                                     >
-                                        Xem chi tiết hồ sơ
+                                        {
+                                            t(
+                                                "dashboard.status_view_profile"
+                                            )
+                                        }
                                     </button>
                                 </>
                             ) : (
@@ -710,9 +883,11 @@ export default function Dashboard() {
                                     }
                                 >
                                     <p>
-                                        Bạn chưa có kỳ
-                                        thực tập đang
-                                        hoạt động.
+                                        {
+                                            t(
+                                                "dashboard.status_no_internship"
+                                            )
+                                        }
                                     </p>
 
                                     <button
@@ -726,14 +901,20 @@ export default function Dashboard() {
                                             )
                                         }
                                     >
-                                        Đăng ký thực tập
+                                        {
+                                            t(
+                                                "dashboard.status_register_btn"
+                                            )
+                                        }
                                     </button>
                                 </div>
                             )}
                         </article>
 
 
-                        {/* DEADLINES */}
+                        {/* =================================
+                            DEADLINES
+                        ================================== */}
 
                         <article
                             className={
@@ -750,98 +931,116 @@ export default function Dashboard() {
                                 />
 
                                 <h4>
-                                    Deadline sắp tới
+                                    {
+                                        t(
+                                            "dashboard.deadlines_title"
+                                        )
+                                    }
                                 </h4>
                             </div>
 
 
-                            {data.deadlines
-                                .length >
+                            {
+                                data.deadlines
+                                    .length >
                                 0 ? (
-                                <ul
-                                    className={
-                                        styles.deadlineList
-                                    }
-                                >
-                                    {data.deadlines.map(
-                                        (
-                                            item
-                                        ) => (
-                                            <li
-                                                key={
-                                                    item.id
-                                                }
-                                            >
-                                                <span
-                                                    className={
-                                                        styles.deadlineDot
-                                                    }
-                                                />
-
-
-                                                <div
-                                                    className={
-                                                        styles.deadlineInfo
-                                                    }
-                                                >
-                                                    <div>
-                                                        <p
-                                                            className={
-                                                                styles.deadlineTitle
-                                                            }
-                                                        >
-                                                            {
-                                                                item.title
-                                                            }
-                                                        </p>
-
-
-                                                        <p
-                                                            className={
-                                                                styles.deadlineSubtitle
-                                                            }
-                                                        >
-                                                            {item.subtitle ??
-                                                                "Deadline"}
-                                                        </p>
-                                                    </div>
-
-
-                                                    <div
-                                                        className={
-                                                            styles.deadlineDate
+                                    <ul
+                                        className={
+                                            styles.deadlineList
+                                        }
+                                    >
+                                        {
+                                            data.deadlines.map(
+                                                (
+                                                    item
+                                                ) => (
+                                                    <li
+                                                        key={
+                                                            item.id
                                                         }
                                                     >
-                                                        <p>
-                                                            {formatDate(
-                                                                item.dueAt
-                                                            )}
-                                                        </p>
+                                                        <span
+                                                            className={
+                                                                styles.deadlineDot
+                                                            }
+                                                        />
 
-                                                        <p>
-                                                            {getDeadlineCountdown(
-                                                                item.countdownDays
-                                                            )}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </li>
-                                        )
-                                    )}
-                                </ul>
-                            ) : (
-                                <div
-                                    className={
-                                        styles.emptyCard
-                                    }
-                                >
-                                    <p>
-                                        Không có
-                                        deadline sắp
-                                        tới.
-                                    </p>
-                                </div>
-                            )}
+
+                                                        <div
+                                                            className={
+                                                                styles.deadlineInfo
+                                                            }
+                                                        >
+                                                            <div>
+                                                                <p
+                                                                    className={
+                                                                        styles.deadlineTitle
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        item.title
+                                                                    }
+                                                                </p>
+
+
+                                                                <p
+                                                                    className={
+                                                                        styles.deadlineSubtitle
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        item.subtitle ??
+                                                                        "Deadline"
+                                                                    }
+                                                                </p>
+                                                            </div>
+
+
+                                                            <div
+                                                                className={
+                                                                    styles.deadlineDate
+                                                                }
+                                                            >
+                                                                <p>
+                                                                    {
+                                                                        formatDate(
+                                                                            item.dueAt,
+                                                                            locale
+                                                                        )
+                                                                    }
+                                                                </p>
+
+                                                                <p>
+                                                                    {
+                                                                        getDeadlineCountdown(
+                                                                            item.countdownDays,
+                                                                            locale
+                                                                        )
+                                                                    }
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                )
+                                            )
+                                        }
+                                    </ul>
+                                ) : (
+                                    <div
+                                        className={
+                                            styles.emptyCard
+                                        }
+                                    >
+                                        <p>
+                                            {
+                                                locale === "vi"
+                                                    ? "Không có deadline sắp tới."
+                                                    : "No upcoming deadlines."
+                                            }
+                                        </p>
+                                    </div>
+                                )
+                            }
 
 
                             <button
@@ -855,12 +1054,18 @@ export default function Dashboard() {
                                     )
                                 }
                             >
-                                Xem tất cả deadline
+                                {
+                                    t(
+                                        "dashboard.deadlines_view_all"
+                                    )
+                                }
                             </button>
                         </article>
 
 
-                        {/* WEEK PROGRESS */}
+                        {/* =================================
+                            WEEK PROGRESS
+                        ================================== */}
 
                         <article
                             className={
@@ -877,128 +1082,157 @@ export default function Dashboard() {
                                 />
 
                                 <h4>
-                                    Tiến độ tuần này
+                                    {
+                                        t(
+                                            "dashboard.progress_title"
+                                        )
+                                    }
                                 </h4>
                             </div>
 
 
-                            {weekly.weekNumber ? (
-                                <>
-                                    <div
-                                        className={
-                                            styles.progressHeader
-                                        }
-                                    >
-                                        <p>
-                                            Tuần{" "}
-                                            {
-                                                weekly.weekNumber
-                                            }{" "}
-
-                                            <span>
-                                                (
-                                                {formatShortDate(
-                                                    weekly.startDate
-                                                )}
-
-                                                {" - "}
-
-                                                {formatShortDate(
-                                                    weekly.endDate
-                                                )}
-                                                )
-                                            </span>
-                                        </p>
-
-
-                                        <span
+                            {
+                                weekly.weekNumber ? (
+                                    <>
+                                        <div
                                             className={
-                                                styles.progressBadge
+                                                styles.progressHeader
+                                            }
+                                        >
+                                            <p>
+                                                {
+                                                    t(
+                                                        "dashboard.progress_week"
+                                                    )
+                                                }
+                                                {" "}
+
+                                                {
+                                                    weekly.weekNumber
+                                                }
+                                                {" "}
+
+                                                <span>
+                                                    (
+                                                    {
+                                                        formatShortDate(
+                                                            weekly.startDate,
+                                                            locale
+                                                        )
+                                                    }
+
+                                                    {" - "}
+
+                                                    {
+                                                        formatShortDate(
+                                                            weekly.endDate,
+                                                            locale
+                                                        )
+                                                    }
+                                                    )
+                                                </span>
+                                            </p>
+
+
+                                            <span
+                                                className={
+                                                    styles.progressBadge
+                                                }
+                                            >
+                                                {
+                                                    weekly.progressPercentage
+                                                }
+                                                %
+                                            </span>
+                                        </div>
+
+
+                                        {/* PROGRESS BAR */}
+
+                                        <div
+                                            className={
+                                                styles.progressBar
+                                            }
+                                        >
+                                            <div
+                                                className={
+                                                    styles.progressBarFill
+                                                }
+                                                style={{
+                                                    width:
+                                                        `${weekly.progressPercentage}%`,
+                                                }}
+                                            />
+                                        </div>
+
+
+                                        {/* TASK LIST */}
+
+                                        <ul
+                                            className={
+                                                styles.checklist
                                             }
                                         >
                                             {
-                                                weekly.progressPercentage
+                                                weekly.tasks.map(
+                                                    (
+                                                        item
+                                                    ) => (
+                                                        <li
+                                                            key={
+                                                                item.id
+                                                            }
+                                                        >
+                                                            {
+                                                                item.done ? (
+                                                                    <CheckCircle2
+                                                                        size={
+                                                                            16
+                                                                        }
+                                                                        className={
+                                                                            styles.checkDone
+                                                                        }
+                                                                    />
+                                                                ) : (
+                                                                    <Circle
+                                                                        size={
+                                                                            16
+                                                                        }
+                                                                        className={
+                                                                            styles.checkPending
+                                                                        }
+                                                                    />
+                                                                )
+                                                            }
+
+
+                                                            <span>
+                                                                {
+                                                                    item.label
+                                                                }
+                                                            </span>
+                                                        </li>
+                                                    )
+                                                )
                                             }
-                                            %
-                                        </span>
-                                    </div>
-
-
+                                        </ul>
+                                    </>
+                                ) : (
                                     <div
                                         className={
-                                            styles.progressBar
+                                            styles.emptyCard
                                         }
                                     >
-                                        <div
-                                            className={
-                                                styles.progressBarFill
+                                        <p>
+                                            {
+                                                t(
+                                                    "dashboard.progress_none"
+                                                )
                                             }
-                                            style={{
-                                                width:
-                                                    `${weekly.progressPercentage}%`,
-                                            }}
-                                        />
+                                        </p>
                                     </div>
-
-
-                                    <ul
-                                        className={
-                                            styles.checklist
-                                        }
-                                    >
-                                        {weekly.tasks.map(
-                                            (
-                                                item
-                                            ) => (
-                                                <li
-                                                    key={
-                                                        item.id
-                                                    }
-                                                >
-                                                    {item.done ? (
-                                                        <CheckCircle2
-                                                            size={
-                                                                16
-                                                            }
-                                                            className={
-                                                                styles.checkDone
-                                                            }
-                                                        />
-                                                    ) : (
-                                                        <Circle
-                                                            size={
-                                                                16
-                                                            }
-                                                            className={
-                                                                styles.checkPending
-                                                            }
-                                                        />
-                                                    )}
-
-
-                                                    <span>
-                                                        {
-                                                            item.label
-                                                        }
-                                                    </span>
-                                                </li>
-                                            )
-                                        )}
-                                    </ul>
-                                </>
-                            ) : (
-                                <div
-                                    className={
-                                        styles.emptyCard
-                                    }
-                                >
-                                    <p>
-                                        Chưa có tiến
-                                        độ tuần hiện
-                                        tại.
-                                    </p>
-                                </div>
-                            )}
+                                )
+                            }
 
 
                             <button
@@ -1012,13 +1246,19 @@ export default function Dashboard() {
                                     )
                                 }
                             >
-                                Xem chi tiết tiến độ
+                                {
+                                    t(
+                                        "dashboard.progress_view_detail"
+                                    )
+                                }
                             </button>
                         </article>
                     </section>
 
 
-                    {/* TIP */}
+                    {/* =====================================
+                        TIP
+                    ====================================== */}
 
                     <div
                         className={
@@ -1031,14 +1271,19 @@ export default function Dashboard() {
 
                         <p>
                             <strong>
-                                Mẹo:
-                            </strong>{" "}
+                                {
+                                    t(
+                                        "dashboard.tip_title"
+                                    )
+                                }
+                            </strong>
+                            {" "}
 
-                            Hãy cập nhật tiến độ
-                            thường xuyên và chủ động
-                            trao đổi với mentor để có
-                            trải nghiệm thực tập tốt
-                            nhất!
+                            {
+                                t(
+                                    "dashboard.tip_content"
+                                )
+                            }
                         </p>
                     </div>
                 </main>

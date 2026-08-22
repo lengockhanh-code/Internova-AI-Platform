@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import logging
 from io import BytesIO
 
 from fastapi import (
     APIRouter,
     Depends,
     File,
+    Form,
     HTTPException,
     UploadFile,
 )
@@ -60,6 +62,8 @@ router = APIRouter(
     prefix="/student/reports",
     tags=["Student Reports"],
 )
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -154,73 +158,106 @@ def list_student_reports(
 # ============================================================
 
 @router.post("")
-def create_student_report(
-    payload:
-        ReportCreateRequest,
-
-    db: Session =
-        Depends(
-            get_db
-        ),
-
-    current_user =
-        Depends(
-            require_student
-        ),
+async def create_student_report(
+    title: str = Form(...),
+    report_type: str = Form(...),
+    week_number: int | None = Form(default=None),
+    content: str | None = Form(default=None),
+    file: UploadFile | None = File(default=None),
+    db: Session = Depends(get_db),
+    current_user = Depends(require_student),
 ):
+    try:
+        payload = ReportCreateRequest(
+            title=title,
+            report_type=report_type,
+            week_number=week_number,
+            content=content,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+    file_data: bytes | None = None
+    mime_type = ""
+
+    if file is not None:
+        mime_type = file.content_type or ""
+
+        if mime_type not in REPORT_FILE_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Bao cao chi ho tro file PDF va DOCX."
+                ),
+            )
+
+        file_data = await file.read()
+
+        if not file_data:
+            raise HTTPException(
+                status_code=400,
+                detail="File rong.",
+            )
+
+        if len(file_data) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    "File khong duoc vuot qua 10MB."
+                ),
+            )
 
     try:
-
-        report_id = (
-            create_report(
-                db=db,
-
-                student_id=
-                    current_user[
-                        "id"
-                    ],
-
-                payload=
-                    payload,
-            )
+        report_id = create_report(
+            db=db,
+            student_id=current_user["id"],
+            payload=payload,
         )
 
+        if file_data is not None:
+            saved = save_report_file(
+                db=db,
+                student_id=current_user["id"],
+                report_id=report_id,
+                filename=file.filename or "report",
+                mime_type=mime_type,
+                file_data=file_data,
+            )
+
+            if not saved:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Tao bao cao thanh cong nhung khong the luu file."
+                    ),
+                )
 
         return {
-            "status":
-                "ok",
-
-            "report_id":
-                report_id,
+            "status": "ok",
+            "report_id": report_id,
         }
 
-
     except ValueError as exc:
-
         raise HTTPException(
             status_code=400,
             detail=str(exc),
         ) from exc
 
-
     except Exception as exc:
-
         db.rollback()
 
-
-        print(
-            "[CREATE REPORT ERROR]",
-            repr(exc),
+        logger.error(
+            "[CREATE REPORT ERROR] %r",
+            exc,
         )
-
 
         raise HTTPException(
             status_code=400,
-
             detail=(
-                "Không thể tạo báo cáo. "
-                "Báo cáo của tuần hoặc loại này "
-                "có thể đã tồn tại."
+                "Khong the tao bao cao. Bao cao cua tuan hoac loai nay co the da ton tai."
             ),
         ) from exc
 
@@ -961,9 +998,9 @@ async def ai_review_report(
 
     except Exception as exc:
 
-        print(
-            "[AI REPORT REVIEW ERROR]",
-            repr(exc),
+        logger.error(
+            "[AI REPORT REVIEW ERROR] %r",
+            exc,
         )
 
 
