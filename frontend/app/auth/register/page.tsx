@@ -111,6 +111,13 @@ export default function RegisterPage() {
         useState("");
 
 
+    const [
+        emailError,
+        setEmailError,
+    ] =
+        useState("");
+
+
     function handleChange(
         event:
             React.ChangeEvent<
@@ -134,29 +141,74 @@ export default function RegisterPage() {
     }
 
 
+    function validateEmailLocalPart(
+        value: string
+    ) {
+        if (!value) {
+            return "";
+        }
+
+        if (value.length > 64) {
+            return (
+                "Phần trước @ không được vượt quá 64 ký tự."
+            );
+        }
+
+        if (value.includes("@")) {
+            return (
+                "Chỉ nhập phần trước @vinuni.edu.vn, "
+                + "không nhập ký tự @."
+            );
+        }
+
+        // Email local-part phổ biến:
+        // chữ, số và . _ % + -
+        if (!/^[a-zA-Z0-9._%+-]+$/.test(value)) {
+            return (
+                "Tên tài khoản chỉ được chứa chữ, số "
+                + "và các ký tự . _ % + -"
+            );
+        }
+
+        if (
+            value.startsWith(".")
+            || value.endsWith(".")
+        ) {
+            return (
+                "Tên tài khoản không được bắt đầu "
+                + "hoặc kết thúc bằng dấu chấm."
+            );
+        }
+
+        if (value.includes("..")) {
+            return (
+                "Tên tài khoản không được chứa "
+                + "hai dấu chấm liên tiếp."
+            );
+        }
+
+        return "";
+    }
+
+
     function handleEmailChange(
         event: React.ChangeEvent<HTMLInputElement>
     ) {
-        let value =
+        const value =
             event.target.value
                 .trimStart()
-                .toLowerCase();
-
-        value = value.replace(
-            /@vinuni\.edu\.vn$/i,
-            ""
-        );
-
-        value = value.replace(
-            /\s/g,
-            ""
-        );
+                .toLowerCase()
+                .replace(/\s/g, "");
 
         setForm(
             previous => ({
                 ...previous,
                 email: value,
             })
+        );
+
+        setEmailError(
+            validateEmailLocalPart(value)
         );
     }
 
@@ -194,24 +246,11 @@ export default function RegisterPage() {
             return "Vui lòng nhập tên tài khoản email.";
         }
 
-        // Gmail-style local part:
-        // - Chỉ cho phép chữ cái, số và dấu chấm
-        // - Không được bắt đầu/kết thúc bằng dấu chấm
-        // - Không được có hai dấu chấm liên tiếp
-        const gmailLocalPartRegex =
-            /^(?!\.)(?!.*\.\.)(?!.*\.$)[a-zA-Z0-9.]+$/;
+        const emailValidationError =
+            validateEmailLocalPart(email);
 
-        if (
-            !gmailLocalPartRegex.test(
-                email
-            )
-        ) {
-            return (
-                "Tên tài khoản email không đúng định dạng. "
-                + "Chỉ được dùng chữ, số và dấu chấm; "
-                + "không được bắt đầu/kết thúc bằng dấu chấm "
-                + "hoặc có hai dấu chấm liên tiếp."
-            );
+        if (emailValidationError) {
+            return emailValidationError;
         }
 
 
@@ -798,6 +837,7 @@ export default function RegisterPage() {
                                         handleEmailChange
                                     }
                                     autoComplete="email"
+                                    maxLength={64}
                                     style={{
                                         minWidth: 0,
                                         flex: 1,
@@ -817,6 +857,19 @@ export default function RegisterPage() {
                                     @vinuni.edu.vn
                                 </span>
                             </div>
+
+                            {emailError && (
+                                <div
+                                    role="alert"
+                                    style={{
+                                        marginTop: "6px",
+                                        color: "#dc2626",
+                                        fontSize: "13px",
+                                    }}
+                                >
+                                    {emailError}
+                                </div>
+                            )}
                         </div>
 <div
                             className={
