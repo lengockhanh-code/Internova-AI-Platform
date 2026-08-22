@@ -36,6 +36,8 @@ data/
 # Logs
 logs/
 *.log
+!frontend/app/admin/ai-monitoring/logs/
+!frontend/app/admin/ai-monitoring/logs/page.tsx
 
 # Test coverage
 htmlcov/
