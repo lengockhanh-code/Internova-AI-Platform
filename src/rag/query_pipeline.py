@@ -602,6 +602,11 @@ ALL_ROUTED_DOCUMENT_TYPES = [
     *CAPSTONE_DOCUMENT_TYPES,
 ]
 
+# Bump this whenever routing policy/prompt semantics change. Including it in
+# the Redis route-cache key prevents old broad general_support decisions from
+# surviving after a deployment that tightens the supported domain.
+ROUTER_POLICY_VERSION = "internship-domain-v2"
+
 
 class RouteDecision(BaseModel):
     intent: IntentName
@@ -764,6 +769,7 @@ def route_query(
         "query": redis_cache.normalize_query(query),
         "conversation_context": conversation_context or "",
         "model": settings.openai_chat_model or settings.model_name,
+        "router_policy_version": ROUTER_POLICY_VERSION,
     }
 
     cached = redis_cache.get_json(
@@ -1252,62 +1258,53 @@ CONVERSATION_EXACT = {
     "thanks",
 }
 GENERAL_SUPPORT_PATTERNS = (
-    "giup toi viet",
-    "giup minh viet",
-    "viet email",
-    "viet mail",
-    "soan email",
-    "soan tin nhan",
+    # CV / resume
     "viet cv",
     "sua cv",
     "review cv",
     "chuan bi cv",
-    "toi nen lam gi",
-    "minh nen lam gi",
-    "nen lam gi",
-    "toi nen chuan bi",
-    "minh nen chuan bi",
-    "nen chuan bi gi",
-    "toi dang lo",
-    "toi hoi lo",
-    "minh dang lo",
-    "lo lang",
-    "cho toi loi khuyen",
-    "cho minh loi khuyen",
-    "giai thich giup",
-    "giai thich cho toi",
-    "giup toi hieu",
-    "help me write",
-    "write an email",
-    "write a message",
     "help with my cv",
     "review my cv",
-    "what should i do",
-    "what should i prepare",
-    "i am worried",
-    "advice",
-    # Câu hỏi tổng quan / giới thiệu — sinh viên mới
-    "sinh vien moi",
+    "resume",
+
+    # Internship/career preparation
     "lan dau di thuc tap",
     "chua di thuc tap",
     "chuan bi tim noi thuc tap",
     "nen biet gi ve thuc tap",
-    "thuc tap o vin nhu nao",
     "moi truong lam viec",
     "van hoa cong ty",
     "kinh nghiem thuc tap",
     "loi khuyen thuc tap",
-    "cho minh biet ve thuc tap",
-    "gioi thieu ve thuc tap",
-    "tong quan thuc tap",
-    "hay cho toi biet",
-    "hay cho minh biet",
-    "tell me about",
-    "give me an overview",
-    "introduce internship",
-    "what is internship like",
-)
+    "chuan bi phong van",
+    "phong van thuc tap",
+    "internship interview",
+    "internship preparation",
+    "career advice",
+    "job interview",
 
+    # Company / opportunity matching
+    "matching cong ty",
+    "match cong ty",
+    "cong ty phu hop",
+    "vi tri phu hop",
+    "co hoi thuc tap phu hop",
+    "company matching",
+    "matching company",
+    "suitable company",
+    "suitable internship",
+
+    # Workplace / recruiter / supervisor communication
+    "email recruiter",
+    "email cong ty",
+    "email supervisor",
+    "email lecturer",
+    "tin nhan recruiter",
+    "tin nhan cong ty",
+    "workplace communication",
+    "communicate with recruiter",
+    "communicate with supervisor",
+)
 
 
 def _serialize_retrieval_result(
