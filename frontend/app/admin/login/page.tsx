@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, ShieldAlert, KeyRound, Loader2 } from "lucide-react";
@@ -68,6 +68,12 @@ export default function AdminLoginPage() {
 
   return (
     <main className={styles.adminLoginPage}>
+      <Link
+  href="/"
+  className={styles.backHome}
+>
+  ← Về trang chủ
+</Link>
       <div className={styles.loginCard}>
         <div className={styles.header}>
           <div className={styles.brand}>
