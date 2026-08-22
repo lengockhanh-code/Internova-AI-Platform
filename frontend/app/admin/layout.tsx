@@ -25,7 +25,7 @@ export default function AdminLayout({
           try {
             const user = JSON.parse(userStr);
             if (user.role === "ADMIN") {
-             router.replace("/admin/monitoring");
+             router.replace("/admin/ai-monitoring");
               return;
             }
           } catch (e) {
