@@ -168,7 +168,7 @@ export default function Sidebar() {
                                 alt="Internova for VinUni logo"
                                 width={40}
                                 height={40}
-                                priority
+                                loading="eager"
                             />
 
                             <span>
