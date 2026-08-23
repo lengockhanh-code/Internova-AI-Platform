@@ -1220,9 +1220,7 @@ export default function LecturerStudentsPage() {
                               >
                                 {student.averageScore >
                                 0
-                                  ? student.averageScore.toFixed(
-                                      1,
-                                    )
+                                  ? `${student.averageScore.toFixed(1)}/10`
                                   : "—"}
                               </strong>
                             </td>

@@ -910,9 +910,7 @@ export default function LecturerStudentDetailPage() {
                   <strong>
                     {student.averageScore >
                     0
-                      ? student.averageScore.toFixed(
-                          1,
-                        )
+                      ? `${student.averageScore.toFixed(1)}/10`
                       : "—"}
                   </strong>
                 </div>
@@ -1272,9 +1270,7 @@ export default function LecturerStudentDetailPage() {
                         <strong>
                           {report.lecturerScore !==
                           null
-                            ? report.lecturerScore.toFixed(
-                                1,
-                              )
+                            ? `${report.lecturerScore.toFixed(1)}/10`
                             : "Chưa chấm"}
                         </strong>
                       </div>
@@ -1537,9 +1533,7 @@ export default function LecturerStudentDetailPage() {
                     <strong>
                       {student.averageScore >
                       0
-                        ? student.averageScore.toFixed(
-                            1,
-                          )
+                        ? `${student.averageScore.toFixed(1)}/10`
                         : "—"}
                     </strong>
                   </div>

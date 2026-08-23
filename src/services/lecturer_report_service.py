@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from src.services.lecturer_common_service import _get_lecturer, to_iso
+from src.services.score_utils import normalize_grade_score
 
 
 def _submission_status(row: Any) -> str:
@@ -59,11 +60,7 @@ def _map_report(row: Any) -> dict:
         "completionLetterName": row["completion_letter_name"],
         "completionLetterSize": row["completion_letter_size"],
         "lecturerFeedback": row["lecturer_feedback"],
-        "lecturerScore": (
-            float(row["lecturer_score"])
-            if row["lecturer_score"] is not None
-            else None
-        ),
+        "lecturerScore": normalize_grade_score(row["lecturer_score"]),
         "commentCount": int(row["comment_count"] or 0),
     }
 

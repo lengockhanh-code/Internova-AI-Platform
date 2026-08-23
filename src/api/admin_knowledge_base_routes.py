@@ -1,0 +1,264 @@
+from __future__ import annotations
+
+from datetime import date
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from sqlalchemy.orm import Session
+
+from src.database.connection import get_db
+from src.models.admin_knowledge_base import (
+    AdminKnowledgeDocumentActionResponse,
+    AdminKnowledgeDocumentCreateRequest,
+    AdminKnowledgeDocumentDetailResponse,
+    AdminKnowledgeDocumentsResponse,
+    AdminKnowledgeDocumentUpdateRequest,
+    AdminKnowledgeDocumentVersionsResponse,
+    AdminKnowledgeVersionActionResponse,
+)
+from src.security.auth import get_current_user
+from src.services.admin_knowledge_base_service import (
+    archive_admin_knowledge_document,
+    create_admin_knowledge_document,
+    create_admin_knowledge_document_version,
+    delete_admin_knowledge_document,
+    get_admin_knowledge_document_detail,
+    list_admin_knowledge_document_versions,
+    list_admin_knowledge_documents,
+    set_admin_knowledge_current_version,
+    update_admin_knowledge_document,
+)
+
+
+def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    role = str(current_user.get("role") or "").upper()
+    if role != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin role is required",
+        )
+    return current_user
+
+
+router = APIRouter(
+    prefix="/api/v1/admin/knowledge",
+    tags=["Admin Knowledge Base"],
+    dependencies=[Depends(require_admin)],
+)
+
+
+@router.get(
+    "/documents",
+    response_model=AdminKnowledgeDocumentsResponse,
+)
+def list_documents(
+    search: str | None = Query(default=None),
+    document_type: str | None = Query(default=None),
+    status_filter: str | None = Query(default=None, alias="status"),
+    year: int | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100, alias="page_size"),
+    db: Session = Depends(get_db),
+) -> AdminKnowledgeDocumentsResponse:
+    return AdminKnowledgeDocumentsResponse(
+        **list_admin_knowledge_documents(
+            db=db,
+            search=search,
+            document_type=document_type,
+            status=status_filter,
+            year=year,
+            page=page,
+            page_size=page_size,
+        )
+    )
+
+
+@router.post(
+    "/documents",
+    response_model=AdminKnowledgeDocumentDetailResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_document(
+    payload: AdminKnowledgeDocumentCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
+) -> AdminKnowledgeDocumentDetailResponse:
+    try:
+        return AdminKnowledgeDocumentDetailResponse(
+            **create_admin_knowledge_document(
+                db=db,
+                payload=payload.model_dump(),
+                uploaded_by=int(current_user["id"]),
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/documents/{document_id}",
+    response_model=AdminKnowledgeDocumentDetailResponse,
+)
+def get_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+) -> AdminKnowledgeDocumentDetailResponse:
+    try:
+        return AdminKnowledgeDocumentDetailResponse(
+            **get_admin_knowledge_document_detail(
+                db=db,
+                document_id=document_id,
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.patch(
+    "/documents/{document_id}",
+    response_model=AdminKnowledgeDocumentDetailResponse,
+)
+def update_document(
+    document_id: int,
+    payload: AdminKnowledgeDocumentUpdateRequest,
+    db: Session = Depends(get_db),
+) -> AdminKnowledgeDocumentDetailResponse:
+    try:
+        return AdminKnowledgeDocumentDetailResponse(
+            **update_admin_knowledge_document(
+                db=db,
+                document_id=document_id,
+                payload=payload.model_dump(exclude_unset=True),
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/documents/{document_id}/archive",
+    response_model=AdminKnowledgeDocumentDetailResponse,
+)
+def archive_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+) -> AdminKnowledgeDocumentDetailResponse:
+    try:
+        return AdminKnowledgeDocumentDetailResponse(
+            **archive_admin_knowledge_document(
+                db=db,
+                document_id=document_id,
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.delete(
+    "/documents/{document_id}",
+    response_model=AdminKnowledgeDocumentActionResponse,
+)
+def delete_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+) -> AdminKnowledgeDocumentActionResponse:
+    try:
+        return AdminKnowledgeDocumentActionResponse(
+            **delete_admin_knowledge_document(
+                db=db,
+                document_id=document_id,
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/documents/{document_id}/versions",
+    response_model=AdminKnowledgeDocumentVersionsResponse,
+)
+def list_document_versions(
+    document_id: int,
+    db: Session = Depends(get_db),
+) -> AdminKnowledgeDocumentVersionsResponse:
+    try:
+        return AdminKnowledgeDocumentVersionsResponse(
+            **list_admin_knowledge_document_versions(
+                db=db,
+                document_id=document_id,
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/documents/{document_id}/versions",
+    response_model=AdminKnowledgeVersionActionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_document_version(
+    document_id: int,
+    version: str = Form(...),
+    effective_date: date | None = Form(default=None),
+    version_status: str = Form(default="ACTIVE", alias="status"),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+) -> AdminKnowledgeVersionActionResponse:
+    try:
+        return AdminKnowledgeVersionActionResponse(
+            **create_admin_knowledge_document_version(
+                db=db,
+                document_id=document_id,
+                version=version,
+                effective_date=effective_date,
+                status=version_status,
+                file=file,
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/documents/{document_id}/versions/{version_id}/set-current",
+    response_model=AdminKnowledgeVersionActionResponse,
+)
+def set_current_version(
+    document_id: int,
+    version_id: int,
+    db: Session = Depends(get_db),
+) -> AdminKnowledgeVersionActionResponse:
+    try:
+        return AdminKnowledgeVersionActionResponse(
+            **set_admin_knowledge_current_version(
+                db=db,
+                document_id=document_id,
+                version_id=version_id,
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc

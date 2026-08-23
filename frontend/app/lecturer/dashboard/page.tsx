@@ -1026,8 +1026,7 @@ export default function LecturerDashboardPage() {
         "Điểm TB sinh viên",
 
       value:
-        data.stats.averageScore
-          .toFixed(2),
+        `${data.stats.averageScore.toFixed(2)}/10`,
 
       icon:
         Star,
@@ -2245,9 +2244,7 @@ export default function LecturerDashboardPage() {
                             <td>
                               {student.averageScore >
                               0
-                                ? student.averageScore.toFixed(
-                                    1,
-                                  )
+                                ? `${student.averageScore.toFixed(1)}/10`
                                 : "—"}
                             </td>
 

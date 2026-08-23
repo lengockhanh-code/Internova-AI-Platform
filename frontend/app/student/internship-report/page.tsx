@@ -3254,8 +3254,7 @@ function FeedbackModal({
 
                                 <strong>
                                     {
-                                        report
-                                            .lecturer_score
+                                        `${report.lecturer_score.toFixed(1)}/10`
                                     }
                                 </strong>
                             </div>

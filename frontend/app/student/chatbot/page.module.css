@@ -1256,7 +1256,7 @@
 
 :global(.dark) .titleRow h1,
 :global(.dark) .emptyState h2,
-:global(.dark) .messageBubble strong,
+:global(.dark) .aiBubble strong,
 :global(.dark) .sourceInfo strong,
 :global(.dark) .formResourceInfo strong,
 :global(.dark) .promptNavigatorTitle,
@@ -1266,10 +1266,12 @@
 
 :global(.dark) .chatHeader p,
 :global(.dark) .emptyState p,
-:global(.dark) .assistantMessage,
+:global(.dark) .aiMessageHeader span,
 :global(.dark) .markdownContent,
 :global(.dark) .sourceMeta,
 :global(.dark) .sourceQuote,
+:global(.dark) .answerMeta strong,
+:global(.dark) .streamingLabel,
 :global(.dark) .formResourceInfo span {
     color: #cbd5e1;
 }
@@ -1285,7 +1287,7 @@
 :global(.dark) .chatStatus,
 :global(.dark) .suggestionList button,
 :global(.dark) .chatComposer,
-:global(.dark) .assistantBubble,
+:global(.dark) .aiBubble,
 :global(.dark) .sources,
 :global(.dark) .sourceItem,
 :global(.dark) .formResourceCard,
@@ -1295,6 +1297,75 @@
     border-color: #334155;
     background: #1f2937;
     color: #f8fafc;
+}
+
+:global(.dark) .aiBubble {
+    border-color: #334155;
+    background: linear-gradient(180deg, #182235 0%, #111827 100%);
+    box-shadow:
+        0 10px 30px rgba(2, 6, 23, 0.34),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+:global(.dark) .aiMessageHeader strong,
+:global(.dark) .markdownContent,
+:global(.dark) .markdownContent p,
+:global(.dark) .markdownContent li,
+:global(.dark) .markdownContent strong,
+:global(.dark) .markdownContent em,
+:global(.dark) .sourceTitle,
+:global(.dark) .sourceTitleLeft,
+:global(.dark) .sourceInfo,
+:global(.dark) .answerMeta {
+    color: #e5edf8;
+}
+
+:global(.dark) .markdownContent h1,
+:global(.dark) .markdownContent h2,
+:global(.dark) .markdownContent h3,
+:global(.dark) .markdownContent h4 {
+    color: #f8fafc;
+}
+
+:global(.dark) .markdownContent a {
+    color: #93c5fd;
+}
+
+:global(.dark) .markdownContent code {
+    background: rgba(148, 163, 184, 0.14);
+    color: #dbeafe;
+}
+
+:global(.dark) .markdownContent pre,
+:global(.dark) .codeResponsive {
+    background: #0b1220;
+    color: #e2e8f0;
+}
+
+:global(.dark) .sourceMeta span {
+    background: #273449;
+    color: #dbeafe;
+}
+
+:global(.dark) .sourceQuote {
+    border-left-color: #3b82f6;
+    background: rgba(37, 99, 235, 0.08);
+}
+
+:global(.dark) .sourceTitle:hover {
+    background: rgba(148, 163, 184, 0.08);
+}
+
+:global(.dark) .confidenceTrack {
+    background: #334155;
+}
+
+:global(.dark) .confidenceFill {
+    background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+
+:global(.dark) .typingDots > span {
+    background: #cbd5e1;
 }
 
 :global(.dark) .suggestionList button:hover,

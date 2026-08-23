@@ -247,7 +247,7 @@ export default function HomePage() {
                 alt="Internova for VinUni logo"
                 width={48}
                 height={48}
-                priority
+                loading="eager"
               />
             </span>
 
@@ -420,6 +420,7 @@ export default function HomePage() {
                   alt="Internova for VinUni logo"
                   width={32}
                   height={32}
+                  loading="eager"
                 />
                 <span>Internova × VinUni</span>
               </div>

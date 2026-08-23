@@ -116,7 +116,7 @@ class LecturerReportDetailResponse(BaseModel):
 
 class LecturerReportReviewRequest(BaseModel):
     status: Literal["APPROVED", "REVISION_REQUIRED"]
-    score: float | None = Field(default=None, ge=0, le=100)
+    score: float | None = Field(default=None, ge=0, le=10)
     feedback: str | None = Field(default=None, max_length=5000)
 
 

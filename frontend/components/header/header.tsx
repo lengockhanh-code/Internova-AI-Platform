@@ -93,7 +93,7 @@ export default function Header() {
                 if (response.status === 401) {
                     localStorage.removeItem("internova_access_token");
                     localStorage.removeItem("internova_user");
-                    window.alert("Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.");
+                    window.alert(t("header.session.expired"));
                     window.location.replace("/auth/login");
                     return;
                 }
@@ -110,7 +110,7 @@ export default function Header() {
         }
 
         void fetchUser();
-    }, []);
+    }, [t]);
 
 
     useEffect(() => {
@@ -165,6 +165,10 @@ export default function Header() {
 
 
     function handleLogout() {
+        if (!window.confirm(t("nav.logout.confirm"))) {
+            return;
+        }
+
         localStorage.removeItem("internova_access_token");
         localStorage.removeItem("internova_user");
         window.location.replace("/auth/login");
@@ -348,8 +352,8 @@ export default function Header() {
                             className={styles.themeToggleButton}
                             disabled={themeBusy}
                             onClick={handleThemeToggle}
-                            title={theme === "light" ? "Chuyển sang chế độ Tối" : "Chuyển sang chế độ Sáng"}
-                            aria-label="Toggle Theme"
+                            title={theme === "light" ? t("header.theme.light") : t("header.theme.dark")}
+                            aria-label={theme === "light" ? t("header.theme.light") : t("header.theme.dark")}
                         >
                             {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
                         </button>
@@ -541,14 +545,14 @@ export default function Header() {
                     <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
                         <div className={styles.modalHeader}>
                             <div className={styles.modalTitleGroup}>
-                                <h3>Đổi mật khẩu</h3>
-                                <p>Cập nhật mật khẩu để bảo vệ tài khoản của bạn</p>
+                                <h3>{t("header.password.title")}</h3>
+                                <p>{t("header.password.desc")}</p>
                             </div>
                             <button
                                 type="button"
                                 className={styles.modalCloseButton}
                                 onClick={() => setShowPasswordModal(false)}
-                                aria-label="Đóng"
+                                aria-label={t("header.modal.close")}
                             >
                                 <X size={18} />
                             </button>
@@ -570,11 +574,11 @@ export default function Header() {
                                 )}
 
                                 <label className={styles.formField}>
-                                    <span>Mật khẩu hiện tại</span>
+                                    <span>{t("header.password.current")}</span>
                                     <input
                                         type="password"
                                         className={styles.formInput}
-                                        placeholder="Nhập mật khẩu hiện tại"
+                                        placeholder={t("header.password.current.placeholder")}
                                         value={currentPassword}
                                         onChange={(e) => setCurrentPassword(e.target.value)}
                                         required
@@ -582,11 +586,11 @@ export default function Header() {
                                 </label>
 
                                 <label className={styles.formField}>
-                                    <span>Mật khẩu mới</span>
+                                    <span>{t("header.password.new")}</span>
                                     <input
                                         type="password"
                                         className={styles.formInput}
-                                        placeholder="Tối thiểu 6 ký tự"
+                                        placeholder={t("header.password.new.placeholder")}
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
                                         required
@@ -595,11 +599,11 @@ export default function Header() {
                                 </label>
 
                                 <label className={styles.formField}>
-                                    <span>Xác nhận mật khẩu mới</span>
+                                    <span>{t("header.password.confirm")}</span>
                                     <input
                                         type="password"
                                         className={styles.formInput}
-                                        placeholder="Nhập lại mật khẩu mới"
+                                        placeholder={t("header.password.confirm.placeholder")}
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         required
@@ -613,7 +617,7 @@ export default function Header() {
                                     className={styles.cancelButton}
                                     onClick={() => setShowPasswordModal(false)}
                                 >
-                                    Hủy
+                                    {t("header.password.cancel")}
                                 </button>
                                 <button
                                     type="submit"
@@ -621,7 +625,7 @@ export default function Header() {
                                     disabled={passwordLoading}
                                 >
                                     {passwordLoading && <Loader2 size={15} className={styles.spin} />}
-                                    Lưu mật khẩu
+                                    {t("header.password.save")}
                                 </button>
                             </div>
                         </form>
@@ -635,14 +639,14 @@ export default function Header() {
                     <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
                         <div className={styles.modalHeader}>
                             <div className={styles.modalTitleGroup}>
-                                <h3>Báo lỗi & Góp ý</h3>
-                                <p>Đóng góp ý kiến để giúp chúng tôi hoàn thiện phần mềm</p>
+                                <h3>{t("header.feedback.title")}</h3>
+                                <p>{t("header.feedback.desc")}</p>
                             </div>
                             <button
                                 type="button"
                                 className={styles.modalCloseButton}
                                 onClick={() => setShowFeedbackModal(false)}
-                                aria-label="Đóng"
+                                aria-label={t("header.modal.close")}
                             >
                                 <X size={18} />
                             </button>
@@ -664,24 +668,24 @@ export default function Header() {
                                 )}
 
                                 <label className={styles.formField}>
-                                    <span>Loại phản hồi</span>
+                                    <span>{t("header.feedback.category")}</span>
                                     <select
                                         className={styles.formSelect}
                                         value={feedbackCategory}
                                         onChange={(e) => setFeedbackCategory(e.target.value)}
                                     >
-                                        <option value="BUG">Báo lỗi hệ thống (Bug)</option>
-                                        <option value="FEATURE">Góp ý tính năng mới</option>
-                                        <option value="UI">Phản hồi Giao diện / Trải nghiệm</option>
-                                        <option value="OTHER">Ý kiến khác</option>
+                                        <option value="BUG">{t("header.feedback.category.bug")}</option>
+                                        <option value="FEATURE">{t("header.feedback.category.feature")}</option>
+                                        <option value="UI">{t("header.feedback.category.ui")}</option>
+                                        <option value="OTHER">{t("header.feedback.category.other")}</option>
                                     </select>
                                 </label>
 
                                 <label className={styles.formField}>
-                                    <span>Nội dung phản hồi</span>
+                                    <span>{t("header.feedback.content")}</span>
                                     <textarea
                                         className={styles.formTextarea}
-                                        placeholder="Mô tả chi tiết lỗi gặp phải hoặc ý kiến đóng góp của bạn..."
+                                        placeholder={t("header.feedback.content.placeholder")}
                                         value={feedbackContent}
                                         onChange={(e) => setFeedbackContent(e.target.value)}
                                         required
@@ -695,7 +699,7 @@ export default function Header() {
                                     className={styles.cancelButton}
                                     onClick={() => setShowFeedbackModal(false)}
                                 >
-                                    Hủy
+                                    {t("header.feedback.cancel")}
                                 </button>
                                 <button
                                     type="submit"
@@ -703,7 +707,7 @@ export default function Header() {
                                     disabled={feedbackLoading}
                                 >
                                     {feedbackLoading && <Loader2 size={15} className={styles.spin} />}
-                                    Gửi phản hồi
+                                    {t("header.feedback.submit")}
                                 </button>
                             </div>
                         </form>

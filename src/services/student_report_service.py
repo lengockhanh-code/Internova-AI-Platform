@@ -9,6 +9,8 @@ from datetime import (
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from src.services.score_utils import normalize_grade_score
+
 
 # ============================================================
 # CURRENT INTERNSHIP
@@ -578,21 +580,9 @@ def get_reports(
                         "lecturer_feedback"
                     ],
 
-                "lecturer_score":
-                    (
-                        float(
-                            row[
-                                "lecturer_score"
-                            ]
-                        )
-
-                        if row[
-                            "lecturer_score"
-                        ]
-                        is not None
-
-                        else None
-                    ),
+                "lecturer_score": normalize_grade_score(
+                    row["lecturer_score"]
+                ),
             }
         )
 

@@ -93,6 +93,7 @@ class LecturerStudentListItem(BaseModel):
     averageScore: float = Field(
         default=0.0,
         ge=0.0,
+        le=10.0,
     )
 
     status: str
@@ -136,6 +137,7 @@ class LecturerStudentDetailResponse(BaseModel):
     averageScore: float = Field(
         default=0.0,
         ge=0.0,
+        le=10.0,
     )
 
     startDate: str | None = None

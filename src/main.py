@@ -52,6 +52,9 @@ from src.api.notification_websocket_routes import (
 from src.api.admin_observability_routes import (
     router as admin_observability_router,
 )
+from src.api.admin_knowledge_base_routes import (
+    router as admin_knowledge_base_router,
+)
 
 # ============================================================
 # API ROUTERS
@@ -272,6 +275,10 @@ app.include_router(
 
 app.include_router(
     admin_observability_router,
+)
+
+app.include_router(
+    admin_knowledge_base_router,
 )
 
 app.include_router(

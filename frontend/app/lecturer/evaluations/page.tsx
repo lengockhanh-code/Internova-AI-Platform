@@ -195,8 +195,8 @@ export default function LecturerEvaluationsPage() {
   async function submitEvaluation(nextStatus: EvaluationStatus) {
     if (!selected || !detail) return;
     const numericScore = score.trim() ? Number(score) : null;
-    if (numericScore !== null && (Number.isNaN(numericScore) || numericScore < 0 || numericScore > 100)) {
-      setMessage("Tổng điểm phải nằm trong khoảng từ 0 đến 100.");
+    if (numericScore !== null && (Number.isNaN(numericScore) || numericScore < 0 || numericScore > 10)) {
+      setMessage("Tổng điểm phải nằm trong khoảng từ 0 đến 10.");
       return;
     }
     if (nextStatus !== "DRAFT" && numericScore === null) {
@@ -260,7 +260,7 @@ export default function LecturerEvaluationsPage() {
           <button onClick={() => setStatus("DRAFT")} type="button"><FileText size={20} /><span>Bản nháp<strong>{summary?.draft ?? 0}</strong></span></button>
           <button onClick={() => setStatus("SUBMITTED")} type="button"><Send size={20} /><span>Đã nộp<strong>{summary?.submitted ?? 0}</strong></span></button>
           <button onClick={() => setStatus("CONFIRMED")} type="button"><CheckCircle2 size={20} /><span>Đã xác nhận<strong>{summary?.confirmed ?? 0}</strong></span></button>
-          <div><Award size={20} /><span>Điểm trung bình<strong>{summary?.averageScore?.toFixed(1) ?? "--"}</strong></span></div>
+          <div><Award size={20} /><span>Điểm trung bình<strong>{summary?.averageScore !== null && summary?.averageScore !== undefined ? `${summary.averageScore.toFixed(1)}/10` : "--"}</strong></span></div>
         </section>
 
         <section className={styles.filterBand}>
@@ -281,7 +281,7 @@ export default function LecturerEvaluationsPage() {
                 const active = selected?.internshipId === item.internshipId && selected.evaluationType === item.evaluationType;
                 return <button className={`${styles.evaluationRow} ${active ? styles.evaluationRowActive : ""}`} key={`${item.internshipId}-${item.evaluationType}`} onClick={() => void openEvaluation(item)} type="button">
                   <div className={styles.rowTop}><span className={styles.avatar}>{item.studentName.trim().charAt(0).toUpperCase()}</span><span className={styles.studentName}><strong>{item.studentName}</strong><small>{item.studentCode} · {item.className || "Chưa có lớp/khóa"}</small></span><span className={`${styles.statusBadge} ${styles[`status${item.status}`]}`}>{statusLabel(item.status)}</span></div>
-                  <div className={styles.rowTitle}><strong>{evaluationTypeLabel(item.evaluationType)}</strong>{item.totalScore !== null && <span>{item.totalScore.toFixed(1)}</span>}</div>
+                  <div className={styles.rowTitle}><strong>{evaluationTypeLabel(item.evaluationType)}</strong>{item.totalScore !== null && <span>{item.totalScore.toFixed(1)}/10</span>}</div>
                   <p>{item.positionTitle || "Chưa cập nhật vị trí"} · {item.companyName || "Chưa cập nhật doanh nghiệp"}</p>
                   <div className={styles.rowMeta}><span><BarChart3 size={13} />Tiến độ {item.progressPercentage.toFixed(0)}%</span><span><FileCheck2 size={13} />{item.reportSubmitted}/{item.reportTotal} báo cáo</span></div>
                 </button>;
@@ -305,7 +305,7 @@ export default function LecturerEvaluationsPage() {
                 <div><Target size={18} /><span>Tiến độ<strong>{detail.evaluation.progressPercentage.toFixed(0)}%</strong></span></div>
                 <div><Clock3 size={18} /><span>Giờ thực tập<strong>{detail.evaluation.completedHours}/{detail.evaluation.requiredHours ?? "--"}</strong></span></div>
                 <div><FileCheck2 size={18} /><span>Báo cáo đã nộp<strong>{detail.evaluation.reportSubmitted}/{detail.evaluation.reportTotal}</strong></span></div>
-                <div><Award size={18} /><span>TB báo cáo<strong>{detail.evaluation.reportAverageScore?.toFixed(1) ?? "--"}</strong></span></div>
+                <div><Award size={18} /><span>TB báo cáo<strong>{detail.evaluation.reportAverageScore !== null ? `${detail.evaluation.reportAverageScore.toFixed(1)}/10` : "--"}</strong></span></div>
               </section>
 
               <section className={styles.infoSection}>
@@ -333,7 +333,7 @@ export default function LecturerEvaluationsPage() {
                     <FileText size={17} />
                     <span><strong>{reportTypeLabel(report.reportType, report.weekNumber)}</strong><small>{report.title} · Nộp {formatDateTime(report.submittedAt)}</small></span>
                     <em className={report.isLate || report.isOverdue ? styles.reportWarning : ""}>{report.isOverdue ? "Quá hạn" : report.isLate ? "Nộp muộn" : report.submittedAt ? "Đúng hạn" : "Chưa nộp"}</em>
-                    <b>{report.lecturerScore !== null ? report.lecturerScore.toFixed(1) : "--"}</b>
+                    <b>{report.lecturerScore !== null ? `${report.lecturerScore.toFixed(1)}/10` : "--"}</b>
                   </article>)}
                   {detail.reports.length === 0 && <div className={styles.noData}><AlertCircle size={17} />Chưa có báo cáo cho kỳ thực tập này.</div>}
                 </div>
@@ -342,14 +342,14 @@ export default function LecturerEvaluationsPage() {
               <section className={styles.infoSection}>
                 <div className={styles.sectionHeading}><UserRound size={19} /><div><h3>Đánh giá đối chiếu</h3><p>Ý kiến từ mentor, sinh viên hoặc quản trị viên</p></div></div>
                 <div className={styles.comparisonList}>
-                  {detail.relatedEvaluations.map((record) => <article key={record.id}><div><Building2 size={17} /><span><strong>{evaluatorLabel(record.evaluatorType)}</strong><small>{record.evaluatorName || "Chưa cập nhật người đánh giá"} · {formatDateTime(record.submittedAt)}</small></span><b>{record.totalScore?.toFixed(1) ?? "--"}</b></div>{record.feedback && <p>{record.feedback}</p>}</article>)}
+                  {detail.relatedEvaluations.map((record) => <article key={record.id}><div><Building2 size={17} /><span><strong>{evaluatorLabel(record.evaluatorType)}</strong><small>{record.evaluatorName || "Chưa cập nhật người đánh giá"} · {formatDateTime(record.submittedAt)}</small></span><b>{record.totalScore !== null ? `${record.totalScore.toFixed(1)}/10` : "--"}</b></div>{record.feedback && <p>{record.feedback}</p>}</article>)}
                   {detail.relatedEvaluations.length === 0 && <div className={styles.noData}><UserRound size={17} />Chưa có đánh giá từ các bên khác.</div>}
                 </div>
               </section>
 
               <section className={locked ? styles.lockedSection : styles.formSection}>
-                <div className={styles.sectionHeading}>{locked ? <CheckCircle2 size={19} /> : <Star size={19} />}<div><h3>{locked ? "Kết quả đã xác nhận" : "Phiếu đánh giá của giảng viên"}</h3><p>{locked ? `Xác nhận lúc ${formatDateTime(detail.currentEvaluation?.submittedAt ?? null)}` : "Tổng điểm được tính trên thang 100"}</p></div></div>
-                <div className={styles.scoreField}><label htmlFor="evaluation-score">Tổng điểm</label><div><input disabled={locked} id="evaluation-score" inputMode="decimal" max="100" min="0" placeholder="0" step="0.5" type="number" value={score} onChange={(event) => setScore(event.target.value)} /><span>/ 100</span></div></div>
+                <div className={styles.sectionHeading}>{locked ? <CheckCircle2 size={19} /> : <Star size={19} />}<div><h3>{locked ? "Kết quả đã xác nhận" : "Phiếu đánh giá của giảng viên"}</h3><p>{locked ? `Xác nhận lúc ${formatDateTime(detail.currentEvaluation?.submittedAt ?? null)}` : "Tổng điểm được tính trên thang 10"}</p></div></div>
+                <div className={styles.scoreField}><label htmlFor="evaluation-score">Tổng điểm</label><div><input disabled={locked} id="evaluation-score" inputMode="decimal" max="10" min="0" placeholder="0" step="0.1" type="number" value={score} onChange={(event) => setScore(event.target.value)} /><span>/ 10</span></div></div>
                 <label className={styles.textField}><span>Nhận xét chung</span><textarea disabled={locked} maxLength={5000} placeholder="Nhận xét về kết quả, thái độ và mức độ hoàn thành..." rows={4} value={feedback} onChange={(event) => setFeedback(event.target.value)} /></label>
                 <div className={styles.twoFields}>
                   <label className={styles.textField}><span>Điểm mạnh</span><textarea disabled={locked} maxLength={5000} placeholder="Năng lực, thái độ hoặc kết quả nổi bật..." rows={4} value={strengths} onChange={(event) => setStrengths(event.target.value)} /></label>

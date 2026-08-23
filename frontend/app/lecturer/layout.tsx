@@ -25,8 +25,9 @@ export default function LecturerLayout({ children }: { children: ReactNode }) {
     async function verifySession() {
       const token = getAccessToken();
       const storedUser = getStoredUser();
+      const storedRole = storedUser?.role?.trim().toUpperCase();
 
-      if (!token || storedUser?.role !== "LECTURER") {
+      if (!token || storedRole !== "LECTURER") {
         clearLecturerSession();
         router.replace(`/auth/login?next=${encodeURIComponent(pathname)}`);
         return;
@@ -43,9 +44,11 @@ export default function LecturerLayout({ children }: { children: ReactNode }) {
         }
 
         const user = (await response.json()) as { role?: string };
-        if (user.role !== "LECTURER") {
+        const normalizedRole = user.role?.trim().toUpperCase();
+
+        if (normalizedRole !== "LECTURER") {
           clearLecturerSession();
-          router.replace(user.role === "STUDENT" ? "/student/dashboard" : "/auth/login");
+          router.replace(normalizedRole === "STUDENT" ? "/student/dashboard" : "/auth/login");
           return;
         }
 

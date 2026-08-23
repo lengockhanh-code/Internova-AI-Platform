@@ -32,6 +32,11 @@ router = APIRouter(
 )
 
 
+# ============================================================
+# REGISTER
+# ============================================================
+
+
 @router.post(
     "/register",
     response_model=AuthResponse,
@@ -77,6 +82,12 @@ def register(
         ) from exc
 
 
+# ============================================================
+# LOGIN
+# STUDENT + LECTURER
+# Backend tự xác định role.
+# ============================================================
+
 @router.post(
     "/login",
     response_model=AuthResponse,
@@ -99,6 +110,11 @@ def login(
         ) from exc
 
 
+# ============================================================
+# GET CURRENT USER
+# ============================================================
+
+
 @router.get("/me")
 def get_me(
     current_user=Depends(get_current_user),
@@ -110,6 +126,11 @@ def get_me(
         "role": current_user["role"],
         "avatarUrl": current_user["avatar_url"],
     }
+
+
+# ============================================================
+# CHANGE PASSWORD
+# ============================================================
 
 
 @router.post(

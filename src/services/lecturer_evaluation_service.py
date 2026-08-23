@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from src.models.lecturer_evaluations import LecturerEvaluationSaveRequest
 from src.services.lecturer_common_service import _get_lecturer, to_iso
+from src.services.score_utils import normalize_grade_score
 
 
 EVALUATION_TYPES = ("MIDTERM", "FINAL")
@@ -31,7 +32,7 @@ def _map_item(row: Any) -> dict:
         ),
         "evaluationType": row["evaluation_type"],
         "status": row["evaluation_status"] or "NOT_STARTED",
-        "totalScore": _score(row["total_score"]),
+        "totalScore": normalize_grade_score(row["total_score"]),
         "submittedAt": to_iso(row["evaluation_submitted_at"]),
         "updatedAt": to_iso(row["evaluation_updated_at"]),
         "studentId": int(row["student_id"]),
@@ -91,7 +92,13 @@ def _evaluation_slots(db: Session, lecturer_id: int) -> list[dict]:
                           AND wr.due_at IS NOT NULL
                           AND wr.due_at < NOW()
                     )::INTEGER AS report_overdue,
-                    AVG(wr.lecturer_score) FILTER (
+                    AVG(
+                        CASE
+                            WHEN wr.lecturer_score > 10
+                                THEN wr.lecturer_score / 10.0
+                            ELSE wr.lecturer_score
+                        END
+                    ) FILTER (
                         WHERE wr.lecturer_score IS NOT NULL
                     ) AS report_average_score
                 FROM public.weekly_reports AS wr
@@ -225,7 +232,7 @@ def _record(row: Any) -> dict:
         "evaluatorType": row["evaluator_type"],
         "evaluatorName": row["evaluator_name"],
         "evaluationType": row["evaluation_type"] or "",
-        "totalScore": _score(row["total_score"]),
+        "totalScore": normalize_grade_score(row["total_score"]),
         "feedback": row["feedback"],
         "strengths": row["strengths"],
         "improvements": row["improvements"],
@@ -338,7 +345,7 @@ def get_lecturer_evaluation_detail(
             "submittedAt": to_iso(row["submitted_at"]),
             "isLate": bool(row["is_late"]),
             "isOverdue": bool(row["is_overdue"]),
-            "lecturerScore": _score(row["lecturer_score"]),
+            "lecturerScore": normalize_grade_score(row["lecturer_score"]),
             "lecturerFeedback": row["lecturer_feedback"],
         }
         for row in report_rows

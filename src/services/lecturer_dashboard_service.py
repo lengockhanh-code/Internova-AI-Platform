@@ -9,6 +9,7 @@ from src.services.lecturer_common_service import (
     _to_int,
     to_iso,
 )
+from src.services.score_utils import normalize_grade_score
 
 
 def _empty_dashboard() -> dict:
@@ -228,7 +229,11 @@ def get_lecturer_dashboard_data(
                     li.id AS internship_id,
 
                     AVG(
-                        e.total_score
+                        CASE
+                            WHEN e.total_score > 10
+                                THEN e.total_score / 10.0
+                            ELSE e.total_score
+                        END
                     ) AS score
 
                 FROM lecturer_internships AS li
@@ -249,7 +254,11 @@ def get_lecturer_dashboard_data(
                     li.id AS internship_id,
 
                     AVG(
-                        wr.lecturer_score
+                        CASE
+                            WHEN wr.lecturer_score > 10
+                                THEN wr.lecturer_score / 10.0
+                            ELSE wr.lecturer_score
+                        END
                     ) AS score
 
                 FROM lecturer_internships AS li
@@ -343,10 +352,7 @@ def get_lecturer_dashboard_data(
                 (
                     SELECT
                         COALESCE(
-                            ROUND(
-                                AVG(score) / 10.0,
-                                2
-                            ),
+                            ROUND(AVG(score), 2),
                             0
                         )::DOUBLE PRECISION
 
@@ -871,7 +877,11 @@ def get_lecturer_dashboard_data(
                     li.id AS internship_id,
 
                     AVG(
-                        e.total_score
+                        CASE
+                            WHEN e.total_score > 10
+                                THEN e.total_score / 10.0
+                            ELSE e.total_score
+                        END
                     ) AS score
 
                 FROM lecturer_internships AS li
@@ -894,7 +904,11 @@ def get_lecturer_dashboard_data(
                     li.id AS internship_id,
 
                     AVG(
-                        wr.lecturer_score
+                        CASE
+                            WHEN wr.lecturer_score > 10
+                                THEN wr.lecturer_score / 10.0
+                            ELSE wr.lecturer_score
+                        END
                     ) AS score
 
                 FROM lecturer_internships AS li
@@ -911,13 +925,10 @@ def get_lecturer_dashboard_data(
                 SELECT
                     li.id AS internship_id,
 
-                    (
-                        COALESCE(
-                            es.score,
-                            rs.score,
-                            0
-                        )
-                        / 10.0
+                    COALESCE(
+                        es.score,
+                        rs.score,
+                        0
                     )::DOUBLE PRECISION
                         AS average_score
 
@@ -1556,18 +1567,9 @@ def get_lecturer_dashboard_data(
                         ]
                     ),
 
-                "lecturerScore":
-                    (
-                        _to_float(
-                            row[
-                                "lecturer_score"
-                            ]
-                        )
-                        if row[
-                            "lecturer_score"
-                        ] is not None
-                        else None
-                    ),
+                "lecturerScore": normalize_grade_score(
+                    row["lecturer_score"]
+                ),
 
                 "lecturerFeedback":
                     row[
@@ -1736,18 +1738,9 @@ def get_lecturer_dashboard_data(
                                     "review_status"
                                 ],
 
-                            "lecturerScore":
-                                (
-                                    _to_float(
-                                        row[
-                                            "latest_lecturer_score"
-                                        ]
-                                    )
-                                    if row[
-                                        "latest_lecturer_score"
-                                    ] is not None
-                                    else None
-                                ),
+                            "lecturerScore": normalize_grade_score(
+                                row["latest_lecturer_score"]
+                            ),
                         }
 
                         if row[
