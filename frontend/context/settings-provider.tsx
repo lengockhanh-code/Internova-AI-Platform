@@ -7,6 +7,7 @@ import React, {
     useMemo,
     useState,
 } from "react";
+import { usePathname } from "next/navigation";
 
 type Theme = "light" | "dark";
 type Locale = "vi" | "en";
@@ -19,15 +20,43 @@ interface SettingsContextProps {
     t: (key: string) => string;
 }
 
+type GoogleTranslateElementConstructor = new (
+    options: {
+        pageLanguage: string;
+        includedLanguages: string;
+        autoDisplay: boolean;
+    },
+    elementId: string,
+) => unknown;
+
+declare global {
+    interface Window {
+        google?: {
+            translate?: {
+                TranslateElement?: GoogleTranslateElementConstructor;
+            };
+        };
+        googleTranslateElementInit?: () => void;
+        __internovaGoogleTranslateReady?: boolean;
+    }
+}
+
 const SettingsContext =
     createContext<SettingsContextProps | undefined>(undefined);
+
+const GOOGLE_TRANSLATE_SCRIPT_ID = "internova-google-translate-script";
+const GOOGLE_TRANSLATE_ELEMENT_ID = "internova-google-translate-element";
+const GOOGLE_TRANSLATE_STYLE_ID = "internova-google-translate-style";
+let googleTranslateDomGuardInstalled = false;
+let googleTranslateApplyRun = 0;
+let googleTranslateApplyTimers: ReturnType<typeof setTimeout>[] = [];
 
 const translations: Record<Locale, Record<string, string>> = {
     vi: {
         "nav.dashboard": "Bảng điều khiển",
         "nav.notifications": "Lịch và thông báo",
-        "nav.account": "Tài khoản sinh viên",
-        "nav.account.sub": "Hồ sơ và thông tin cá nhân",
+        "nav.account": "Tài khoản của sinh viên",
+        "nav.account.sub": "Hồ sơ & thông tin cá nhân",
         "nav.role": "Vai trò hệ thống",
         "nav.role.sub": "Quyền hạn của tài khoản",
         "nav.change_password": "Đổi mật khẩu",
@@ -35,38 +64,12 @@ const translations: Record<Locale, Record<string, string>> = {
         "nav.feedback": "Báo lỗi / Góp ý",
         "nav.feedback.sub": "Gửi phản hồi cho hệ thống",
         "nav.logout": "Đăng xuất",
-        "nav.logout.confirm": "Bạn có chắc chắn muốn đăng xuất?",
         "role.student": "Sinh viên",
         "role.lecturer": "Giảng viên",
         "role.admin": "Quản trị viên",
         "role.user": "Người dùng",
         "header.menu_account": "Menu tài khoản",
         "header.open_menu": "Mở menu",
-        "header.theme.light": "Chuyển sang chế độ tối",
-        "header.theme.dark": "Chuyển sang chế độ sáng",
-        "header.modal.close": "Đóng",
-        "header.password.title": "Đổi mật khẩu",
-        "header.password.desc": "Cập nhật mật khẩu để bảo vệ tài khoản của bạn",
-        "header.password.current": "Mật khẩu hiện tại",
-        "header.password.current.placeholder": "Nhập mật khẩu hiện tại",
-        "header.password.new": "Mật khẩu mới",
-        "header.password.new.placeholder": "Tối thiểu 6 ký tự",
-        "header.password.confirm": "Xác nhận mật khẩu mới",
-        "header.password.confirm.placeholder": "Nhập lại mật khẩu mới",
-        "header.password.cancel": "Hủy",
-        "header.password.save": "Lưu mật khẩu",
-        "header.feedback.title": "Báo lỗi và Góp ý",
-        "header.feedback.desc": "Đóng góp ý kiến để giúp chúng tôi hoàn thiện phần mềm",
-        "header.feedback.category": "Loại phản hồi",
-        "header.feedback.content": "Nội dung phản hồi",
-        "header.feedback.content.placeholder": "Mô tả chi tiết lỗi gặp phải hoặc ý kiến đóng góp của bạn...",
-        "header.feedback.cancel": "Hủy",
-        "header.feedback.submit": "Gửi phản hồi",
-        "header.feedback.category.bug": "Báo lỗi hệ thống (Bug)",
-        "header.feedback.category.feature": "Góp ý tính năng mới",
-        "header.feedback.category.ui": "Phản hồi Giao diện / Trải nghiệm",
-        "header.feedback.category.other": "Ý kiến khác",
-        "header.session.expired": "Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.",
         "sidebar.overview": "TỔNG QUAN",
         "sidebar.internship": "THỰC TẬP",
         "sidebar.ai_support": "HỖ TRỢ AI",
@@ -77,7 +80,7 @@ const translations: Record<Locale, Record<string, string>> = {
         "sidebar.report": "Báo cáo",
         "sidebar.checklist": "Checklist",
         "sidebar.chatbot": "Hỏi đáp AI",
-        "sidebar.notifications": "Lịch và Thông báo",
+        "sidebar.notifications": "Lịch & Thông báo",
         "sidebar.settings": "Cài đặt",
         "sidebar.footer_desc": "Nền tảng hỗ trợ thực tập sinh viên",
         "dashboard.welcome": "Xin chào",
@@ -112,71 +115,49 @@ const translations: Record<Locale, Record<string, string>> = {
         "dashboard.status.not_started": "Chưa bắt đầu",
         "dashboard.status.in_progress": "Đang thực tập",
         "dashboard.status.completed": "Đã hoàn thành",
+        "chat.welcome": "Xin chào! 👋 Mình là **Internova AI**, trợ lý hỗ trợ thực tập dành cho sinh viên VinUni.\n\nBạn có thể hỏi mình về **quy trình đăng ký thực tập, điều kiện, biểu mẫu, báo cáo, đánh giá và các quy định liên quan**.\n\nMình sẽ trả lời dựa trên tài liệu chính thức được cung cấp trong hệ thống.",
+        "chat.suggestion.1": "Thời gian nộp báo cáo thực tập là khi nào?",
+        "chat.suggestion.2": "Quy trình đăng ký thực tập gồm những bước nào?",
+        "chat.suggestion.3": "Nếu nộp báo cáo trễ thì có bị trừ điểm không?",
     },
     en: {
         "nav.dashboard": "Dashboard",
-        "nav.notifications": "Schedules and Notifications",
-        "nav.account": "Student Account",
-        "nav.account.sub": "Profile and personal information",
+        "nav.notifications": "Schedules & Notifications",
+        "nav.account": "Student Profile",
+        "nav.account.sub": "Profile & personal info",
         "nav.role": "System Role",
         "nav.role.sub": "Account permissions",
         "nav.change_password": "Change Password",
-        "nav.change_password.sub": "Update your secure password",
-        "nav.feedback": "Bug Report / Feedback",
+        "nav.change_password.sub": "Update secure password",
+        "nav.feedback": "Report Bug / Feedback",
         "nav.feedback.sub": "Send feedback to the system",
         "nav.logout": "Log Out",
-        "nav.logout.confirm": "Are you sure you want to log out?",
         "role.student": "Student",
         "role.lecturer": "Lecturer",
         "role.admin": "Administrator",
         "role.user": "User",
         "header.menu_account": "Account menu",
         "header.open_menu": "Open menu",
-        "header.theme.light": "Switch to dark mode",
-        "header.theme.dark": "Switch to light mode",
-        "header.modal.close": "Close",
-        "header.password.title": "Change Password",
-        "header.password.desc": "Update your password to protect your account",
-        "header.password.current": "Current password",
-        "header.password.current.placeholder": "Enter current password",
-        "header.password.new": "New password",
-        "header.password.new.placeholder": "At least 6 characters",
-        "header.password.confirm": "Confirm new password",
-        "header.password.confirm.placeholder": "Re-enter new password",
-        "header.password.cancel": "Cancel",
-        "header.password.save": "Save password",
-        "header.feedback.title": "Bug Report and Feedback",
-        "header.feedback.desc": "Share feedback to help us improve the software",
-        "header.feedback.category": "Feedback type",
-        "header.feedback.content": "Feedback content",
-        "header.feedback.content.placeholder": "Describe the issue or your suggestion in detail...",
-        "header.feedback.cancel": "Cancel",
-        "header.feedback.submit": "Send feedback",
-        "header.feedback.category.bug": "System bug report",
-        "header.feedback.category.feature": "New feature suggestion",
-        "header.feedback.category.ui": "UI / UX feedback",
-        "header.feedback.category.other": "Other feedback",
-        "header.session.expired": "Your session has expired. Please sign in again.",
         "sidebar.overview": "OVERVIEW",
         "sidebar.internship": "INTERNSHIP",
-        "sidebar.ai_support": "AI SUPPORT",
+        "sidebar.ai_support": "AI ASSISTANT",
         "sidebar.personal": "PERSONAL",
         "sidebar.dashboard": "Dashboard",
-        "sidebar.register": "Internship Registration",
+        "sidebar.register": "Register Internship",
         "sidebar.profile": "Internship Profile",
         "sidebar.report": "Reports",
         "sidebar.checklist": "Checklist",
-        "sidebar.chatbot": "AI Chat",
-        "sidebar.notifications": "Schedules and Notifications",
+        "sidebar.chatbot": "AI Chatbot",
+        "sidebar.notifications": "Schedules & Alerts",
         "sidebar.settings": "Settings",
-        "sidebar.footer_desc": "Student internship support platform",
+        "sidebar.footer_desc": "Student Internship Platform",
         "dashboard.welcome": "Welcome",
-        "dashboard.welcome_sub": "Internova supports you throughout an effective and professional internship journey.",
+        "dashboard.welcome_sub": "Internova accompanies you on your journey towards an effective and professional internship.",
         "dashboard.ai_consulting": "Academic Advising (RAG)",
-        "dashboard.ai_consulting_desc": "Ask about internship procedures, policies, and workflows and receive answers from the system.",
+        "dashboard.ai_consulting_desc": "Ask questions about internship procedures, regulations, processes and get answers from the system.",
         "dashboard.ai_consulting_btn": "Start Advising",
         "dashboard.ai_review": "AI Report Review",
-        "dashboard.ai_review_desc": "Check internship reports, detect missing content, and get suggestions before submission.",
+        "dashboard.ai_review_desc": "Check internship reports, detect missing content and receive improvement suggestions before submission.",
         "dashboard.ai_review_btn": "Review Report",
         "dashboard.ai_review_badge": "In development",
         "dashboard.ai_review_coming_soon": "Coming soon",
@@ -185,35 +166,297 @@ const translations: Record<Locale, Record<string, string>> = {
         "dashboard.status_company": "Company:",
         "dashboard.status_position": "Position:",
         "dashboard.status_duration": "Duration:",
-        "dashboard.status_not_update": "Not updated",
-        "dashboard.status_view_profile": "View profile details",
+        "dashboard.status_not_update": "Not updated yet",
+        "dashboard.status_view_profile": "View Profile Details",
         "dashboard.status_no_internship": "You do not have an active internship period.",
         "dashboard.status_register_btn": "Register Internship",
         "dashboard.deadlines_title": "Upcoming Deadlines",
         "dashboard.deadlines_none": "No upcoming deadlines.",
-        "dashboard.deadlines_view_all": "View all deadlines",
+        "dashboard.deadlines_view_all": "View All Deadlines",
         "dashboard.progress_title": "This Week's Progress",
         "dashboard.progress_week": "Week",
         "dashboard.progress_none": "No progress for the current week.",
-        "dashboard.progress_view_detail": "View progress details",
+        "dashboard.progress_view_detail": "View Progress Details",
         "dashboard.tip_title": "Tip:",
-        "dashboard.tip_content": "Update your progress regularly and proactively communicate with your mentor for the best internship experience.",
+        "dashboard.tip_content": "Update your progress regularly and actively communicate with your mentor for the best internship experience!",
         "dashboard.try_again": "Try again",
         "dashboard.status.not_started": "Not started",
         "dashboard.status.in_progress": "In progress",
         "dashboard.status.completed": "Completed",
+        "chat.welcome": "Hello! 👋 I'm **Internova AI**, an internship support assistant for VinUni students.\n\nYou can ask me about **internship registration procedures, eligibility requirements, forms, reports, evaluations, and related regulations**.\n\nI will answer based on the official documents available in the system.",
+        "chat.suggestion.1": "When is the internship report submission deadline?",
+        "chat.suggestion.2": "What are the steps in the internship registration process?",
+        "chat.suggestion.3": "Will I lose points if I submit my internship report late?",
     },
 };
+
+function setGoogleTranslateCookie(locale: Locale) {
+    const cookieValue = locale === "en" ? "/vi/en" : "/vi/vi";
+    const hostnameParts = window.location.hostname.split(".");
+    const baseCookie = `googtrans=${cookieValue};path=/;SameSite=Lax`;
+
+    document.cookie = baseCookie;
+
+    if (hostnameParts.length > 1) {
+        document.cookie = `${baseCookie};domain=.${hostnameParts.slice(-2).join(".")}`;
+    }
+}
+
+function resetGoogleTranslateCookie() {
+    const hostnameParts = window.location.hostname.split(".");
+    const expiredCookie = "googtrans=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT;SameSite=Lax";
+
+    document.cookie = expiredCookie;
+    document.cookie = "googtrans=/vi/vi;path=/;SameSite=Lax";
+
+    if (hostnameParts.length > 1) {
+        const domain = `.${hostnameParts.slice(-2).join(".")}`;
+        document.cookie = `${expiredCookie};domain=${domain}`;
+        document.cookie = `googtrans=/vi/vi;path=/;domain=${domain};SameSite=Lax`;
+    }
+}
+
+function ensureGoogleTranslateContainer() {
+    if (document.getElementById(GOOGLE_TRANSLATE_ELEMENT_ID)) {
+        return;
+    }
+
+    const container = document.createElement("div");
+    container.id = GOOGLE_TRANSLATE_ELEMENT_ID;
+    container.setAttribute("aria-hidden", "true");
+    container.style.position = "fixed";
+    container.style.left = "-9999px";
+    container.style.top = "-9999px";
+    document.body.appendChild(container);
+}
+
+function ensureGoogleTranslateStyles() {
+    if (document.getElementById(GOOGLE_TRANSLATE_STYLE_ID)) {
+        return;
+    }
+
+    const style = document.createElement("style");
+    style.id = GOOGLE_TRANSLATE_STYLE_ID;
+    style.textContent = `
+        .goog-te-banner-frame,
+        .goog-te-balloon-frame,
+        #goog-gt-tt,
+        .goog-te-spinner-pos {
+            display: none !important;
+        }
+
+        body {
+            top: 0 !important;
+        }
+
+        body > .skiptranslate {
+            display: none !important;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function installGoogleTranslateDomGuard() {
+    if (googleTranslateDomGuardInstalled || typeof Node === "undefined") {
+        return;
+    }
+
+    googleTranslateDomGuardInstalled = true;
+
+    const originalRemoveChild = Node.prototype.removeChild;
+    const originalInsertBefore = Node.prototype.insertBefore;
+
+    Node.prototype.removeChild = function removeChildSafely<T extends Node>(
+        child: T,
+    ): T {
+        if (child.parentNode !== this) {
+            return child;
+        }
+
+        return originalRemoveChild.call(this, child) as T;
+    };
+
+    Node.prototype.insertBefore = function insertBeforeSafely<T extends Node>(
+        newNode: T,
+        referenceNode: Node | null,
+    ): T {
+        if (referenceNode && referenceNode.parentNode !== this) {
+            return this.appendChild(newNode) as T;
+        }
+
+        return originalInsertBefore.call(
+            this,
+            newNode,
+            referenceNode,
+        ) as T;
+    };
+}
+
+function cancelQueuedGoogleTranslate() {
+    googleTranslateApplyRun += 1;
+
+    googleTranslateApplyTimers.forEach(clearTimeout);
+    googleTranslateApplyTimers = [];
+}
+
+function queueGoogleTranslateTask(
+    callback: () => void,
+    delay: number,
+) {
+    const timer = setTimeout(() => {
+        googleTranslateApplyTimers = googleTranslateApplyTimers.filter(
+            item => item !== timer,
+        );
+        callback();
+    }, delay);
+
+    googleTranslateApplyTimers.push(timer);
+}
+
+function applyGoogleTranslate(
+    locale: Locale,
+    attempts = 0,
+    runId = googleTranslateApplyRun,
+    force = false,
+) {
+    if (runId !== googleTranslateApplyRun) {
+        return;
+    }
+
+    setGoogleTranslateCookie(locale);
+    document.documentElement.setAttribute("lang", locale);
+
+    const combo =
+        document.querySelector<HTMLSelectElement>(".goog-te-combo");
+
+    if (combo) {
+        const nextValue = locale === "en" ? "en" : "vi";
+        if (force || combo.value !== nextValue) {
+            combo.value = nextValue;
+            try {
+                combo.dispatchEvent(
+                    new Event("change", { bubbles: true }),
+                );
+            } catch {
+                window.setTimeout(
+                    () =>
+                        applyGoogleTranslate(
+                            locale,
+                            attempts + 1,
+                            runId,
+                            force,
+                        ),
+                    300,
+                );
+            }
+        }
+        return;
+    }
+
+    if (attempts < 8) {
+        queueGoogleTranslateTask(
+            () =>
+                applyGoogleTranslate(
+                    locale,
+                    attempts + 1,
+                    runId,
+                    force,
+                ),
+            250,
+        );
+    }
+}
+
+function loadGoogleTranslate(
+    locale: Locale,
+    runId = googleTranslateApplyRun,
+) {
+    if (runId !== googleTranslateApplyRun) {
+        return;
+    }
+
+    installGoogleTranslateDomGuard();
+    ensureGoogleTranslateContainer();
+    ensureGoogleTranslateStyles();
+    setGoogleTranslateCookie(locale);
+
+    window.googleTranslateElementInit = () => {
+        if (runId !== googleTranslateApplyRun) {
+            return;
+        }
+
+        const TranslateElement =
+            window.google?.translate?.TranslateElement;
+
+        if (!TranslateElement) {
+            return;
+        }
+
+        new TranslateElement(
+            {
+                pageLanguage: "vi",
+                includedLanguages: "vi,en",
+                autoDisplay: false,
+            },
+            GOOGLE_TRANSLATE_ELEMENT_ID,
+        );
+
+        window.__internovaGoogleTranslateReady = true;
+        applyGoogleTranslate(locale, 0, runId);
+    };
+
+    if (window.__internovaGoogleTranslateReady) {
+        applyGoogleTranslate(locale, 0, runId);
+        return;
+    }
+
+    if (document.getElementById(GOOGLE_TRANSLATE_SCRIPT_ID)) {
+        return;
+    }
+
+    const script = document.createElement("script");
+    script.id = GOOGLE_TRANSLATE_SCRIPT_ID;
+    script.src =
+        "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+    script.async = true;
+    document.body.appendChild(script);
+}
+
+function requestGoogleTranslate(locale: Locale, delay = 180) {
+    const runId = googleTranslateApplyRun + 1;
+    googleTranslateApplyRun = runId;
+
+    googleTranslateApplyTimers.forEach(clearTimeout);
+    googleTranslateApplyTimers = [];
+
+    queueGoogleTranslateTask(() => {
+        loadGoogleTranslate(locale, runId);
+    }, delay);
+
+    queueGoogleTranslateTask(() => {
+        applyGoogleTranslate(locale, 0, runId, true);
+    }, delay + 900);
+}
 
 export function SettingsProvider({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const pathname = usePathname();
     const [theme, setTheme] = useState<Theme>("light");
     const [locale, setLocaleState] = useState<Locale>("vi");
+    const [settingsReady, setSettingsReady] = useState(false);
+    const isStudentChatbotPage =
+        pathname.startsWith("/student/chatbot");
+    const autoTranslateEnabled =
+        pathname.startsWith("/student/") &&
+        !isStudentChatbotPage;
+    const studentUiEnabled =
+        pathname.startsWith("/student/");
 
     useEffect(() => {
+        /* eslint-disable react-hooks/set-state-in-effect */
         const savedTheme =
             localStorage.getItem("internova_theme") as Theme | null;
         const savedLocale =
@@ -234,24 +477,67 @@ export function SettingsProvider({
             initialTheme === "dark",
         );
         document.documentElement.setAttribute("lang", initialLocale);
+
+        setSettingsReady(true);
+
+        if (!window.location.pathname.startsWith("/student/")) {
+            resetGoogleTranslateCookie();
+        }
+        /* eslint-enable react-hooks/set-state-in-effect */
     }, []);
 
-    const value = useMemo<SettingsContextProps>(() => {
-        const isStudentUi =
-            typeof window !== "undefined" &&
-            window.location.pathname.startsWith("/student/");
+    useEffect(() => {
+        document.documentElement.classList.toggle(
+            "dark",
+            studentUiEnabled && theme === "dark",
+        );
+    }, [studentUiEnabled, theme]);
 
+    useEffect(() => {
+        if (!settingsReady) {
+            return;
+        }
+
+        if (autoTranslateEnabled) {
+            requestGoogleTranslate(locale);
+            return;
+        }
+
+        cancelQueuedGoogleTranslate();
+        resetGoogleTranslateCookie();
+        document.documentElement.setAttribute("lang", "vi");
+
+        const combo =
+            document.querySelector<HTMLSelectElement>(".goog-te-combo");
+
+        if (combo && combo.value !== "vi") {
+            combo.value = "vi";
+            try {
+                combo.dispatchEvent(
+                    new Event("change", { bubbles: true }),
+                );
+            } catch {
+                // Google Translate can mutate the DOM while routes change.
+            }
+        }
+    }, [autoTranslateEnabled, locale, settingsReady]);
+
+    const value = useMemo<SettingsContextProps>(() => {
         const toggleTheme = () => {
             const nextTheme = theme === "light" ? "dark" : "light";
             setTheme(nextTheme);
             localStorage.setItem("internova_theme", nextTheme);
             document.documentElement.classList.toggle(
                 "dark",
-                isStudentUi && nextTheme === "dark",
+                studentUiEnabled && nextTheme === "dark",
             );
         };
 
         const setLocale = (newLocale: Locale) => {
+            if (newLocale === locale) {
+                return;
+            }
+
             setLocaleState(newLocale);
             localStorage.setItem("internova_locale", newLocale);
             document.documentElement.setAttribute("lang", newLocale);
@@ -268,7 +554,7 @@ export function SettingsProvider({
             setLocale,
             t,
         };
-    }, [locale, theme]);
+    }, [locale, studentUiEnabled, theme]);
 
     return (
         <SettingsContext.Provider value={value}>

@@ -46,6 +46,14 @@ interface UserInfo {
     avatarUrl?: string | null;
 }
 
+interface StudentNotification {
+    id: string | number;
+    title: string;
+    message: string;
+    isRead: boolean;
+    createdAt: string | null;
+}
+
 
 export default function Header() {
     const router = useRouter();
@@ -55,9 +63,16 @@ export default function Header() {
     const [languageBusy, setLanguageBusy] = useState(false);
     const [themeBusy, setThemeBusy] = useState(false);
 
-    // Dropdown state
+    // Account dropdown state
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+
+    // Notification dropdown state
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [latestNotifications, setLatestNotifications] = useState<StudentNotification[]>([]);
+    const [notificationLoading, setNotificationLoading] = useState(false);
+    const [notificationError, setNotificationError] = useState("");
+    const notificationRef = useRef<HTMLDivElement>(null);
 
     // Password Modal state
     const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -113,6 +128,174 @@ export default function Header() {
     }, [t]);
 
 
+    function normalizeNotification(raw: any): StudentNotification | null {
+        const id = raw?.id ?? raw?.notificationId ?? raw?.notification_id;
+        if (id === undefined || id === null) {
+            return null;
+        }
+
+        return {
+            id,
+            title:
+                raw?.title ??
+                raw?.subject ??
+                raw?.name ??
+                (locale === "vi" ? "Thông báo" : "Notification"),
+            message:
+                raw?.message ??
+                raw?.content ??
+                raw?.body ??
+                raw?.description ??
+                "",
+            isRead:
+                Boolean(
+                    raw?.isRead ??
+                    raw?.is_read ??
+                    raw?.read ??
+                    false
+                ),
+            createdAt:
+                raw?.createdAt ??
+                raw?.created_at ??
+                raw?.sentAt ??
+                raw?.sent_at ??
+                null,
+        };
+    }
+
+    async function loadLatestNotifications() {
+        const token = localStorage.getItem("internova_access_token");
+
+        if (!token || user?.role !== "STUDENT") {
+            return;
+        }
+
+        try {
+            setNotificationLoading(true);
+            setNotificationError("");
+
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+
+            // Backend hiện tại dùng chung endpoint notifications + calendar.
+            // year/month là bắt buộc cho phần calendar; danh sách notifications
+            // vẫn được trả về trong cùng response.
+            const response = await fetch(
+                `${API_BASE_URL}/api/v1/student/notifications-calendar?year=${year}&month=${month}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    cache: "no-store",
+                },
+            );
+
+            if (response.status === 401) {
+                localStorage.removeItem("internova_access_token");
+                localStorage.removeItem("internova_user");
+                window.location.replace("/auth/login");
+                return;
+            }
+
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(
+                    data?.detail ??
+                    data?.message ??
+                    (locale === "vi"
+                        ? "Không thể tải thông báo."
+                        : "Unable to load notifications.")
+                );
+            }
+
+            const rawItems = Array.isArray(data)
+                ? data
+                : Array.isArray(data?.items)
+                    ? data.items
+                    : Array.isArray(data?.notifications)
+                        ? data.notifications
+                        : Array.isArray(data?.data)
+                            ? data.data
+                            : [];
+
+        const normalized: StudentNotification[] = rawItems
+    .map(normalizeNotification)
+    .filter(
+        (
+            item: StudentNotification | null
+        ): item is StudentNotification =>
+            item !== null
+    )
+    .sort(
+        (
+            a: StudentNotification,
+            b: StudentNotification
+        ) => {
+            const timeA = a.createdAt
+                ? new Date(a.createdAt).getTime()
+                : 0;
+
+            const timeB = b.createdAt
+                ? new Date(b.createdAt).getTime()
+                : 0;
+
+            return timeB - timeA;
+        }
+    )
+    .slice(0, 5);
+
+setLatestNotifications(normalized);
+        } catch (error) {
+            console.error("Không thể tải 5 thông báo mới nhất:", error);
+            setNotificationError(
+                error instanceof Error
+                    ? error.message
+                    : locale === "vi"
+                        ? "Không thể tải thông báo."
+                        : "Unable to load notifications."
+            );
+        } finally {
+            setNotificationLoading(false);
+        }
+    }
+
+    function formatNotificationTime(value: string | null) {
+        if (!value) {
+            return "";
+        }
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return "";
+        }
+
+        return new Intl.DateTimeFormat(
+            locale === "vi" ? "vi-VN" : "en-US",
+            {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+            },
+        ).format(date);
+    }
+
+    async function handleNotificationToggle() {
+        const nextOpen = !isNotificationOpen;
+
+        setIsNotificationOpen(nextOpen);
+        setIsMenuOpen(false);
+
+        if (nextOpen) {
+            await loadLatestNotifications();
+        }
+    }
+
+
     useEffect(() => {
         if (user?.role !== "STUDENT") {
             return;
@@ -126,7 +309,12 @@ export default function Header() {
             .catch(() => undefined);
 
         const unsubscribeRealtime = subscribeStudentNotificationEvents(
-            () => setUnreadCount((count) => count + 1),
+            () => {
+                setUnreadCount((count) => count + 1);
+                if (isNotificationOpen) {
+                    void loadLatestNotifications();
+                }
+            },
         );
         const unsubscribeCount = subscribeStudentUnreadCount(setUnreadCount);
 
@@ -135,10 +323,10 @@ export default function Header() {
             unsubscribeRealtime();
             unsubscribeCount();
         };
-    }, [user?.role]);
+    }, [user?.role, isNotificationOpen]);
 
 
-    // Click outside listener for dropdown menu
+    // Click outside listener for account dropdown
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -162,6 +350,35 @@ export default function Header() {
             document.removeEventListener("keydown", handleKeyDown);
         };
     }, [isMenuOpen]);
+
+
+    // Click outside / Escape listener for notification dropdown
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (
+                notificationRef.current &&
+                !notificationRef.current.contains(event.target as Node)
+            ) {
+                setIsNotificationOpen(false);
+            }
+        }
+
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                setIsNotificationOpen(false);
+            }
+        }
+
+        if (isNotificationOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+            document.addEventListener("keydown", handleKeyDown);
+        }
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [isNotificationOpen]);
 
 
     function handleLogout() {
@@ -362,18 +579,163 @@ export default function Header() {
                         <div className={styles.verticalDivider} />
 
                         {user.role === "STUDENT" && (
-                            <button
-                                aria-label={locale === "vi" ? `Thông báo${unreadCount > 0 ? `, ${unreadCount} chưa đọc` : ""}` : `Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
-                                className={styles.notificationButton}
-                                onClick={() => router.push("/student/notification")}
-                                title={t("nav.notifications")}
-                                type="button"
+                            <div
+                                className={styles.notificationContainer}
+                                ref={notificationRef}
                             >
-                                <Bell size={19} />
-                                {unreadCount > 0 && (
-                                    <span>{unreadCount > 99 ? "99+" : unreadCount}</span>
+                                <button
+                                    aria-label={
+                                        locale === "vi"
+                                            ? `Thông báo${unreadCount > 0 ? `, ${unreadCount} chưa đọc` : ""}`
+                                            : `Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`
+                                    }
+                                    aria-expanded={isNotificationOpen}
+                                    className={`${styles.notificationButton} ${
+                                        isNotificationOpen
+                                            ? styles.notificationButtonActive
+                                            : ""
+                                    }`}
+                                    onClick={() => void handleNotificationToggle()}
+                                    title={t("nav.notifications")}
+                                    type="button"
+                                >
+                                    <Bell size={19} />
+
+                                    {unreadCount > 0 && (
+                                        <span>
+                                            {unreadCount > 99 ? "99+" : unreadCount}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {isNotificationOpen && (
+                                    <div className={styles.notificationDropdown}>
+                                        <div className={styles.notificationDropdownHeader}>
+                                            <div>
+                                                <strong>
+                                                    {locale === "vi"
+                                                        ? "Thông báo"
+                                                        : "Notifications"}
+                                                </strong>
+                                                <small>
+                                                    {unreadCount > 0
+                                                        ? locale === "vi"
+                                                            ? `${unreadCount} thông báo chưa đọc`
+                                                            : `${unreadCount} unread`
+                                                        : locale === "vi"
+                                                            ? "Không có thông báo chưa đọc"
+                                                            : "No unread notifications"}
+                                                </small>
+                                            </div>
+                                        </div>
+
+                                        <div className={styles.notificationList}>
+                                            {notificationLoading ? (
+                                                <div className={styles.notificationState}>
+                                                    <Loader2
+                                                        size={18}
+                                                        className={styles.spin}
+                                                    />
+                                                    <span>
+                                                        {locale === "vi"
+                                                            ? "Đang tải thông báo..."
+                                                            : "Loading notifications..."}
+                                                    </span>
+                                                </div>
+                                            ) : notificationError ? (
+                                                <div className={styles.notificationState}>
+                                                    <span>{notificationError}</span>
+                                                    <button
+                                                        type="button"
+                                                        className={styles.notificationRetryButton}
+                                                        onClick={() =>
+                                                            void loadLatestNotifications()
+                                                        }
+                                                    >
+                                                        {locale === "vi"
+                                                            ? "Thử lại"
+                                                            : "Retry"}
+                                                    </button>
+                                                </div>
+                                            ) : latestNotifications.length === 0 ? (
+                                                <div className={styles.notificationState}>
+                                                    <Bell size={20} />
+                                                    <span>
+                                                        {locale === "vi"
+                                                            ? "Chưa có thông báo."
+                                                            : "No notifications yet."}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                latestNotifications.map((notification) => (
+                                                    <button
+                                                        key={notification.id}
+                                                        type="button"
+                                                        className={`${styles.notificationItem} ${
+                                                            !notification.isRead
+                                                                ? styles.notificationItemUnread
+                                                                : ""
+                                                        }`}
+                                                        onClick={() => {
+                                                            setIsNotificationOpen(false);
+                                                            router.push(
+                                                                "/student/notification"
+                                                            );
+                                                        }}
+                                                    >
+                                                        <span
+                                                            className={
+                                                                styles.notificationItemDot
+                                                            }
+                                                        />
+
+                                                        <span
+                                                            className={
+                                                                styles.notificationItemContent
+                                                            }
+                                                        >
+                                                            <strong>
+                                                                {notification.title}
+                                                            </strong>
+
+                                                            {notification.message && (
+                                                                <span>
+                                                                    {notification.message}
+                                                                </span>
+                                                            )}
+
+                                                            {notification.createdAt && (
+                                                                <small>
+                                                                    {formatNotificationTime(
+                                                                        notification.createdAt
+                                                                    )}
+                                                                </small>
+                                                            )}
+                                                        </span>
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+
+                                        <div className={styles.notificationDropdownFooter}>
+                                            <button
+                                                type="button"
+                                                className={styles.notificationViewAll}
+                                                onClick={() => {
+                                                    setIsNotificationOpen(false);
+                                                    router.push(
+                                                        "/student/notification"
+                                                    );
+                                                }}
+                                            >
+                                                {locale === "vi"
+                                                    ? "Xem tất cả thông báo"
+                                                    : "View all notifications"}
+                                            </button>
+                                        </div>
+                                    </div>
                                 )}
-                            </button>
+                            </div>
                         )}
 
                         <div
@@ -393,7 +755,10 @@ export default function Header() {
                             <button
                                 type="button"
                                 className={`${styles.headerUser} ${isMenuOpen ? styles.headerUserActive : ""}`}
-                                onClick={() => setIsMenuOpen((prev) => !prev)}
+                                onClick={() => {
+                                    setIsNotificationOpen(false);
+                                    setIsMenuOpen((prev) => !prev);
+                                }}
                                 aria-expanded={isMenuOpen}
                                 title={t("header.menu_account")}
                             >
@@ -590,7 +955,7 @@ export default function Header() {
                                     <input
                                         type="password"
                                         className={styles.formInput}
-                                        placeholder={t("header.password.new.placeholder")}
+                                        placeholder="Tối thiểu 6 ký tự"
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
                                         required

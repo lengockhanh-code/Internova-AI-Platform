@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
     memo,
@@ -14,6 +14,7 @@ import remarkGfm from "remark-gfm";
 import Header from "@/components/header/header";
 import Sidebar from "@/components/sidebar/sidebar";
 import FormAgentPanel from "@/components/FormAgentPanel";
+import { useSettings } from "@/context/settings-provider";
 
 import {
     Bot,
@@ -30,6 +31,7 @@ import {
 } from "lucide-react";
 
 import styles from "./page.module.css";
+
 
 
 const API_URL =
@@ -182,23 +184,6 @@ type StreamEvent = {
 };
 
 
-const welcomeMessage: Message = {
-    id: "welcome",
-
-    role: "assistant",
-
-    content:
-        "Xin chào! 👋 Mình là **Internova AI**, trợ lý hỗ trợ thực tập dành cho sinh viên VinUni.\n\nBạn có thể hỏi mình về **quy trình đăng ký thực tập, điều kiện, biểu mẫu, báo cáo, đánh giá và các quy định liên quan**.\n\nMình sẽ trả lời dựa trên tài liệu chính thức được cung cấp trong hệ thống.",
-};
-
-
-const suggestions = [
-    "Thời gian nộp báo cáo thực tập là khi nào?",
-
-    "Quy trình đăng ký thực tập gồm những bước nào?",
-
-    "Nếu nộp báo cáo trễ thì có bị trừ điểm không?",
-];
 
 function getToken() {
     if (typeof window === "undefined") {
@@ -233,21 +218,17 @@ function resolveApiUrl(
 
 function getPhaseLabel(
     phase: ChatPhase,
+    locale: "vi" | "en" = "vi",
 ): string {
-    switch (phase) {
-        case "retrieving":
-            return "Đang tìm tài liệu";
-        case "thinking":
-            return "Đang suy nghĩ";
-        case "answering":
-            return "Đang trả lời";
-        case "done":
-            return "";
-        case "error":
-            return "";
-        default:
-            return "";
-    }
+    const labels: Record<ChatPhase, { vi: string; en: string }> = {
+        retrieving: { vi: "Đang tìm tài liệu", en: "Searching documents" },
+        thinking:   { vi: "Đang suy nghĩ",     en: "Thinking" },
+        answering:  { vi: "Đang trả lời",       en: "Answering" },
+        done:       { vi: "",                   en: "" },
+        error:      { vi: "",                   en: "" },
+        idle:       { vi: "",                   en: "" },
+    };
+    return labels[phase]?.[locale] ?? "";
 }
 
 
@@ -266,6 +247,20 @@ function shouldAnimatePhase(
 
 
 export default function RagChatPage() {
+
+    const { locale, t } = useSettings();
+
+    const welcomeMessage: Message = {
+        id: "welcome",
+        role: "assistant",
+        content: t("chat.welcome"),
+    };
+
+    const suggestions = [
+        t("chat.suggestion.1"),
+        t("chat.suggestion.2"),
+        t("chat.suggestion.3"),
+    ];
 
     const [
         messages,
@@ -1989,8 +1984,8 @@ export default function RagChatPage() {
 
                                 <div>
 
-                                    <h1>
-                                        Internova AI
+                                    <h1 className="notranslate" translate="no">
+                                        AI Internova
                                     </h1>
 
                                 </div>
@@ -1999,11 +1994,9 @@ export default function RagChatPage() {
 
 
                             <p>
-                                Trợ lý AI trả lời dựa
-                                trên tài liệu chính thức
-                                của nhà trường. Nếu
-                                không tìm thấy thông tin,
-                                AI sẽ cho bạn biết.
+                                {locale === "en"
+                                    ? "AI assistant answers based on official university documents. If no information is found, the AI will let you know."
+                                    : "Trợ lý AI trả lời dựa trên tài liệu chính thức của nhà trường. Nếu không tìm thấy thông tin, AI sẽ cho bạn biết."}
                             </p>
 
                         </div>
@@ -2031,7 +2024,7 @@ export default function RagChatPage() {
                                 />
 
                                 <span>
-                                    Cuộc trò chuyện mới
+                                    {locale === "en" ? "New conversation" : "Cuộc trò chuyện mới"}
                                 </span>
 
                             </button>
@@ -2093,11 +2086,9 @@ export default function RagChatPage() {
                                                 "none",
                                         }}
                                     >
-                                        Cuộn lên để xem{" "}
-                                        {
-                                            hiddenMessageCount
-                                        }{" "}
-                                        tin nhắn cũ
+                                        {locale === "en"
+                                            ? <>Scroll up to see {hiddenMessageCount} older message{hiddenMessageCount !== 1 ? "s" : ""}</>
+                                            : <>Cuộn lên để xem {hiddenMessageCount}{" "}tin nhắn cũ</>}
                                     </div>
                                 )}
 
@@ -2114,7 +2105,15 @@ export default function RagChatPage() {
                                         data-message-id={message.id}
                                     >
                                         <MessageBubble
-                                            message={message}
+                                            message={
+                                                message.id === "welcome"
+                                                    ? {
+                                                        ...message,
+                                                        content: t("chat.welcome"),
+                                                    }
+                                                    : message
+                                            }
+                                            locale={locale}
                                             onFillRequest={(formName) => handleFormAgentRequest(formName)}
                                             onFormAgentConfirmYes={handleFormAgentConfirmYes}
                                             onFormAgentConfirmNo={handleFormAgentConfirmNo}
@@ -2206,8 +2205,8 @@ export default function RagChatPage() {
                                     onClick={() =>
                                         setPromptNavOpen(current => !current)
                                     }
-                                    aria-label="Xem các câu hỏi đã gửi"
-                                    title="Các câu hỏi đã gửi"
+                                    aria-label={locale === "en" ? "View sent questions" : "Xem các câu hỏi đã gửi"}
+                                    title={locale === "en" ? "Sent questions" : "Các câu hỏi đã gửi"}
                                 >
                                     <ListTree size={18} />
                                 </button>
@@ -2215,7 +2214,7 @@ export default function RagChatPage() {
                                 {promptNavOpen && (
                                     <div className={styles.promptNavigatorPanel}>
                                         <div className={styles.promptNavigatorTitle}>
-                                            Câu hỏi của bạn
+                                            {locale === "en" ? "Your questions" : "Câu hỏi của bạn"}
                                         </div>
 
                                         <div className={styles.promptNavigatorList}>
@@ -2264,8 +2263,8 @@ export default function RagChatPage() {
                                         type="button"
                                         className={styles.jumpToLatestButton}
                                         onClick={jumpToLatest}
-                                        aria-label="Đi tới tin nhắn mới nhất"
-                                        title="Đi tới tin nhắn mới nhất"
+                                        aria-label={locale === "en" ? "Go to latest message" : "Đi tới tin nhắn mới nhất"}
+                                        title={locale === "en" ? "Go to latest message" : "Đi tới tin nhắn mới nhất"}
                                     >
                                         <ArrowDown size={18} />
                                     </button>
@@ -2296,11 +2295,11 @@ export default function RagChatPage() {
                                         }
                                         placeholder={
                                             activeFormAgentConfirmMessageId
-                                                ? "Gõ 'có' hoặc 'không'..."
+                                                ? (locale === "en" ? "Type 'yes' or 'no'..." : "Gõ 'có' hoặc 'không'...")
                                                 : activeFormAgentSessionId &&
                                                     activeFormAgentStatus === "collecting_info"
-                                                    ? "Nhập thông tin bổ sung cho đơn..."
-                                                    : "Nhập câu hỏi của bạn về học vụ, quy định, thủ tục thực tập..."
+                                                    ? (locale === "en" ? "Enter additional information for the form..." : "Nhập thông tin bổ sung cho đơn...")
+                                                    : (locale === "en" ? "Ask about internship policies, procedures, forms..." : "Nhập câu hỏi của bạn về học vụ, quy định, thủ tục thực tập...")
                                         }
                                     />
 
@@ -2309,8 +2308,8 @@ export default function RagChatPage() {
                                             type="button"
                                             className={styles.sendButton}
                                             onClick={stopGeneration}
-                                            aria-label="Dừng trả lời"
-                                            title="Dừng trả lời"
+                                            aria-label={locale === "en" ? "Stop" : "Dừng trả lời"}
+                                            title={locale === "en" ? "Stop" : "Dừng trả lời"}
                                         >
                                             <Square size={16} fill="currentColor" />
                                         </button>
@@ -2320,8 +2319,8 @@ export default function RagChatPage() {
                                             className={styles.sendButton}
                                             onClick={() => void sendMessage()}
                                             disabled={!input.trim()}
-                                            aria-label="Gửi"
-                                            title="Gửi"
+                                            aria-label={locale === "en" ? "Send" : "Gửi"}
+                                            title={locale === "en" ? "Send" : "Gửi"}
                                         >
                                             <Send size={16} />
                                         </button>
@@ -2349,6 +2348,7 @@ export default function RagChatPage() {
 
 const MessageBubble = memo(function MessageBubble({
     message,
+    locale = "vi",
     onFillRequest,
     onFormAgentConfirmYes,
     onFormAgentConfirmNo,
@@ -2356,6 +2356,7 @@ const MessageBubble = memo(function MessageBubble({
     onFormAgentCancelSession,
 }: {
     message: Message;
+    locale?: "vi" | "en";
     onFillRequest?: (formName?: string) => void;
     onFormAgentConfirmYes?: (messageId: string) => void;
     onFormAgentConfirmNo?: (messageId: string) => void;
@@ -2466,7 +2467,8 @@ const MessageBubble = memo(function MessageBubble({
                     >
                         {
                             getPhaseLabel(
-                                streamPhase
+                                streamPhase,
+                                locale
                             )
                         }
                     </span>
@@ -2534,6 +2536,7 @@ const MessageBubble = memo(function MessageBubble({
                                 error={message.formAgentErrorMsg}
                                 docxReady={message.formAgentDocxReady}
                                 sessionId={message.formAgentSessionId}
+                                locale={locale}
                                 onConfirmYes={() => onFormAgentConfirmYes?.(message.id)}
                                 onConfirmNo={() => onFormAgentConfirmNo?.(message.id)}
                                 onApprove={() =>
@@ -2585,6 +2588,7 @@ const MessageBubble = memo(function MessageBubble({
 
                                 <FormResourceCard
                                     source={formSource}
+                                    locale={locale}
                                     onFillRequest={onFillRequest}
                                 />
 
@@ -2613,7 +2617,9 @@ const MessageBubble = memo(function MessageBubble({
                                         fontWeight: 500,
                                     }}
                                 >
-                                    🤖 Cần mình giúp điền {message.detectedForm} luôn không?
+                                    🤖 {locale === "en"
+                                    ? `Need help filling ${message.detectedForm}?`
+                                    : `Cần mình giúp điền ${message.detectedForm} luôn không?`}
                                 </button>
 
                             )}
@@ -2632,7 +2638,7 @@ const MessageBubble = memo(function MessageBubble({
                                 >
 
                                     <span>
-                                        Độ tin cậy
+                                        {locale === "en" ? "Confidence" : "Độ tin cậy"}
                                     </span>
 
 
@@ -2676,6 +2682,7 @@ const MessageBubble = memo(function MessageBubble({
                                     sources={
                                         message.sources
                                     }
+                                    locale={locale}
                                     onFillRequest={onFillRequest}
                                 />
 
@@ -2699,9 +2706,11 @@ const MessageBubble = memo(function MessageBubble({
 
 function Sources({
     sources,
+    locale = "vi",
     onFillRequest,
 }: {
     sources: Source[];
+    locale?: "vi" | "en";
     onFillRequest?: (formName?: string) => void;
 }) {
 
@@ -2752,7 +2761,7 @@ function Sources({
                         {
                             sources.length
                         }{" "}
-                        nguồn tham khảo
+                        {locale === "en" ? (sources.length === 1 ? "source" : "sources") : "nguồn tham khảo"}
                     </span>
 
                 </div>
@@ -2906,6 +2915,7 @@ function Sources({
                                                 source={
                                                     source
                                                 }
+                                                locale={locale}
                                                 onFillRequest={onFillRequest}
                                             />
 
@@ -2933,9 +2943,11 @@ function Sources({
 
 function FormResourceCard({
     source,
+    locale = "vi",
     onFillRequest,
 }: {
     source: Source;
+    locale?: "vi" | "en";
     onFillRequest?: (formName?: string) => void;
 }) {
     const [
@@ -2982,7 +2994,7 @@ function FormResourceCard({
                     <strong>
                         {source.document_name
                             ??
-                            "Biểu mẫu thực tập"}
+                            (locale === "en" ? "Internship Form" : "Biểu mẫu thực tập")}
                     </strong>
 
                     {source.file_name && (
@@ -3017,8 +3029,8 @@ function FormResourceCard({
                         />
 
                         {previewOpen
-                            ? "Ẩn mẫu"
-                            : "Xem mẫu"}
+                            ? (locale === "en" ? "Hide preview" : "Ẩn mẫu")
+                            : (locale === "en" ? "Preview" : "Xem mẫu")}
                     </button>
                 )}
 
@@ -3039,7 +3051,7 @@ function FormResourceCard({
                             size={15}
                         />
 
-                        Tải mẫu
+                        {locale === "en" ? "Download" : "Tải mẫu"}
                     </a>
                 )}
             </div>
@@ -3077,8 +3089,7 @@ function FormResourceCard({
                                 styles.formOpenNewTab
                             }
                         >
-                            Mở bản xem trước
-                            trong tab mới
+                            {locale === "en" ? "Open preview in new tab" : "Mở bản xem trước trong tab mới"}
                         </a>
                     </div>
                 )}
@@ -3101,7 +3112,9 @@ function FormResourceCard({
                         fontWeight: 500,
                     }}
                 >
-                    🤖 Cần mình giúp điền {source.document_name ?? "đơn này"} luôn không?
+                    🤖 {locale === "en" 
+                        ? `Need help filling ${source.document_name ?? "this form"}?`
+                        : `Cần mình giúp điền ${source.document_name ?? "đơn này"} luôn không?`}
                 </button>
             )}
             {/* ── HẾT PHẦN FORM AGENT ──────────────────────────────────── */}
