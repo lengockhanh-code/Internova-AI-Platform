@@ -553,6 +553,7 @@ async def chat(
         str(current_user.get("role") or "").upper() == "STUDENT"
         and route_decision.scope == "personal"
         and route_decision.intent == "personal_data"
+        and not route_decision.needs_clarification
     ):
         personal_result = await run_in_threadpool(
             lambda: answer_student_personal_question(
@@ -663,6 +664,7 @@ async def chat_stream(
         str(current_user.get("role") or "").upper() == "STUDENT"
         and route_decision.scope == "personal"
         and route_decision.intent == "personal_data"
+        and not route_decision.needs_clarification
     ):
         async def personal_event_generator():
             personal_started = time.perf_counter()

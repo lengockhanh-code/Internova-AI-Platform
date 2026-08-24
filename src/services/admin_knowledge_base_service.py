@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 MAX_PAGE_SIZE = 100
 DOCUMENT_STATUSES = {"ACTIVE", "INACTIVE", "ARCHIVED"}
 VERSION_STATUSES = {"ACTIVE", "SUPERSEDED", "ARCHIVED"}
+DOCUMENT_TYPES = {"PDF", "DOC"}
 UPLOAD_ROOT = Path("data/knowledge_base/documents")
 
 
@@ -316,10 +317,7 @@ def create_admin_knowledge_document(
     uploaded_by: int,
 ) -> dict:
     title = _clean_required(payload.get("title"), "Document title is required.")
-    document_type = _clean_required(
-        payload.get("documentType"),
-        "Document type is required.",
-    )
+    document_type = _clean_document_type(payload.get("documentType"))
     status = _clean_status(payload.get("status") or "ACTIVE")
 
     row = db.execute(
@@ -378,7 +376,7 @@ def update_admin_knowledge_document(
         "title": ("title", lambda value: _clean_required(value, "Document title is required.")),
         "documentType": (
             "document_type",
-            lambda value: _clean_required(value, "Document type is required."),
+            _clean_document_type,
         ),
         "description": ("description", _clean_optional),
         "fileUrl": ("file_url", _clean_optional),
@@ -674,6 +672,13 @@ def _clean_status(value: Any) -> str:
     cleaned = str(value or "").strip().upper()
     if cleaned not in DOCUMENT_STATUSES:
         raise ValueError("Document status must be ACTIVE, INACTIVE, or ARCHIVED.")
+    return cleaned
+
+
+def _clean_document_type(value: Any) -> str:
+    cleaned = str(value or "").strip().upper()
+    if cleaned not in DOCUMENT_TYPES:
+        raise ValueError("Document type must be PDF or DOC.")
     return cleaned
 
 

@@ -596,6 +596,22 @@ class SemanticRouteOutput(BaseModel):
 
     personal_reports_pending_only: bool = False
 
+    needs_clarification: bool = Field(
+        default=False,
+        description=(
+            "True only when a missing/unresolved detail materially changes the answer "
+            "and cannot be resolved from the current message plus conversation context."
+        ),
+    )
+
+    clarification_question: str | None = Field(
+        default=None,
+        description=(
+            "Exactly one concise clarification question in the user's language when "
+            "needs_clarification=True; otherwise null."
+        ),
+    )
+
     reason: str = Field(
         description=(
             "Brief explanation of the routing and language decision."
@@ -633,6 +649,8 @@ class RouteDecision(BaseModel):
     personal_profile_fields: list[str] = Field(default_factory=list)
     personal_internship_fields: list[str] = Field(default_factory=list)
     personal_reports_pending_only: bool = False
+    needs_clarification: bool = False
+    clarification_question: str | None = None
     reason: str
 
     @property
@@ -773,6 +791,12 @@ def _route_query_uncached(
             personal_profile_fields=(semantic_result.personal_profile_fields if intent == "personal_data" else []),
             personal_internship_fields=(semantic_result.personal_internship_fields if intent == "personal_data" else []),
             personal_reports_pending_only=(semantic_result.personal_reports_pending_only if intent == "personal_data" else False),
+            needs_clarification=bool(semantic_result.needs_clarification),
+            clarification_question=(
+                (semantic_result.clarification_question or "").strip() or None
+                if semantic_result.needs_clarification
+                else None
+            ),
             reason=(
                 "semantic_router: "
                 f"{semantic_result.reason}"
@@ -802,7 +826,7 @@ def route_query(
         "model": settings.openai_chat_model or settings.model_name,
         # Bump when routing/domain policy changes so stale Redis decisions cannot
         # bypass a newly tightened scope policy.
-        "routing_policy_version": 3,
+        "routing_policy_version": 4,
     }
 
     cached = redis_cache.get_json(
@@ -1918,6 +1942,53 @@ class QueryPipeline:
             and route.language in {"vi", "en"}
         ):
             answer_language = route.language
+
+        # ------------------------------------------------------------------
+        # Clarification gate: if the semantic router cannot safely resolve a
+        # materially important detail, ask one concise question BEFORE any
+        # RAG retrieval, personal-data handling, or answer generation.
+        # ------------------------------------------------------------------
+        if route.needs_clarification:
+            raise_if_cancelled()
+            emit_status("answering", route)
+
+            clarification = (
+                (route.clarification_question or "").strip()
+                or (
+                    "Bạn có thể nói rõ thêm ý bạn muốn hỏi không?"
+                    if answer_language == "vi"
+                    else "Could you clarify what you mean?"
+                )
+            )
+
+            if on_token is not None:
+                on_token(clarification)
+
+            if memory:
+                memory.add_turn(
+                    query=query,
+                    answer=clarification,
+                    answer_status="answered",
+                )
+
+            return QueryResult(
+                query=query,
+                answer=clarification,
+                answer_status="answered",
+                answer_language=answer_language,
+                # No evidence has been evaluated for a clarification response.
+                # QueryResult requires a float, so represent that as zero.
+                confidence=0.0,
+                sources=[],
+                route_intent=route.intent,
+                route_scope=route.scope,
+                guardrail_passed=True,
+                guardrail_reason="clarification_required",
+                cache_hit=False,
+                groundedness_status="skip",
+                groundedness_reason="clarification_required",
+                latency_ms=_elapsed_ms(t0),
+            )
 
         if route.scope == "conversation":
             raise_if_cancelled()
