@@ -28,6 +28,7 @@ import {
 import styles from "./page.module.css";
 
 const PAGE_SIZE = 10;
+const DOCUMENT_TYPE_OPTIONS = ["PDF", "DOC"];
 const STATUS_OPTIONS = ["ACTIVE", "INACTIVE", "ARCHIVED"];
 const VERSION_STATUS_OPTIONS = ["ACTIVE", "SUPERSEDED", "ARCHIVED"];
 
@@ -39,6 +40,7 @@ type DocumentFormValues = {
   currentVersion: string;
   year: string;
   status: string;
+  file: File | null;
 };
 
 const emptyForm: DocumentFormValues = {
@@ -49,6 +51,7 @@ const emptyForm: DocumentFormValues = {
   currentVersion: "",
   year: "",
   status: "ACTIVE",
+  file: null,
 };
 
 type VersionFormValues = {
@@ -206,20 +209,28 @@ export default function KnowledgeDocumentsPage() {
       currentVersion: document.currentVersion ?? "",
       year: document.year?.toString() ?? "",
       status: document.status,
+      file: null,
     });
     setFormError(null);
     setFormOpen(true);
   };
 
-  const formPayload = (): KnowledgeDocumentPayload => ({
-    title: formValues.title.trim(),
-    documentType: formValues.documentType.trim(),
-    description: nullableText(formValues.description),
-    fileUrl: nullableText(formValues.fileUrl),
-    currentVersion: nullableText(formValues.currentVersion),
-    year: formValues.year.trim() ? Number(formValues.year) : null,
-    status: formValues.status,
-  });
+  const formPayload = (): KnowledgeDocumentPayload => {
+    const uploadedVersion =
+      formMode === "create" && formValues.file
+        ? formValues.currentVersion.trim() || "1.0"
+        : formValues.currentVersion.trim();
+
+    return {
+      title: formValues.title.trim(),
+      documentType: formValues.documentType.trim(),
+      description: nullableText(formValues.description),
+      fileUrl: nullableText(formValues.fileUrl),
+      currentVersion: nullableText(uploadedVersion),
+      year: formValues.year.trim() ? Number(formValues.year) : null,
+      status: formValues.status,
+    };
+  };
 
   const submitForm = async () => {
     const payload = formPayload();
@@ -237,10 +248,28 @@ export default function KnowledgeDocumentsPage() {
     setFormError(null);
 
     try {
-      const response =
+      let response =
         formMode === "create"
           ? await adminKnowledgeBaseApi.createDocument(payload)
           : await adminKnowledgeBaseApi.updateDocument(selectedId as number, payload);
+
+      if (formMode === "create" && formValues.file) {
+        const version = payload.currentVersion || "1.0";
+        const upload = await adminKnowledgeBaseApi.uploadVersion(
+          response.document.id,
+          {
+            version,
+            status: "ACTIVE",
+            effectiveDate: null,
+            file: formValues.file,
+          },
+        );
+        await adminKnowledgeBaseApi.setCurrentVersion(
+          response.document.id,
+          upload.versionId,
+        );
+        response = await adminKnowledgeBaseApi.document(response.document.id);
+      }
 
       setSelected(response.document);
       setSelectedId(response.document.id);
@@ -758,7 +787,10 @@ function DocumentFormModal({
   onClose: () => void;
   onSubmit: () => void;
 }) {
-  const update = (field: keyof DocumentFormValues, value: string) => {
+  const update = <K extends keyof DocumentFormValues>(
+    field: K,
+    value: DocumentFormValues[K],
+  ) => {
     onChange({
       ...values,
       [field]: value,
@@ -792,11 +824,16 @@ function DocumentFormModal({
 
           <label>
             <span>Type</span>
-            <input
+            <select
               value={values.documentType}
               onChange={(event) => update("documentType", event.target.value)}
-              maxLength={100}
-            />
+            >
+              {DOCUMENT_TYPE_OPTIONS.map((item) => (
+                <option value={item} key={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label>
@@ -831,13 +868,25 @@ function DocumentFormModal({
             />
           </label>
 
-          <label className={styles.fullField}>
-            <span>File URL</span>
-            <input
-              value={values.fileUrl}
-              onChange={(event) => update("fileUrl", event.target.value)}
-            />
-          </label>
+          {mode === "create" ? (
+            <label className={styles.fullField}>
+              <span>File</span>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={(event) =>
+                  update("file", event.target.files?.[0] ?? null)
+                }
+              />
+              <em className={styles.fieldHint}>
+                The selected file will be saved as the first version of this document.
+              </em>
+            </label>
+          ) : (
+            <div className={`${styles.fullField} ${styles.fieldHintBox}`}>
+              Use Add Version to upload or replace the document file.
+            </div>
+          )}
 
           <label className={styles.fullField}>
             <span>Description</span>

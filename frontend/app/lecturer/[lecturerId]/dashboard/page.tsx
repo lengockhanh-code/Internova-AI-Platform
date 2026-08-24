@@ -27,6 +27,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import { API_BASE_URL, lecturerFetch } from "@/lib/lecturerAuth";
 import {
   type CSSProperties,
   type ComponentType,
@@ -41,7 +42,7 @@ import type {
   ReportStatus,
 } from "@/types/lecturer-dashboard";
 
-import styles from "./page.module.css";
+import styles from "../../dashboard/page.module.css";
 
 interface NavItem {
   label: string;
@@ -209,28 +210,37 @@ export default function LecturerDashboardPage() {
       setError("");
 
       try {
-        const response = await fetch(
-          `/api/lecturers/${encodeURIComponent(lecturerId)}/dashboard`,
+        const response = await lecturerFetch(
+          `${API_BASE_URL}/api/v1/lecturers/dashboard`,
           {
             method: "GET",
             cache: "no-store",
             signal: controller.signal,
+            headers: {
+              Accept: "application/json",
+            },
           },
         );
 
-        const payload = (await response.json()) as
-          | LecturerDashboardData
-          | { message?: string };
+        const rawBody = await response.text();
 
         if (!response.ok) {
           throw new Error(
-            "message" in payload && payload.message
-              ? payload.message
-              : "Không thể tải dashboard.",
+            rawBody
+              ? `Backend ${response.status}: ${rawBody}`
+              : `Backend trả về lỗi ${response.status}.`,
           );
         }
 
-        setData(payload as LecturerDashboardData);
+        let payload: LecturerDashboardData;
+
+        try {
+          payload = JSON.parse(rawBody) as LecturerDashboardData;
+        } catch {
+          throw new Error("Backend không trả về JSON hợp lệ.");
+        }
+
+        setData(payload);
       } catch (loadError) {
         if (loadError instanceof DOMException && loadError.name === "AbortError") {
           return;
@@ -242,7 +252,9 @@ export default function LecturerDashboardPage() {
             : "Đã xảy ra lỗi không xác định.",
         );
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     }
 

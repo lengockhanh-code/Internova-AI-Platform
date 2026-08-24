@@ -583,6 +583,21 @@
   grid-column: 1 / -1;
 }
 
+.fieldHint {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.fieldHintBox {
+  padding: 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 13px;
+}
+
 .formError {
   margin: 16px 18px 0;
   padding: 12px;
