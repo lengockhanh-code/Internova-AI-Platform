@@ -394,21 +394,21 @@ def get_student_edit_data(
 # - start date
 # - end date
 # - internship status
+# - lớp
 #
 # Không cập nhật:
 #
 # - họ tên
 # - mã sinh viên
-# - lớp
 # - ngành
 # =============================================================================
 
 @router.put(
     "/students/{student_id}",
     response_model=UpdateLecturerStudentResponse,
-    summary="Cập nhật thông tin thực tập sinh viên",
+    summary="Cập nhật lớp và thông tin thực tập sinh viên",
     description=(
-        "Cập nhật thông tin thực tập của sinh viên "
+        "Cập nhật thông tin lớp và thực tập của sinh viên "
         "thuộc quyền hướng dẫn của giảng viên hiện tại."
     ),
 )
@@ -419,9 +419,7 @@ def update_student(
     current_user=Depends(require_lecturer),
 ) -> UpdateLecturerStudentResponse:
     """
-    Cập nhật internship của sinh viên.
-
-    Không thay đổi master data của sinh viên.
+    Cập nhật lớp và internship của sinh viên.
     """
 
     try:

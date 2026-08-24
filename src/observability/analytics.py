@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from statistics import mean
@@ -137,10 +138,20 @@ def _score_name(row: dict[str, Any]) -> str:
     return ""
 
 
+def _canonical_score_name(name: str) -> str:
+    normalized = re.sub(r'[^a-z0-9]+', '_', name.strip().lower()).strip('_')
+    aliases = {
+        'answer_relevancy': 'answer_relevance',
+        'answerrelevance': 'answer_relevance',
+        'faithful': 'faithfulness',
+    }
+    return aliases.get(normalized, normalized)
+
+
 def score_summary(scores: list[dict[str, Any]]) -> dict[str, dict[str, float | int | None]]:
     grouped: dict[str, list[float]] = defaultdict(list)
     for row in scores:
-        name = _score_name(row)
+        name = _canonical_score_name(_score_name(row))
         value = _score_value(row)
         if name and value is not None:
             grouped[name].append(value)
@@ -248,11 +259,8 @@ def build_overview(range_name: str = "24h") -> dict[str, Any]:
     start, end = window(range_name)
     api = LangfuseAPI()
     rows, truncated = api.observations(start=start, end=end)
-    scores, scores_truncated = api.scores(
-        start=start,
-        end=end,
-        names=["answer_rate", "retrieval_success", "groundedness_pass", "rag_confidence", "faithfulness", "answer_relevance"],
-    )
+    # Fetch real Langfuse evaluator scores and normalize their names locally.
+    scores, scores_truncated = api.scores(start=start, end=end)
     roots = _root_requests(rows)
     durations = [_duration_ms(r) for r in roots]
     errors = [r for r in roots if _is_error(r)]
@@ -385,7 +393,12 @@ def build_rag_analytics(range_name: str = "24h") -> dict[str, Any]:
     )
 
     rerank_outputs = [_io_object(r.get("output")) for r in rerank_rows]
-    fallback_calls = sum(1 for o in rerank_outputs if o and o.get("fallback_reason"))
+    fallback_reasons = Counter(
+        str(o.get("fallback_reason"))
+        for o in rerank_outputs
+        if o and o.get("fallback_reason")
+    )
+    fallback_calls = sum(fallback_reasons.values())
     used_llm_calls = sum(1 for o in rerank_outputs if o and o.get("used_llm") is True)
     fallback = fallback_calls
 
@@ -409,9 +422,14 @@ def build_rag_analytics(range_name: str = "24h") -> dict[str, Any]:
             "zero_result_rate_pct": round(100 * zero_result_calls / len(effective_retrieval_outputs), 2) if effective_retrieval_outputs else 0.0,
         },
         "rerank": {
+            "used_reranker_calls": used_llm_calls,
             "used_llm_calls": used_llm_calls,
             "fallback_calls": fallback_calls,
             "fallback_rate_pct": round(100 * fallback_calls / len(rerank_outputs), 2) if rerank_outputs else 0.0,
+            "fallback_reasons": [
+                {"reason": reason, "count": count}
+                for reason, count in fallback_reasons.most_common()
+            ],
         },
         "pipeline": pipeline_breakdown(rows),
         "intents": [{"name": k, "count": v} for k, v in intent_counts.most_common()],

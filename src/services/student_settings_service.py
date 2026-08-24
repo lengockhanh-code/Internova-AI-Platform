@@ -212,37 +212,22 @@ def update_student_profile(
     db.execute(
         text(
             """
-            INSERT INTO student_profiles
-            (
-                student_id,
-                faculty,
-                major,
-                cohort
-            )
-
-            VALUES
-            (
-                :student_id,
-                :faculty,
-                :major,
-                :cohort
-            )
-
-            ON CONFLICT(student_id)
-
-            DO UPDATE SET
-
+            UPDATE student_profiles
+            SET
                 faculty =
-                    EXCLUDED.faculty,
+                    :faculty,
 
                 major =
-                    EXCLUDED.major,
+                    :major,
 
                 cohort =
-                    EXCLUDED.cohort,
+                    :cohort,
 
                 updated_at =
                     NOW()
+
+            WHERE student_id =
+                :student_id
             """
         ),
         {

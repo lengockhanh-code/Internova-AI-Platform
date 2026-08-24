@@ -114,6 +114,11 @@ class EditLecturerStudentResponse(
 class UpdateLecturerStudentRequest(
     LecturerBaseModel
 ):
+    className: str | None = Field(
+        default=None,
+        max_length=100,
+    )
+
     semesterId: int
 
     companyId: int | None = None
@@ -134,6 +139,8 @@ class UpdateLecturerStudentResponse(
 ):
     internshipId: int
     studentId: int
+
+    className: str | None = None
 
     message: str
 

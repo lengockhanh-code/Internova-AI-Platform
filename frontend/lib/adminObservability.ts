@@ -1,5 +1,37 @@
 export type TimeRange = "1h" | "24h" | "yesterday" | "2d" | "3d" | "7d" | "14d" | "30d";
 
+export type ScoreSummary = Record<string, { avg: number | null; count: number }>;
+
+export interface OverviewResponse {
+  requests: { total: number; error_rate_pct: number; active_users: number; active_sessions: number };
+  latency: { p50_ms: number; p95_ms: number; p99_ms: number; avg_ms: number };
+  traffic: { points: Array<{ time: string; value: number }>; peak: number; bucket_minutes: number };
+  quality: ScoreSummary;
+  llm: { calls: number; total_cost_usd: number; total_tokens: number; avg_cost_per_request_usd: number };
+  pipeline: Array<{ name: string; count: number; avg_ms: number; p95_ms: number; errors: number }>;
+  service_health: Array<{ name: string; status: string; p95_ms: number; error_rate_pct: number }>;
+  data_truncated: boolean;
+}
+
+export interface RagAnalyticsResponse {
+  queries: number;
+  no_answer_rate_pct: number;
+  retrieval_calls: number;
+  rerank_calls: number;
+  retrieval: { avg_vector_hits: number; avg_bm25_hits: number; avg_fused_hits: number; zero_result_rate_pct: number };
+  quality: ScoreSummary;
+  pipeline: OverviewResponse["pipeline"];
+  rerank: {
+    used_reranker_calls: number;
+    fallback_calls: number;
+    fallback_rate_pct: number;
+    fallback_reasons: Array<{ reason: string; count: number }>;
+  };
+  intents: Array<{ name: string; count: number }>;
+  scopes: Array<{ name: string; count: number }>;
+  data_truncated: boolean;
+}
+
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
 
 export class ApiError extends Error {
@@ -69,8 +101,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const observabilityApi = {
   status: () => request<any>("/api/v1/admin/observability/status"),
-  overview: (range: TimeRange) => request<any>(`/api/v1/admin/observability/overview?range=${range}`),
-  rag: (range: TimeRange) => request<any>(`/api/v1/admin/observability/rag?range=${range}`),
+  overview: (range: TimeRange) => request<OverviewResponse>(`/api/v1/admin/observability/overview?range=${range}`),
+  rag: (range: TimeRange) => request<RagAnalyticsResponse>(`/api/v1/admin/observability/rag?range=${range}`),
   llm: (range: TimeRange) => request<any>(`/api/v1/admin/observability/llm?range=${range}`),
   logs: (range: TimeRange, limit = 200) => request<any>(`/api/v1/admin/observability/logs?range=${range}&limit=${limit}`),
   errors: (range: TimeRange, limit = 200) => request<any>(`/api/v1/admin/observability/errors?range=${range}&limit=${limit}`),
@@ -96,7 +128,7 @@ export function formatMoney(value: number | null | undefined): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 4 }).format(Number(value ?? 0));
 }
 
-export function scorePercent(summary: any, name: string): number | null {
+export function scorePercent(summary: ScoreSummary | null | undefined, name: string): number | null {
   const avg = summary?.[name]?.avg;
   return typeof avg === "number" ? avg * 100 : null;
 }

@@ -24,3 +24,36 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+html.internova-translation-pending body {
+  visibility: hidden;
+}
+
+html.internova-translation-pending body::before {
+  position: fixed;
+  z-index: 2147483647;
+  inset: 0;
+  display: grid;
+  visibility: visible;
+  place-items: center;
+  background: #f4f7fb;
+  color: #50627b;
+  content: "Loading English interface...";
+  font-size: 14px;
+  font-weight: 650;
+}
+
+html.internova-translation-pending[data-internova-locale="vi"] body::before {
+  content: "Đang tải giao diện tiếng Việt...";
+}
+
+html.dark.internova-translation-pending body::before {
+  background: #0f172a;
+  color: #dbe5f2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body {
+    transition: none;
+  }
+}
+

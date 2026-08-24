@@ -2,6 +2,7 @@
 
 import Header from "@/components/header/header";
 import Sidebar from "@/components/sidebar/sidebar";
+import { useSettings } from "@/context/settings-provider";
 
 import {
     AlertTriangle,
@@ -33,9 +34,41 @@ import {
 import styles from "./page.module.css";
 
 
-const API_URL =
+const CONFIGURED_API_URL =
     process.env.NEXT_PUBLIC_API_URL ??
     "http://localhost:8000";
+
+
+function getApiUrl() {
+    if (typeof window === "undefined") {
+        return CONFIGURED_API_URL;
+    }
+
+    try {
+        const configured =
+            new URL(CONFIGURED_API_URL);
+
+        const pageHost =
+            window.location.hostname;
+
+        const configuredIsLocal =
+            configured.hostname === "localhost" ||
+            configured.hostname === "127.0.0.1";
+
+        const pageIsLocal =
+            pageHost === "localhost" ||
+            pageHost === "127.0.0.1";
+
+        if (configuredIsLocal && !pageIsLocal) {
+            configured.hostname = pageHost;
+        }
+
+        return configured.origin;
+
+    } catch {
+        return CONFIGURED_API_URL;
+    }
+}
 
 
 type ProfileDocument = {
@@ -156,15 +189,20 @@ type InternshipProfileData = {
 
 
 function formatDate(
-    value: string | null
+    value: string | null,
+    locale: "vi" | "en",
 ) {
     if (!value) {
-        return "Chưa cập nhật";
+        return locale === "en"
+            ? "Not updated"
+            : "Chưa cập nhật";
     }
 
 
     return new Intl.DateTimeFormat(
-        "vi-VN",
+        locale === "en"
+            ? "en-US"
+            : "vi-VN",
         {
             day: "2-digit",
 
@@ -272,6 +310,7 @@ function recalculateDocumentProgress(
 
 
 export default function InternshipProfilePage() {
+    const { locale } = useSettings();
     const router =
         useRouter();
 
@@ -304,6 +343,15 @@ export default function InternshipProfilePage() {
         setError,
     ] =
         useState("");
+
+
+    const [
+        avatarObjectUrl,
+        setAvatarObjectUrl,
+    ] =
+        useState<
+            string | null
+        >(null);
 
 
     const [
@@ -396,6 +444,94 @@ export default function InternshipProfilePage() {
     }
 
 
+    async function loadAvatar(
+        avatarUrl: string | null,
+        token: string
+    ) {
+        if (!avatarUrl) {
+            setAvatarObjectUrl(
+                null
+            );
+
+            return;
+        }
+
+
+        if (
+            !avatarUrl.startsWith(
+                "/api/"
+            )
+        ) {
+            setAvatarObjectUrl(
+                avatarUrl
+            );
+
+            return;
+        }
+
+
+        try {
+            const response =
+                await fetch(
+                    `${getApiUrl()}${avatarUrl}`,
+                    {
+                        headers: {
+                            Authorization:
+                                `Bearer ${token}`,
+                        },
+
+                        cache:
+                            "no-store",
+                    }
+                );
+
+
+            if (!response.ok) {
+                setAvatarObjectUrl(
+                    null
+                );
+
+                return;
+            }
+
+
+            const blob =
+                await response.blob();
+
+
+            const objectUrl =
+                URL.createObjectURL(
+                    blob
+                );
+
+
+            setAvatarObjectUrl(
+                (
+                    previous
+                ) => {
+                    if (
+                        previous &&
+                        previous.startsWith(
+                            "blob:"
+                        )
+                    ) {
+                        URL.revokeObjectURL(
+                            previous
+                        );
+                    }
+
+                    return objectUrl;
+                }
+            );
+
+        } catch {
+            setAvatarObjectUrl(
+                null
+            );
+        }
+    }
+
+
     async function loadProfile() {
         try {
 
@@ -417,7 +553,7 @@ export default function InternshipProfilePage() {
 
             const response =
                 await fetch(
-                    `${API_URL}/api/v1/student/internship-profile`,
+                    `${getApiUrl()}/api/v1/student/internship-profile`,
                     {
                         method:
                             "GET",
@@ -463,6 +599,12 @@ export default function InternshipProfilePage() {
             );
 
 
+            await loadAvatar(
+                result.student.avatarUrl,
+                token
+            );
+
+
         } catch (err) {
 
             setError(
@@ -486,6 +628,22 @@ export default function InternshipProfilePage() {
         void loadProfile();
 
     }, []);
+
+
+    useEffect(() => {
+        return () => {
+            if (
+                avatarObjectUrl &&
+                avatarObjectUrl.startsWith(
+                    "blob:"
+                )
+            ) {
+                URL.revokeObjectURL(
+                    avatarObjectUrl
+                );
+            }
+        };
+    }, [avatarObjectUrl]);
 
 
     /* ========================================================
@@ -613,7 +771,7 @@ export default function InternshipProfilePage() {
 
             const response =
                 await fetch(
-                    `${API_URL}/api/v1/student/internship-profile/documents/${selectedDocument.key}`,
+                    `${getApiUrl()}/api/v1/student/internship-profile/documents/${selectedDocument.key}`,
                     {
                         method:
                             "POST",
@@ -736,7 +894,7 @@ export default function InternshipProfilePage() {
 
             const response =
                 await fetch(
-                    `${API_URL}/api/v1/student/internship-profile/documents/${document.id}/file`,
+                    `${getApiUrl()}/api/v1/student/internship-profile/documents/${document.id}/file`,
                     {
                         headers: {
                             Authorization:
@@ -840,7 +998,7 @@ export default function InternshipProfilePage() {
 
             const response =
                 await fetch(
-                    `${API_URL}/api/v1/student/internship-profile/documents/${document.id}`,
+                    `${getApiUrl()}/api/v1/student/internship-profile/documents/${document.id}`,
                     {
                         method:
                             "DELETE",
@@ -1018,6 +1176,17 @@ export default function InternshipProfilePage() {
         data.internship;
 
 
+    const displayAvatarUrl =
+        avatarObjectUrl ??
+        (
+            data.student.avatarUrl?.startsWith(
+                "/api/"
+            )
+                ? null
+                : data.student.avatarUrl
+        );
+
+
     const internshipInfo =
         internship
             ? [
@@ -1051,9 +1220,11 @@ export default function InternshipProfilePage() {
 
                     value:
                         `${formatDate(
-                            internship.startDate
+                            internship.startDate,
+                            locale,
                         )} - ${formatDate(
-                            internship.endDate
+                            internship.endDate,
+                            locale,
                         )}`,
 
                     icon:
@@ -1151,12 +1322,10 @@ export default function InternshipProfilePage() {
                                     styles.avatar
                                 }
                             >
-                                {data.student
-                                    .avatarUrl ? (
+                                {displayAvatarUrl ? (
                                     <img
                                         src={
-                                            data.student
-                                                .avatarUrl
+                                            displayAvatarUrl
                                         }
                                         alt={
                                             data.student

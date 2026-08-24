@@ -24,6 +24,9 @@ from src.api.lecturer_application_routes import (
 from src.api.lecturer_evaluation_routes import (
     router as lecturer_evaluation_router,
 )
+from src.api.lecturer_notification_routes import (
+    router as lecturer_notification_router,
+)
 from src.api.lecturer_reminder_routes import (
     router as lecturer_reminder_router,
 )
@@ -250,6 +253,11 @@ app.include_router(
 
 app.include_router(
     lecturer_reminder_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    lecturer_notification_router,
     prefix="/api/v1",
 )
 

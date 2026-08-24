@@ -13,12 +13,12 @@ import type { TimeRange } from "@/lib/adminObservability";
 export default function AiMonitoringPage() {
   const [range, setRange] = useState<TimeRange>("24h");
   const state = useResource(
+    `overview:${range}`,
     () => Promise.all([
       observabilityApi.overview(range),
       observabilityApi.alerts(range),
       observabilityApi.status(),
     ]).then(([overview, alerts, status]) => ({ overview, alerts, status })),
-    [range],
   );
 
   const o = state.data?.overview;
@@ -52,7 +52,9 @@ export default function AiMonitoringPage() {
           <div className={styles.grid4}>
             <MetricCard label="Requests" value={formatNumber(o.requests?.total)} icon={icons.Activity}/>
             <MetricCard label="Error Rate" value={Number(o.requests?.error_rate_pct || 0).toFixed(2)} suffix="%" icon={icons.AlertTriangle}/>
+            <MetricCard label="P50 Latency" value={formatMs(o.latency?.p50_ms)} icon={icons.Clock3}/>
             <MetricCard label="P95 Latency" value={formatMs(o.latency?.p95_ms)} icon={icons.Clock3}/>
+            <MetricCard label="P99 Latency" value={formatMs(o.latency?.p99_ms)} icon={icons.Clock3}/>
             <MetricCard label="Active Users" value={formatNumber(o.requests?.active_users)} icon={icons.Users} note={`${formatNumber(o.requests?.active_sessions)} sessions`}/>
           </div>
 

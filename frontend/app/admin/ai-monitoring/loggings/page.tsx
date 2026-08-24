@@ -10,7 +10,7 @@ import type { TimeRange } from "@/lib/adminObservability";
 export default function ObservabilityLogsPage() {
   const [range, setRange] = useState<TimeRange>("24h");
   const [filter, setFilter] = useState("");
-  const state = useResource(() => observabilityApi.logs(range, 500), [range]);
+  const state = useResource(`logs:${range}:500`, () => observabilityApi.logs(range, 500));
   const items = useMemo(() => (state.data?.items ?? []).filter((x:any) => JSON.stringify(x).toLowerCase().includes(filter.toLowerCase())), [state.data, filter]);
   return <PageShell title="Logs / Events" description="Event stream từ Langfuse observations. Dùng Trace ID để đi từ event đến toàn bộ request RAG." range={range} setRange={setRange} refreshing={state.refreshing} onRefresh={state.refresh}>
     {state.error && <ErrorBox error={state.error}/>} {state.loading && !state.data ? <Loading/> : <Panel title="Observation Events" subtitle={`${items.length} rows`}>

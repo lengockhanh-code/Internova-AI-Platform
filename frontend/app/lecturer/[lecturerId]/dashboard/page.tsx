@@ -5,29 +5,30 @@ import {
   BarChart3,
   Bell,
   Bot,
-  BriefcaseBusiness,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
-  Clock3,
   FileCheck2,
   FileText,
-  GraduationCap,
   LayoutDashboard,
   LoaderCircle,
   Menu,
-  MessageSquareText,
   PanelLeftClose,
   Search,
   Settings,
   Star,
-  UserRound,
   UsersRound,
 } from "lucide-react";
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
+import LecturerLanguageSwitcher from "@/components/lecturer/LecturerLanguageSwitcher";
 import { API_BASE_URL, lecturerFetch } from "@/lib/lecturerAuth";
+import {
+  fetchLecturerUnreadCount,
+  subscribeLecturerUnreadCount,
+} from "@/lib/lecturerNotifications";
 import {
   type CSSProperties,
   type ComponentType,
@@ -58,7 +59,6 @@ const managementItems: NavItem[] = [
   { label: "Nhật ký & Báo cáo", icon: FileText, expandable: true },
   { label: "Đánh giá", icon: Star, expandable: true },
   { label: "Nhắc nhở & Cảnh báo", icon: Bell },
-  { label: "Trao đổi & Góp ý", icon: MessageSquareText },
 ];
 
 const aiItems: NavItem[] = [
@@ -201,6 +201,7 @@ export default function LecturerDashboardPage() {
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -262,6 +263,22 @@ export default function LecturerDashboardPage() {
 
     return () => controller.abort();
   }, [lecturerId]);
+
+  useEffect(() => {
+    let active = true;
+    void fetchLecturerUnreadCount()
+      .then((count) => {
+        if (active) setUnreadNotificationCount(count);
+      })
+      .catch(() => undefined);
+    const unsubscribe = subscribeLecturerUnreadCount(
+      setUnreadNotificationCount,
+    );
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
 
   const calendarCells = useMemo<Array<number | null>>(() => {
     const now = new Date();
@@ -414,10 +431,16 @@ export default function LecturerDashboardPage() {
       >
         <div className={styles.brand}>
           <div className={styles.brandIcon}>
-            <GraduationCap size={28} />
+            <Image
+              alt="AI Internova logo"
+              height={46}
+              priority
+              src="/vinuni-internship-logo.svg"
+              width={46}
+            />
           </div>
-          <div>
-            <strong>AI Internship</strong>
+          <div className="notranslate" translate="no">
+            <strong>AI Internova</strong>
             <span>Hỗ trợ thực tập sinh viên</span>
           </div>
         </div>
@@ -445,7 +468,11 @@ export default function LecturerDashboardPage() {
         <section className={styles.sidebarGroup}>
           <p className={styles.sidebarLabel}>CÀI ĐẶT</p>
           <div className={styles.sidebarList}>
-            <button className={styles.sidebarItem} type="button">
+            <button
+              className={styles.sidebarItem}
+              onClick={() => router.push("/lecturer/notifications")}
+              type="button"
+            >
               <Bell size={19} />
               <span>Thông báo</span>
             </button>
@@ -487,17 +514,20 @@ export default function LecturerDashboardPage() {
           </div>
 
           <div className={styles.topbarActions}>
+            <LecturerLanguageSwitcher />
+
             <button aria-label="Tìm kiếm" className={styles.iconButton} type="button">
               <Search size={20} />
             </button>
             <button
               aria-label="Thông báo"
               className={styles.notificationButton}
+              onClick={() => router.push("/lecturer/notifications")}
               type="button"
             >
               <Bell size={20} />
-              {data.stats.openWarnings > 0 ? (
-                <span>{Math.min(data.stats.openWarnings, 99)}</span>
+              {unreadNotificationCount > 0 ? (
+                <span>{Math.min(unreadNotificationCount, 99)}</span>
               ) : null}
             </button>
 

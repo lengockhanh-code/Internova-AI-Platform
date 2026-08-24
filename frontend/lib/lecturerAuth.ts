@@ -70,13 +70,35 @@ export async function openAuthenticatedFile(
   url: string,
   download = false,
 ): Promise<void> {
-  const response = await lecturerFetch(url, { cache: "no-store" });
+  // Open the preview tab during the click event. Waiting for the authenticated
+  // fetch first can cause browsers to treat window.open as a blocked popup.
+  const previewWindow = !download
+    ? window.open("about:blank", "_blank")
+    : null;
+
+  if (previewWindow) previewWindow.opener = null;
+
+  let response: Response;
+  try {
+    response = await lecturerFetch(url, { cache: "no-store" });
+  } catch (error) {
+    previewWindow?.close();
+    throw error;
+  }
+
   if (!response.ok) {
+    previewWindow?.close();
     throw new Error(`Không thể mở tệp (${response.status}).`);
   }
 
-  const blob = await response.blob();
-  const objectUrl = URL.createObjectURL(blob);
+  let objectUrl: string;
+  try {
+    const blob = await response.blob();
+    objectUrl = URL.createObjectURL(blob);
+  } catch (error) {
+    previewWindow?.close();
+    throw error;
+  }
 
   if (download) {
     const disposition = response.headers.get("content-disposition") || "";
@@ -90,7 +112,16 @@ export async function openAuthenticatedFile(
     anchor.click();
     anchor.remove();
   } else {
-    window.open(objectUrl, "_blank", "noopener,noreferrer");
+    if (previewWindow) previewWindow.location.replace(objectUrl);
+    else {
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    }
   }
 
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);

@@ -17,11 +17,9 @@ import {
   Eye,
   FileText,
   Filter,
-  GraduationCap,
   LayoutDashboard,
   LoaderCircle,
   Menu,
-  MessageSquareText,
   NotebookPen,
   RefreshCw,
   Search,
@@ -32,6 +30,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -512,10 +511,16 @@ export default function LecturerStudentsPage() {
       <aside className={styles.sidebar}>
         <div className={styles.brand}>
           <div className={styles.brandIcon}>
-            <GraduationCap size={28} />
+            <Image
+              alt="AI Internova logo"
+              height={48}
+              priority
+              src="/vinuni-internship-logo.svg"
+              width={48}
+            />
           </div>
-          <div>
-            <strong>AI Internship</strong>
+          <div className="notranslate" translate="no">
+            <strong>AI Internova</strong>
             <span>Hỗ trợ thực tập sinh viên</span>
           </div>
         </div>
@@ -559,11 +564,6 @@ export default function LecturerStudentsPage() {
             <Bell size={20} />
             Nhắc nhở & Cảnh báo
           </button>
-          <button className={styles.sidebarButton} type="button">
-            <MessageSquareText size={20} />
-            Trao đổi & Góp ý
-          </button>
-
           <p className={styles.sidebarSection}>AI HỖ TRỢ</p>
 
           <button className={styles.sidebarButton} type="button">

@@ -886,23 +886,28 @@ export default function SettingsPage() {
                             </p>
                         </div>
 
+                    </section>
 
-                        {savedMessage && (
-                            <div
-                                className={
-                                    styles.savedBadge
-                                }
-                            >
-                                <CheckCircle2
-                                    size={17}
-                                />
 
+                    {savedMessage && (
+                        <div
+                            className={
+                                styles.savedBadge
+                            }
+                            role="status"
+                            aria-live="polite"
+                        >
+                            <CheckCircle2
+                                size={28}
+                            />
+
+                            <span>
                                 {
                                     savedMessage
                                 }
-                            </div>
-                        )}
-                    </section>
+                            </span>
+                        </div>
+                    )}
 
 
                     <section

@@ -172,7 +172,7 @@ class ChatService:
                         top_k_bm25=6,
                         top_k_fused=5,
                         top_k_rerank=3,
-                        use_reranker=False,
+                        use_reranker=True,
                         use_openai_translation=False,
                         max_context_chars=4000,
 

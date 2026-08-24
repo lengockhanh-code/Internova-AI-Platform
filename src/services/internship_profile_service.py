@@ -143,6 +143,7 @@ def get_internship_profile(
                 u.email,
                 u.phone,
                 u.avatar_url,
+                u.avatar_data,
                 sp.student_code
 
             FROM users AS u
@@ -482,9 +483,11 @@ def get_internship_profile(
                 None,
 
             "avatarUrl":
-                student[
-                    "avatar_url"
-                ],
+                (
+                    "/api/v1/student/settings/avatar"
+                    if student["avatar_data"] is not None
+                    else student["avatar_url"]
+                ),
         },
 
         "internship":

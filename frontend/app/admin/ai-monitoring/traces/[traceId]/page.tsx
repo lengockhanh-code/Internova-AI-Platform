@@ -16,7 +16,7 @@ export default function TraceDetailPage() {
   const params = useParams<{traceId:string}>();
   const traceId = decodeURIComponent(params.traceId);
   const [range, setRange] = useState<TimeRange>("30d");
-  const state = useResource(() => observabilityApi.trace(traceId, range), [traceId, range], 0);
+  const state = useResource(`trace:${traceId}:${range}`, () => observabilityApi.trace(traceId, range), 0);
   const d = state.data;
   const maxEnd = Math.max(1, ...(d?.observations ?? []).map((o:any)=>Number(o.offset_ms||0)+Number(o.latency_ms||0)));
   return <PageShell title="Trace Detail" description={`Trace ${traceId}`} range={range} setRange={setRange} refreshing={state.refreshing} onRefresh={state.refresh}>

@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import Header from "@/components/header/header";
 import Sidebar from "@/components/sidebar/sidebar";
+import { useSettings } from "@/context/settings-provider";
 import {
   fetchStudentNotifications,
   markAllStudentNotificationsRead,
@@ -34,10 +35,12 @@ import styles from "./page.module.css";
 
 type Tab = "notifications" | "calendar";
 
-function formatDateTime(value: string): string {
+function formatDateTime(value: string, locale: "vi" | "en"): string {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Chưa cập nhật";
-  return new Intl.DateTimeFormat("vi-VN", {
+  if (Number.isNaN(date.getTime())) {
+    return locale === "en" ? "Not updated" : "Chưa cập nhật";
+  }
+  return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "vi-VN", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -46,8 +49,11 @@ function formatDateTime(value: string): string {
   }).format(date);
 }
 
-function formatMonth(date: Date): string {
-  return new Intl.DateTimeFormat("vi-VN", { month: "long", year: "numeric" }).format(date);
+function formatMonth(date: Date, locale: "vi" | "en"): string {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "vi-VN", {
+    month: "long",
+    year: "numeric",
+  }).format(date);
 }
 
 function isLecturerMessage(item: StudentNotification): boolean {
@@ -62,6 +68,7 @@ function NotificationIcon({ item }: { item: StudentNotification }) {
 }
 
 export default function StudentNotificationsPage() {
+  const { locale } = useSettings();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("notifications");
   const [month, setMonth] = useState(() => new Date());
@@ -161,7 +168,7 @@ export default function StudentNotificationsPage() {
           <div className={styles.notificationList}>
             {data.notifications.map((item) => <button className={`${styles.notificationItem} ${!item.read ? styles.unread : ""} ${isLecturerMessage(item) ? styles.lecturerMessage : ""} ${styles[`severity${item.severity}`]}`} disabled={updating} key={item.id} onClick={() => void toggleRead(item)} type="button">
               <span className={styles.notificationIcon}><NotificationIcon item={item} /></span>
-              <span className={styles.notificationContent}><span className={styles.titleRow}><strong>{item.title}</strong>{!item.read && <i />}</span><p>{item.message}</p><small><Clock3 size={13} />{formatDateTime(item.createdAt)}{isLecturerMessage(item) && " · Giảng viên phụ trách"}</small></span>
+              <span className={styles.notificationContent}><span className={styles.titleRow}><strong>{item.title}</strong>{!item.read && <i />}</span><p>{item.message}</p><small><Clock3 size={13} />{formatDateTime(item.createdAt, locale)}{isLecturerMessage(item) && " · Giảng viên phụ trách"}</small></span>
               <span className={styles.readState}>{item.read ? "Đã đọc" : "Tin mới"}</span>
             </button>)}
             {data.notifications.length === 0 && <div className={styles.emptyState}><Bell size={31} /><h3>Chưa có thông báo</h3><p>Các lời nhắc và cập nhật mới sẽ xuất hiện tại đây.</p></div>}
@@ -169,8 +176,8 @@ export default function StudentNotificationsPage() {
         </section>}
 
         {!loading && data && tab === "calendar" && <section className={styles.calendarPanel}>
-          <header><button aria-label="Tháng trước" onClick={() => moveMonth(-1)} type="button"><ChevronLeft size={18} /></button><h2>{formatMonth(month)}</h2><button aria-label="Tháng sau" onClick={() => moveMonth(1)} type="button"><ChevronRight size={18} /></button></header>
-          <div className={styles.eventList}>{data.events.map((event) => <article key={`${event.source}-${event.id}`}><span className={styles.eventDate}><strong>{new Date(event.startTime).getDate()}</strong><small>{new Intl.DateTimeFormat("vi-VN", { month: "short" }).format(new Date(event.startTime))}</small></span><div><h3>{event.title}</h3><p>{event.description || event.eventType || "Sự kiện thực tập"}</p><small><Clock3 size={13} />{formatDateTime(event.startTime)}</small></div></article>)}{data.events.length === 0 && <div className={styles.emptyState}><CalendarDays size={31} /><h3>Không có sự kiện trong tháng</h3><p>Chuyển tháng để xem các deadline và lịch thực tập khác.</p></div>}</div>
+          <header><button aria-label="Tháng trước" onClick={() => moveMonth(-1)} type="button"><ChevronLeft size={18} /></button><h2>{formatMonth(month, locale)}</h2><button aria-label="Tháng sau" onClick={() => moveMonth(1)} type="button"><ChevronRight size={18} /></button></header>
+          <div className={styles.eventList}>{data.events.map((event) => <article key={`${event.source}-${event.id}`}><span className={styles.eventDate}><strong>{new Date(event.startTime).getDate()}</strong><small>{new Intl.DateTimeFormat(locale === "en" ? "en-US" : "vi-VN", { month: "short" }).format(new Date(event.startTime))}</small></span><div><h3>{event.title}</h3><p>{event.description || event.eventType || "Sự kiện thực tập"}</p><small><Clock3 size={13} />{formatDateTime(event.startTime, locale)}</small></div></article>)}{data.events.length === 0 && <div className={styles.emptyState}><CalendarDays size={31} /><h3>Không có sự kiện trong tháng</h3><p>Chuyển tháng để xem các deadline và lịch thực tập khác.</p></div>}</div>
         </section>}
       </main>
     </div>

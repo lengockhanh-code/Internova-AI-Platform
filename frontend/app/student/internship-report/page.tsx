@@ -2,6 +2,7 @@
 
 import Header from "@/components/header/header";
 import Sidebar from "@/components/sidebar/sidebar";
+import { useSettings } from "@/context/settings-provider";
 
 import {
     AlertTriangle,
@@ -202,14 +203,17 @@ function statusLabel(
 
 
 function formatDate(
-    value: string | null
+    value: string | null,
+    locale: "vi" | "en",
 ) {
     if (!value) {
         return "—";
     }
 
     return new Intl.DateTimeFormat(
-        "vi-VN",
+        locale === "en"
+            ? "en-US"
+            : "vi-VN",
         {
             day: "2-digit",
             month: "2-digit",
@@ -223,7 +227,8 @@ function formatDate(
 
 function getDeadlineLabel(
     value: string,
-    now: number
+    now: number,
+    locale: "vi" | "en",
 ) {
     const dueAt = new Date(value).getTime();
     const diffMs = dueAt - now;
@@ -236,25 +241,37 @@ function getDeadlineLabel(
 
     if (diffMs <= 0) {
         if (absMinutes < 60) {
-            return `Đến hạn ${absMinutes || 1} phút trước`;
+            return locale === "en"
+                ? `Due ${absMinutes || 1} minutes ago`
+                : `Đến hạn ${absMinutes || 1} phút trước`;
         }
 
         if (absHours < 24) {
-            return `Đến hạn ${absHours} giờ trước`;
+            return locale === "en"
+                ? `Due ${absHours} hours ago`
+                : `Đến hạn ${absHours} giờ trước`;
         }
 
-        return `Quá hạn ${absDays} ngày`;
+        return locale === "en"
+            ? `${absDays} days overdue`
+            : `Quá hạn ${absDays} ngày`;
     }
 
     if (absMinutes < 60) {
-        return `Còn ${absMinutes} phút`;
+        return locale === "en"
+            ? `${absMinutes} minutes remaining`
+            : `Còn ${absMinutes} phút`;
     }
 
     if (absHours < 24) {
-        return `Còn ${absHours} giờ`;
+        return locale === "en"
+            ? `${absHours} hours remaining`
+            : `Còn ${absHours} giờ`;
     }
 
-    return `Còn ${absDays} ngày`;
+    return locale === "en"
+        ? `${absDays} days remaining`
+        : `Còn ${absDays} ngày`;
 }
 
 
@@ -297,6 +314,7 @@ function formatFileSize(
 ============================================================ */
 
 export default function ReportsPage() {
+    const { locale } = useSettings();
     const router =
         useRouter();
 
@@ -2001,6 +2019,10 @@ export default function ReportsPage() {
                                                     report
                                                 }
 
+                                                locale={
+                                                    locale
+                                                }
+
                                                 uploading={
                                                     uploadingId ===
                                                     report.id
@@ -2232,7 +2254,8 @@ export default function ReportsPage() {
                                         <p>
                                             {formatDate(
                                                 data.next_deadline
-                                                    .due_at
+                                                    .due_at,
+                                                locale,
                                             )}
                                         </p>
 
@@ -2244,7 +2267,8 @@ export default function ReportsPage() {
                                             {getDeadlineLabel(
                                                 data.next_deadline
                                                     .due_at,
-                                                nowTick
+                                                nowTick,
+                                                locale,
                                             )}
                                         </span>
                                     </div>
@@ -2356,6 +2380,7 @@ export default function ReportsPage() {
 
 function ReportCard({
     report,
+    locale,
     uploading,
     submitting,
 
@@ -2371,6 +2396,8 @@ function ReportCard({
     onSubmit,
 }: {
     report: ReportItem;
+
+    locale: "vi" | "en";
 
     uploading: boolean;
 
@@ -2477,7 +2504,8 @@ function ReportCard({
                         <span>
                             Deadline:{" "}
                             {formatDate(
-                                report.due_at
+                                report.due_at,
+                                locale,
                             )}
                         </span>
 
@@ -2485,7 +2513,8 @@ function ReportCard({
                         <span>
                             Ngày nộp:{" "}
                             {formatDate(
-                                report.submitted_at
+                                report.submitted_at,
+                                locale,
                             )}
                         </span>
                     </div>

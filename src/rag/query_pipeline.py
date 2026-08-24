@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import logging
-import os
 import re
 import time
 import unicodedata
-from concurrent.futures import ThreadPoolExecutor
-from contextvars import copy_context
 from functools import lru_cache
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,7 +14,12 @@ from pydantic import BaseModel, Field
 
 from src.config import get_settings
 from src.observability.instrumentation import observed_call, langfuse_callbacks
-from src.rag.evidence import check_evidence
+from src.rag.evidence import (
+    EvidenceCheckResult,
+    check_evidence_legacy,
+    evaluate_semantic_evidence_combined,
+    validate_semantic_evidence_selection,
+)
 from src.rag.generation.answer_generator import (
     AnswerLanguage,
     build_context,
@@ -56,25 +58,6 @@ from src.services.redis_cache_service import (
 from src.rag.schemas import QueryResult
 
 logger = logging.getLogger(__name__)
-
-
-# Shared bounded executor for speculative semantic preprocessing.
-# Router and planner are independent network calls for RAG-like queries, so
-# overlapping them reduces cold-request wall-clock without changing either
-# model prompt or result.
-_SEMANTIC_PREPROCESS_WORKERS = max(
-    2,
-    int(os.getenv("RAG_SEMANTIC_PREPROCESS_WORKERS", "8")),
-)
-_ENABLE_SPECULATIVE_PREPROCESS = (
-    os.getenv("RAG_SPECULATIVE_PREPROCESS", "1").strip().lower()
-    not in {"0", "false", "no", "off"}
-)
-
-_SEMANTIC_PREPROCESS_EXECUTOR = ThreadPoolExecutor(
-    max_workers=_SEMANTIC_PREPROCESS_WORKERS,
-    thread_name_prefix="rag-semantic",
-)
 
 
 @lru_cache(maxsize=16)
@@ -548,6 +531,56 @@ SourceScope = Literal[
     "out_of_scope",
 ]
 
+FormRequestMode = Literal[
+    "none",
+    "content",
+    "resource",
+    "list",
+]
+
+EvidenceMode = Literal[
+    "none",
+    "fast",
+    "semantic",
+]
+
+
+def _fallback_evidence_mode(
+    query: str,
+    intent: str,
+    scope: str,
+) -> EvidenceMode:
+    """Conservative no-LLM fallback for evidence orchestration.
+
+    The semantic router is authoritative during normal operation. This helper is
+    used only when the router cannot provide an evidence mode. It keeps
+    exception/case-adjudication/composite questions on semantic evidence while
+    allowing direct factual lookups to use the deterministic evidence checker.
+    """
+    if scope not in {"internship", "career", "capstone"}:
+        return "none"
+
+    normalized = normalize_for_routing(query)
+    complex_markers = (
+        "neu ", "nếu ", "nhung ", "nhưng ", "tuy nhien", "ngoai le",
+        "exception", "co duoc", "có được", "may i", "can i",
+        "du dieu kien", "đủ điều kiện", "eligible", "eligibility",
+        "withdraw", "rut ", "rút ", "grievance", "khieu nai", "khiếu nại",
+        "approval", "approve", "phe duyet", "phê duyệt",
+        "medical", "health", "benh", "bệnh", "late", "muon", "muộn",
+        "conflict", "vi pham", "vi phạm", "so sanh", "compare",
+        "tat ca dieu kien", "tất cả điều kiện", "toan bo", "toàn bộ",
+        "tong hop", "tổng hợp", "checklist",
+    )
+    risky_intents = {
+        "internship_withdrawal",
+        "internship_grievance",
+    }
+    if intent in risky_intents or any(marker in normalized for marker in complex_markers):
+        return "semantic"
+    return "fast"
+
+
 class SemanticRouteOutput(BaseModel):
     """Structured output returned by the semantic LLM router."""
 
@@ -575,6 +608,50 @@ class SemanticRouteOutput(BaseModel):
         description=(
             "Important entity explicitly mentioned or clearly "
             "resolved from context, if any."
+        ),
+    )
+
+    form_request_mode: FormRequestMode = Field(
+        default="none",
+        description=(
+            "For form_guidance only. Use 'content' when the user asks what a form "
+            "means, contains, is used for, how to complete it, or who signs it. "
+            "Use 'resource' when the user wants the actual form/template/file, "
+            "preview, open/download link, or a conversational follow-up such as "
+            "'mẫu form cơ mà' that clearly asks for the file rather than an explanation. "
+            "Use 'list' when the user asks which form resources are available. "
+            "Use 'none' for every non-form intent."
+        ),
+    )
+
+    referenced_form_number: str | None = Field(
+        default=None,
+        description=(
+            "For form_guidance only: the Form number explicitly mentioned in the "
+            "current message or confidently resolved from recent conversation context. "
+            "Examples: '1', '2', '3', '4'. Never guess a form number."
+        ),
+    )
+
+    retrieval_query: str | None = Field(
+        default=None,
+        description=(
+            "For document-backed RAG intents only: ONE concise English retrieval query "
+            "that preserves the user's exact information need, important entities, form "
+            "numbers, dates, and numeric constraints. Use recent context only to resolve "
+            "a genuine follow-up. Null for non-RAG, clarification, form resource/list, "
+            "personal-data, conversation, general-support, and out-of-scope requests."
+        ),
+    )
+
+    evidence_mode: EvidenceMode = Field(
+        default="none",
+        description=(
+            "Evidence strategy. Use 'fast' for direct factual document questions that can "
+            "be supported by explicit passages. Use 'semantic' for exceptions, conditional "
+            "eligibility, comparisons, multi-part/composite policy questions, or cases where "
+            "the relationship between multiple facts must be interpreted. Use 'none' when "
+            "no RAG answer generation is required."
         ),
     )
 
@@ -651,6 +728,10 @@ class RouteDecision(BaseModel):
     personal_reports_pending_only: bool = False
     needs_clarification: bool = False
     clarification_question: str | None = None
+    form_request_mode: FormRequestMode = "none"
+    referenced_form_number: str | None = None
+    retrieval_query: str | None = None
+    evidence_mode: EvidenceMode = "none"
     reason: str
 
     @property
@@ -690,8 +771,71 @@ def route_query_rules(query: str) -> RouteDecision:
         language="unknown",
         allowed_document_types=allowed,
         blocked_document_types=blocked,
+        retrieval_query=(
+            normalize_query(query)
+            if scope in {"internship", "career", "capstone"}
+            else None
+        ),
+        evidence_mode=_fallback_evidence_mode(query, intent, scope),
         reason=f"rule_fallback: {reason}",
     )
+
+_FORM_CONTEXT_ROUTING_INSTRUCTIONS = """
+FORM RESOURCE / CONTENT ROUTING (IMPORTANT)
+
+When intent=form_guidance, also decide form_request_mode from the user's REAL
+requested outcome, using both the CURRENT message and recent conversation.
+
+- content: the user asks for information ABOUT a form: purpose, meaning, fields,
+  requirements, instructions, when to use it, or who must sign it.
+- resource: the user wants the ACTUAL form/template/file, wants to open/preview/
+  download it, asks for a copy/link, or corrects the assistant because they wanted
+  the form itself. Natural follow-ups such as "mẫu form cơ mà", "ý tôi là file",
+  "gửi mẫu đó", or "cho tôi cái form đó" can be resource requests.
+- list: the user asks which forms/files are available.
+- none: every non-form intent.
+
+Resolve referenced_form_number from recent conversation when the current message
+uses a contextual reference such as "form đó", "mẫu đó", "cái đó", "nó".
+Never guess. If a resource/content request requires a specific form but neither
+the current message nor recent context identifies it, set needs_clarification=true
+and ask exactly one short question for the missing Form number/name.
+
+Examples:
+History: user asked about Form 1; current: "mẫu form cơ mà"
+=> intent=form_guidance, form_request_mode=resource,
+   referenced_form_number="1", needs_clarification=false.
+
+Current: "Form 2 cần ai ký?"
+=> form_request_mode=content, referenced_form_number="2".
+
+Current: "cho tôi mẫu form đó", with no resolvable form in recent context
+=> form_request_mode=resource, referenced_form_number=null,
+   needs_clarification=true.
+
+RETRIEVAL QUERY (IMPORTANT)
+For a document-backed RAG intent, produce exactly ONE concise English
+retrieval_query. Preserve the exact requested fact, Form number/name, entity,
+date, number, and constraint. Resolve a genuine follow-up from recent context,
+but never add facts. Do not produce multiple paraphrases.
+
+Set retrieval_query=null when the request is conversation, general_support,
+personal_data, out_of_scope, needs clarification, or requests a Form resource/list
+that can be returned directly without RAG.
+
+EVIDENCE MODE (IMPORTANT)
+- fast: direct factual lookup from official documents, e.g. a required duration,
+  credit count, Form purpose, who signs a Form, a single explicit procedure fact.
+- semantic: conditional/exception questions, case-specific eligibility or approval,
+  comparisons, conflicting conditions, broad/composite questions asking several
+  policy aspects, or questions whose answer depends on interpreting relationships
+  across multiple facts/chunks.
+- none: no document-backed answer generation is needed.
+
+Prefer fast for ordinary single-fact RAG questions. Do not mark a simple lookup
+semantic merely because the topic is official policy.
+""".strip()
+
 
 def _route_query_uncached(
     query: str,
@@ -734,7 +878,9 @@ def _route_query_uncached(
             [
                 (
                     "system",
-                    SEMANTIC_ROUTER_SYSTEM_PROMPT,
+                    SEMANTIC_ROUTER_SYSTEM_PROMPT
+                    + "\n\n"
+                    + _FORM_CONTEXT_ROUTING_INSTRUCTIONS,
                 ),
                 (
                     "human",
@@ -797,6 +943,36 @@ def _route_query_uncached(
                 if semantic_result.needs_clarification
                 else None
             ),
+            form_request_mode=(
+                semantic_result.form_request_mode
+                if intent == "form_guidance"
+                else "none"
+            ),
+            referenced_form_number=(
+                _canonical_form_number(semantic_result.referenced_form_number)
+                if intent == "form_guidance"
+                else None
+            ),
+            retrieval_query=(
+                normalize_query(semantic_result.retrieval_query or "") or None
+                if scope in {"internship", "career", "capstone"}
+                and not semantic_result.needs_clarification
+                and not (
+                    intent == "form_guidance"
+                    and semantic_result.form_request_mode in {"resource", "list"}
+                )
+                else None
+            ),
+            evidence_mode=(
+                semantic_result.evidence_mode
+                if scope in {"internship", "career", "capstone"}
+                and not semantic_result.needs_clarification
+                and not (
+                    intent == "form_guidance"
+                    and semantic_result.form_request_mode in {"resource", "list"}
+                )
+                else "none"
+            ),
             reason=(
                 "semantic_router: "
                 f"{semantic_result.reason}"
@@ -826,7 +1002,7 @@ def route_query(
         "model": settings.openai_chat_model or settings.model_name,
         # Bump when routing/domain policy changes so stale Redis decisions cannot
         # bypass a newly tightened scope policy.
-        "routing_policy_version": 4,
+        "routing_policy_version": 6,
     }
 
     cached = redis_cache.get_json(
@@ -1600,7 +1776,6 @@ class QueryPipeline:
             if memory
             else ""
         )
-
         # Resolve conversational references for routing/retrieval only.
         # The original `query` is still used when generating the answer.
         contextual_query = (
@@ -1609,24 +1784,12 @@ class QueryPipeline:
             else query
         )
 
-        # Explicit Form-N requests are self-contained. Do not let previous
-        # conversation context rewrite "Form 1" into another document/template.
-        current_explicit_form_match = re.search(
-            r"\bform\s*[-_#:]?\s*(\d+(?:\.\d+)?)\b",
-            query or "",
-            flags=re.IGNORECASE,
-        )
-
         explicit_form_match = re.search(
             r"\bform\s*[-_#:]?\s*(\d+(?:\.\d+)?)\b",
             contextual_query or "",
             flags=re.IGNORECASE,
         )
         explicit_form_request = explicit_form_match is not None
-        current_explicit_form_request = (
-            current_explicit_form_match is not None
-        )
-
         normalized_form_query = unicodedata.normalize(
             "NFKD",
             (contextual_query or "").lower(),
@@ -1671,151 +1834,14 @@ class QueryPipeline:
             )
         )
 
-        isolated_form_request = (
-            current_explicit_form_request
-            or generic_form_listing_request
-        )
-
         # ------------------------------------------------------------------
-        # Deterministic form inventory
+        # Step 2: Semantic brain (one classifier call)
         # ------------------------------------------------------------------
-        # "Bạn có thông tin về những form gì?" asks WHICH FILE RESOURCES exist.
-        # That is an inventory operation, not a semantic RAG question.
-        #
-        # Do not let vector search / reranker / evidence selection accidentally
-        # return only Form 1 and then claim that no other forms exist.
-        if generic_form_listing_request:
-            form_resources = self.retriever.list_form_resources()
-
-            if form_resources:
-                form_lines: list[str] = []
-                source_dicts: list[dict] = []
-
-                for hit in form_resources:
-                    form_number = _document_form_number(
-                        hit.chunk.document_name
-                    )
-                    if not form_number:
-                        continue
-
-                    display_title = _form_display_title(
-                        hit.chunk.document_name,
-                        form_number,
-                    )
-
-                    form_lines.append(
-                        f"- **Form {form_number} — {display_title}**"
-                    )
-
-                    form_id = f"form-{form_number}"
-                    source_dicts.append(
-                        {
-                            "document_name": hit.chunk.document_name,
-                            "document_type": hit.chunk.document_type,
-                            "page": hit.chunk.page,
-                            "section": hit.chunk.section,
-                            "chunk_id": hit.chunk_id,
-                            "quote_original": (
-                                hit.chunk.content_original[:1200]
-                            ),
-                            "file_name": hit.chunk.document_name,
-                            "preview_url": (
-                                f"/api/v1/documents/forms/"
-                                f"{form_id}/preview"
-                            ),
-                            "download_url": (
-                                f"/api/v1/documents/forms/"
-                                f"{form_id}/download"
-                            ),
-                        }
-                    )
-
-                if answer_language == "en":
-                    inventory_answer = (
-                        "## Internship forms available\n\n"
-                        + "\n".join(form_lines)
-                        + (
-                            "\n\nYou can open or download each form "
-                            "from the source cards below."
-                        )
-                    )
-                else:
-                    inventory_answer = (
-                        "## Các biểu mẫu thực tập hiện có\n\n"
-                        + "\n".join(form_lines)
-                        + (
-                            "\n\nBạn có thể **xem trước** hoặc **tải xuống** "
-                            "từng biểu mẫu ở phần nguồn bên dưới."
-                        )
-                    )
-
-                if memory:
-                    memory.add_turn(
-                        query=query,
-                        answer=inventory_answer,
-                        answer_status="answered",
-                    )
-
-                return QueryResult(
-                    query=query,
-                    answer=inventory_answer,
-                    answer_status="answered",
-                    answer_language=answer_language,
-                    confidence=1.0,
-                    sources=source_dicts,
-                    route_intent="form_guidance",
-                    route_scope="internship",
-                    guardrail_passed=True,
-                    guardrail_reason="ok",
-                    cache_hit=False,
-                    vector_hits=[],
-                    bm25_hits=[],
-                    reranked_hits=[
-                        hit.to_dict()
-                        for hit in form_resources
-                    ],
-                    groundedness_status="skip",
-                    groundedness_reason=(
-                        "deterministic_form_inventory"
-                    ),
-                    latency_ms=_elapsed_ms(t0),
-                )
-
-        # ------------------------------------------------------------------
-        # Step 2: Route + speculative planner overlap
-        # ------------------------------------------------------------------
-        # On cold RAG-like requests, semantic routing and semantic query
-        # planning are independent calls using the same immutable query/context.
-        # Start them concurrently, but ALWAYS use the same route_query() and
-        # build_retrieval_queries() results as the original sequential path.
-        # This changes wall-clock only, not routing/retrieval behavior.
-        planner_context = (
-            ""
-            if isolated_form_request
-            else conversation_history
-        )
-
-        speculative_planner_future = None
+        # The semantic router now owns intent/scope/language/clarification, Form
+        # resource intent, ONE retrieval query, and evidence complexity. The old
+        # separate semantic query-planner LLM is intentionally removed from the
+        # normal request path.
         route_started = time.perf_counter()
-
-        if (
-            _ENABLE_SPECULATIVE_PREPROCESS
-            and opts.use_semantic_query_planner
-            and _should_speculate_rag_preprocessing(contextual_query)
-            and not generic_form_listing_request
-        ):
-            speculative_planner_future = (
-                _SEMANTIC_PREPROCESS_EXECUTOR.submit(
-                    copy_context().run,
-                    observed_call,
-                    "rag.query_plan",
-                    build_retrieval_queries,
-                    contextual_query,
-                    planner_context,
-                    opts.use_semantic_query_planner,
-                    opts.use_openai_translation,
-                )
-            )
 
         route = (
             precomputed_route
@@ -1823,42 +1849,97 @@ class QueryPipeline:
             else observed_call(
                 "rag.route",
                 route_query,
-                query=contextual_query,
+                query=query,
                 conversation_context=conversation_history,
             )
         )
+
+        # API pre-routing may not have the full session window. Refresh only when
+        # the result is missing context-critical information. Ordinary requests do
+        # not pay for a second classifier call.
+        if (
+            precomputed_route is not None
+            and conversation_history
+            and (
+                route.needs_clarification
+                or (
+                    route.intent == "form_guidance"
+                    and route.form_request_mode in {"content", "resource"}
+                    and not _canonical_form_number(route.referenced_form_number)
+                )
+                or (
+                    route.scope in {"internship", "career", "capstone"}
+                    and route.form_request_mode not in {"resource", "list"}
+                    and not normalize_query(route.retrieval_query or "")
+                )
+            )
+        ):
+            route = observed_call(
+                "rag.route_context_refresh",
+                route_query,
+                query=query,
+                conversation_context=conversation_history,
+            )
+
         route_ms = _stage_ms(route_started)
+        planner_wait_ms = 0.0
 
         # Form requests are a deterministic internship-domain operation.
         # Do not allow a vague follow-up or inventory request to be routed to
         # conversation/general_support/out_of_scope before retrieval can run.
         if explicit_form_request or generic_form_listing_request:
-            route = RouteDecision(
-                intent="form_guidance",
-                scope="internship",
-                language=(
-                    route.language
-                    if route.language in {"vi", "en"}
-                    else detect_query_language(query)
-                ),
-                allowed_document_types=list(
-                    INTERNSHIP_DOCUMENT_TYPES
-                ),
-                blocked_document_types=[
-                    document_type
-                    for document_type in ALL_ROUTED_DOCUMENT_TYPES
-                    if document_type not in INTERNSHIP_DOCUMENT_TYPES
-                ],
-                reason=(
-                    "deterministic_form_context: explicit/list/follow-up form request"
-                ),
+            explicit_number = (
+                explicit_form_match.group(1)
+                if explicit_form_match is not None
+                else None
             )
-
-        if (
-            speculative_planner_future is not None
-            and route.scope not in {"internship", "career", "capstone"}
-        ):
-            speculative_planner_future.cancel()
+            route = route.model_copy(
+                update={
+                    "intent": "form_guidance",
+                    "scope": "internship",
+                    "language": (
+                        route.language
+                        if route.language in {"vi", "en"}
+                        else detect_query_language(query)
+                    ),
+                    "allowed_document_types": list(
+                        INTERNSHIP_DOCUMENT_TYPES
+                    ),
+                    "blocked_document_types": [
+                        document_type
+                        for document_type in ALL_ROUTED_DOCUMENT_TYPES
+                        if document_type not in INTERNSHIP_DOCUMENT_TYPES
+                    ],
+                    # Keep semantic distinction between asking ABOUT a form and
+                    # asking for the actual file. Only fill missing form number
+                    # deterministically when "Form N" is explicit.
+                    "referenced_form_number": (
+                        _canonical_form_number(
+                            route.referenced_form_number
+                        )
+                        or explicit_number
+                    ),
+                    "form_request_mode": (
+                        "list"
+                        if generic_form_listing_request
+                        else route.form_request_mode
+                    ),
+                    "evidence_mode": (
+                        "none"
+                        if generic_form_listing_request
+                        else route.evidence_mode
+                    ),
+                    "retrieval_query": (
+                        None
+                        if generic_form_listing_request
+                        else route.retrieval_query
+                    ),
+                    "reason": (
+                        "deterministic_form_context: "
+                        + route.reason
+                    ),
+                }
+            )
 
         logger.debug(
             "Route: intent=%s scope=%s",
@@ -1944,6 +2025,33 @@ class QueryPipeline:
             answer_language = route.language
 
         # ------------------------------------------------------------------
+        # Semantic Form resource routing
+        # ------------------------------------------------------------------
+        # The LLM decides the user's requested outcome from current message +
+        # conversation context. Deterministic code only executes that decision.
+        semantic_form_number = _canonical_form_number(
+            route.referenced_form_number
+        )
+
+        # Fail closed if the user wants one actual form file but the semantic
+        # router could not resolve WHICH form. Do not guess from retrieval ranks.
+        if (
+            route.intent == "form_guidance"
+            and route.form_request_mode == "resource"
+            and not semantic_form_number
+        ):
+            route = route.model_copy(
+                update={
+                    "needs_clarification": True,
+                    "clarification_question": (
+                        "Bạn muốn lấy mẫu Form nào?"
+                        if answer_language == "vi"
+                        else "Which Form would you like me to provide?"
+                    ),
+                }
+            )
+
+        # ------------------------------------------------------------------
         # Clarification gate: if the semantic router cannot safely resolve a
         # materially important detail, ask one concise question BEFORE any
         # RAG retrieval, personal-data handling, or answer generation.
@@ -1987,6 +2095,151 @@ class QueryPipeline:
                 cache_hit=False,
                 groundedness_status="skip",
                 groundedness_reason="clarification_required",
+                latency_ms=_elapsed_ms(t0),
+            )
+
+        # ------------------------------------------------------------------
+        # Direct form resource/list return
+        # ------------------------------------------------------------------
+        # Do NOT run planner/embedding/vector/rerank/evidence/generation when the
+        # semantic router has already established that the user wants the file.
+        if (
+            route.intent == "form_guidance"
+            and route.form_request_mode in {"resource", "list"}
+        ):
+            raise_if_cancelled()
+            emit_status("answering", route)
+
+            form_resources = _list_form_resources_from_index(self.retriever)
+
+            if route.form_request_mode == "resource":
+                requested_form_number = _canonical_form_number(
+                    route.referenced_form_number
+                )
+                form_resources = [
+                    hit
+                    for hit in form_resources
+                    if _document_form_number(
+                        hit.chunk.document_name
+                    ) == requested_form_number
+                ]
+            else:
+                requested_form_number = None
+
+            # One source card per actual form file.
+            form_resources = _one_hit_per_form(
+                form_resources,
+                max_hits=max(
+                    len(form_resources),
+                    opts.top_k_rerank,
+                ),
+            )
+
+            if form_resources:
+                source_dicts = [
+                    _form_resource_source_dict(
+                        hit,
+                        _document_form_number(
+                            hit.chunk.document_name
+                        ) or "",
+                    )
+                    for hit in form_resources
+                    if _document_form_number(
+                        hit.chunk.document_name
+                    )
+                ]
+
+                if route.form_request_mode == "resource":
+                    display_number = requested_form_number or ""
+                    answer = (
+                        f"Đây là **Form {display_number}** bạn đang cần. "
+                        "Bạn có thể xem trước hoặc tải xuống ở phần nguồn bên dưới."
+                        if answer_language == "vi"
+                        else (
+                            f"Here is **Form {display_number}**. "
+                            "You can preview or download it from the source card below."
+                        )
+                    )
+                else:
+                    form_lines = [
+                        (
+                            f"- **Form {_document_form_number(hit.chunk.document_name)}"
+                            f" — {_form_display_title(hit.chunk.document_name, _document_form_number(hit.chunk.document_name) or '')}**"
+                        )
+                        for hit in form_resources
+                        if _document_form_number(hit.chunk.document_name)
+                    ]
+                    answer = (
+                        "## Các biểu mẫu thực tập hiện có\n\n"
+                        + "\n".join(form_lines)
+                        + "\n\nBạn có thể **xem trước** hoặc **tải xuống** "
+                        "từng biểu mẫu ở phần nguồn bên dưới."
+                        if answer_language == "vi"
+                        else (
+                            "## Internship forms available\n\n"
+                            + "\n".join(form_lines)
+                            + "\n\nYou can preview or download each form "
+                            "from the source cards below."
+                        )
+                    )
+
+                if memory:
+                    memory.add_turn(
+                        query=query,
+                        answer=answer,
+                        answer_status="answered",
+                    )
+
+                return QueryResult(
+                    query=query,
+                    answer=answer,
+                    answer_status="answered",
+                    answer_language=answer_language,
+                    confidence=1.0,
+                    sources=source_dicts,
+                    route_intent="form_guidance",
+                    route_scope="internship",
+                    guardrail_passed=True,
+                    guardrail_reason="ok",
+                    cache_hit=False,
+                    vector_hits=[],
+                    bm25_hits=[],
+                    reranked_hits=[
+                        hit.to_dict()
+                        for hit in form_resources
+                    ],
+                    groundedness_status="skip",
+                    groundedness_reason="semantic_form_resource",
+                    latency_ms=_elapsed_ms(t0),
+                )
+
+            # The router resolved a concrete Form resource, but it does not exist
+            # in the current index. Never substitute a different Form.
+            answer = (
+                (
+                    f"Mình chưa tìm thấy tệp Form {requested_form_number} "
+                    "trong kho tài liệu hiện tại."
+                )
+                if answer_language == "vi"
+                else (
+                    f"I couldn't find Form {requested_form_number} "
+                    "in the current document index."
+                )
+            )
+            return QueryResult(
+                query=query,
+                answer=answer,
+                answer_status="answered",
+                answer_language=answer_language,
+                confidence=0.0,
+                sources=[],
+                route_intent="form_guidance",
+                route_scope="internship",
+                guardrail_passed=True,
+                guardrail_reason="form_resource_not_found",
+                cache_hit=False,
+                groundedness_status="skip",
+                groundedness_reason="form_resource_not_found",
                 latency_ms=_elapsed_ms(t0),
             )
 
@@ -2109,60 +2362,28 @@ class QueryPipeline:
             )
         
 # ------------------------------------------------------------------
-# Step 3: Query translation / expansion
+# Step 3: Build ONE retrieval query from the semantic brain
 # ------------------------------------------------------------------
         raise_if_cancelled()
-        planner_started = time.perf_counter()
-
-        if speculative_planner_future is not None:
-            try:
-                expanded = speculative_planner_future.result()
-            except Exception as exc:
-                logger.warning(
-                    "Speculative planner failed; retrying normal planner path: %s",
-                    exc,
-                )
-                expanded = observed_call(
-                    "rag.query_plan",
-                    build_retrieval_queries,
-                    query=contextual_query,
-                    conversation_context=planner_context,
-                    use_semantic_planner=opts.use_semantic_query_planner,
-                    use_openai_translation=opts.use_openai_translation,
-                )
-        else:
-            expanded = observed_call(
-                "rag.query_plan",
-                build_retrieval_queries,
-                query=contextual_query,
-                conversation_context=planner_context,
-                use_semantic_planner=opts.use_semantic_query_planner,
-                use_openai_translation=opts.use_openai_translation,
-            )
-
-        planner_wait_ms = _stage_ms(planner_started)
-
-        logger.debug(
-            "Search queries: %s",
-            expanded.search_queries,
+        expanded = _build_route_retrieval_expansion(
+            query=query,
+            contextual_query=contextual_query,
+            route=route,
+            conversation_context=conversation_history,
+            use_openai_translation=opts.use_openai_translation,
         )
-        logger.debug(
-            "Query processing mode=%s",
-            "semantic" if expanded.used_openai else "legacy_fallback",
-        )
-
 
         retrieval_query = (
-            (
-                expanded.normalized_query
-                or query
-            )
-            if isolated_form_request
-            else (
-                expanded.query_en
-                or expanded.normalized_query
-                or query
-            )
+            expanded.query_en
+            or expanded.normalized_query
+            or contextual_query
+            or query
+        )
+
+        logger.debug(
+            "Retrieval query mode=%s query=%s",
+            "semantic_brain" if route.retrieval_query else "fallback",
+            retrieval_query,
         )
 
         # ------------------------------------------------------------------
@@ -2314,20 +2535,50 @@ class QueryPipeline:
         # ------------------------------------------------------------------
         raise_if_cancelled()
         evidence_started = time.perf_counter()
-        evidence = observed_call(
-            "rag.evidence",
-            check_evidence,
-            query=query,
-            hits=final_hits,
-            route=route,
-            # A CURRENT explicit/list request is self-contained. A Form
-            # resolved from memory is not: keep history for evidence planning.
-            conversation_context=(
-                ""
-                if isolated_form_request
-                else conversation_history
-            ),
+        requested_evidence_mode = (
+            route.evidence_mode
+            if route.evidence_mode in {"fast", "semantic"}
+            else _fallback_evidence_mode(query, route.intent, route.scope)
         )
+
+        if requested_evidence_mode == "fast":
+            # Ordinary RAG: local deterministic validation first. This removes an
+            # entire LLM call from the common path. Fail-safe behavior is kept:
+            # if deterministic evidence cannot support the request, fall through
+            # to the existing semantic evidence checker rather than guessing.
+            evidence = observed_call(
+                "rag.evidence_fast",
+                check_evidence_legacy,
+                query=query,
+                hits=final_hits,
+                route=route,
+            )
+
+            if (
+                evidence.evidence_status != "sufficient"
+                or not evidence.used_chunk_ids
+                or evidence.missing_evidence
+            ):
+                evidence = observed_call(
+                    "rag.evidence_semantic_fallback",
+                    _check_semantic_evidence_once,
+                    query=query,
+                    hits=final_hits,
+                    route=route,
+                    conversation_context=conversation_history,
+                )
+        else:
+            # Complex RAG keeps exactly ONE semantic evidence call. If that call
+            # fails technically, fail closed instead of falling through to the old
+            # two-call planner+selector path that inflates tail latency.
+            evidence = observed_call(
+                "rag.evidence",
+                _check_semantic_evidence_once,
+                query=query,
+                hits=final_hits,
+                route=route,
+                conversation_context=conversation_history,
+            )
 
         evidence_ms = _stage_ms(evidence_started)
         evidence_chunk_ids = set(evidence.used_chunk_ids)
@@ -2510,6 +2761,189 @@ class QueryPipeline:
 
         return query_result
 
+
+
+def _check_semantic_evidence_once(
+    query: str,
+    hits: list[RetrievalHit],
+    route: RouteDecision,
+    conversation_context: str = "",
+) -> EvidenceCheckResult:
+    """Run exactly one semantic evidence call and fail closed on technical error.
+
+    `evidence.check_evidence()` normally uses the combined one-call path, but on
+    failure it falls back to the older split planner + selector flow (two more LLM
+    calls). That is safe but creates very large P95/P99 tails. The online pipeline
+    instead caps semantic evidence at one call; a technical failure returns
+    insufficient evidence rather than spending two more network round trips.
+    """
+    allowed_types = set(route.allowed_document_types or [])
+    allowed_hits = [
+        hit
+        for hit in hits
+        if not allowed_types or hit.chunk.document_type in allowed_types
+    ]
+
+    if not allowed_hits:
+        return EvidenceCheckResult(
+            evidence_status="insufficient",
+            reason="No retrieved chunks are from the allowed source scope.",
+            used_chunk_ids=[],
+            missing_evidence=["allowed source chunk"],
+            evidence_method="semantic",
+        )
+
+    try:
+        combined = evaluate_semantic_evidence_combined(
+            query=query,
+            route=route,
+            hits=allowed_hits,
+            conversation_context=conversation_context,
+        )
+        return validate_semantic_evidence_selection(
+            evidence_plan=combined.evidence_plan,
+            selection=combined.selection,
+            allowed_hits=allowed_hits,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Single-call semantic evidence failed; failing closed: %s",
+            exc,
+        )
+        return EvidenceCheckResult(
+            evidence_status="insufficient",
+            reason="Semantic evidence validation was unavailable.",
+            used_chunk_ids=[],
+            missing_evidence=["semantic evidence validation"],
+            evidence_method="semantic",
+        )
+
+
+
+def _build_route_retrieval_expansion(
+    query: str,
+    contextual_query: str,
+    route: RouteDecision,
+    conversation_context: str,
+    use_openai_translation: bool,
+) -> QueryExpansionResult:
+    """Build a single retrieval query without a second semantic-planner LLM.
+
+    Normal path: use `route.retrieval_query`, which was produced by the same
+    semantic brain that classified the request. Fallback path: use the existing
+    bilingual translator only when the semantic router did not provide a query.
+    """
+    normalized_current = normalize_query(query)
+    normalized_contextual = normalize_query(contextual_query) or normalized_current
+    language = detect_query_language(normalized_current)
+    semantic_query = normalize_query(route.retrieval_query or "")
+
+    if semantic_query:
+        return QueryExpansionResult(
+            original_query=query,
+            normalized_query=normalized_contextual,
+            query_language=language,
+            query_vi=(normalized_current if language == "vi" else None),
+            query_en=semantic_query,
+            search_queries=[semantic_query],
+            used_openai=True,
+            warnings=[],
+        )
+
+    # Safe degraded mode when routing fell back or a transient model response did
+    # not contain retrieval_query. This is not the normal production path.
+    fallback = build_bilingual_queries(
+        normalized_contextual,
+        use_openai=use_openai_translation,
+        conversation_context=conversation_context,
+    )
+    fallback_query = (
+        normalize_query(fallback.query_en or "")
+        or normalize_query(fallback.normalized_query)
+        or normalized_contextual
+    )
+    return fallback.model_copy(
+        update={
+            "search_queries": [fallback_query] if fallback_query else [],
+        }
+    )
+
+
+def _list_form_resources_from_index(
+    retriever: HybridRetriever,
+) -> list[RetrievalHit]:
+    """Return one representative indexed hit per Form without vector search.
+
+    This intentionally depends only on the in-memory BM25/index chunk map already
+    owned by HybridRetriever. It avoids a non-existent `list_form_resources()` API
+    and makes Form preview/download requests O(number_of_chunks), entirely local.
+    """
+    chunks_by_id = getattr(retriever, "_chunks_by_id", {}) or {}
+    candidates: list[RetrievalHit] = []
+
+    for chunk_id, chunk in chunks_by_id.items():
+        if getattr(chunk, "document_type", "") not in {"form", "agreement"}:
+            continue
+        if not _document_form_number(getattr(chunk, "document_name", "")):
+            continue
+        candidates.append(
+            RetrievalHit(
+                chunk_id=str(chunk_id),
+                chunk=chunk,
+                score=1.0,
+                source="form_index",
+                rank=len(candidates) + 1,
+            )
+        )
+
+    representatives = _one_hit_per_form(
+        candidates,
+        max_hits=max(len(candidates), 16),
+    )
+    return [
+        RetrievalHit(
+            chunk_id=hit.chunk_id,
+            chunk=hit.chunk,
+            score=hit.score,
+            source=hit.source,
+            rank=rank,
+        )
+        for rank, hit in enumerate(representatives, start=1)
+    ]
+
+
+
+def _canonical_form_number(value: str | None) -> str | None:
+    """Normalize an explicit/semantic Form reference to its numeric identifier."""
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+
+    match = re.search(
+        r"(?:\bform\s*[-_#:]?\s*)?(\d+(?:\.\d+)?)\b",
+        raw,
+        flags=re.IGNORECASE,
+    )
+    return match.group(1) if match else None
+
+
+def _form_resource_source_dict(
+    hit: RetrievalHit,
+    form_number: str,
+) -> dict:
+    """Build the source-card payload used by preview/download UI actions."""
+    form_id = f"form-{form_number}"
+    return {
+        "document_name": hit.chunk.document_name,
+        "document_type": hit.chunk.document_type,
+        "page": hit.chunk.page,
+        "section": hit.chunk.section,
+        "chunk_id": hit.chunk_id,
+        "quote_original": hit.chunk.content_original[:1200],
+        "file_name": hit.chunk.document_name,
+        "preview_url": f"/api/v1/documents/forms/{form_id}/preview",
+        "download_url": f"/api/v1/documents/forms/{form_id}/download",
+    }
 
 
 def _form_display_title(

@@ -30,7 +30,8 @@
   height: 48px;
   place-items: center;
   border-radius: 14px;
-  background: linear-gradient(145deg, #3c8dff, #1d6de8);
+  overflow: hidden;
+  background: transparent;
 }
 
 .brand strong,

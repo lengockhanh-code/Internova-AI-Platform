@@ -12,6 +12,35 @@ it won't catch every possible phrasing (e.g. a totally novel synonym
 for "harassment" it hasn't seen), but it covers the realistic range of
 ways students describe each situation, and is easy to extend by simply
 adding more phrases to the lists below — no other file needs to change.
+
+FIX (2nd pass): detect_form() previously used max() alone to pick the
+winner, which silently returns the FIRST dict key ("Form 1") whenever
+two or more forms tie in score. Now: a tie at the top score is treated
+as ambiguous and returns None instead of guessing.
+
+FIX (3rd pass): added a list of countries/regions to Form 2's keywords
+so naming a country ("thực tập ở Singapore") is caught even without
+the words "nước ngoài"/"quốc tế".
+
+FIX (4th pass — important correctness fix): ALL matching here now uses
+WHOLE-WORD matching, not substring matching. Previously, short
+single-word phrases (e.g. the country codes "y", "anh", "my", "uc"
+added in the 3rd pass) matched as a SUBSTRING anywhere in the
+normalized text — so "y" alone matched inside "công ty" (contains
+"...ty..." — wait, more precisely: normalized text is a single
+space-joined string, and `"y" in normalized` is a substring check
+across the WHOLE string, so it matches any occurrence of the letter
+sequence "y" regardless of word boundaries, e.g. inside "ty" from
+"công ty"). This caused a confirmed real bug: a question about being
+forced to work unpaid overtime (clearly Form 3 territory) got
+misdetected as Form 2, purely because the message contained the
+substring "y" (from "công ty"). This is the exact same class of bug
+already fixed once before in nodes/intent.py (the "huy" hidden inside
+"chuyên" issue) — reusing that same whole-word matching strategy here
+fixes it for good and keeps the two files consistent. Multi-word
+phrases (e.g. "form 1", "thuc tap quoc te") still use substring
+matching, which is safe since an exact multi-word sequence can't
+accidentally occur inside a single unrelated token.
 """
 
 from __future__ import annotations
@@ -42,6 +71,21 @@ _FORM_KEYWORDS: dict[FormCode, tuple[str, ...]] = {
         "nuoc ngoai", "quoc te",
         "di nuoc ngoai", "sang nuoc ngoai",
         "ky cam ket", "ki cam ket",
+        # Các quốc gia/vùng lãnh thổ phổ biến sinh viên VinUni hay đi
+        # thực tập — không phủ hết mọi nước trên thế giới, chỉ phủ
+        # phạm vi thực tế thường gặp. Bổ sung thêm khi gặp case mới.
+        # Whole-word matching (see module docstring) makes even short
+        # entries like "y", "anh", "my" SAFE now — "y" only matches
+        # the standalone word "y" (Italy, informal), never the "y"
+        # buried inside "công ty".
+        "singapore", "nhat ban", "nhat", "han quoc", "trieu tien",
+        "trung quoc", "hong kong", "dai loan",
+        "my", "hoa ky", "hoa ki", "canada",
+        "anh", "anh quoc", "phap", "duc", "ha lan",
+        "thuy si", "thuy dien", "y", "tay ban nha",
+        "uc", "australia", "new zealand", "niu di lan",
+        "thai lan", "malaysia", "indonesia", "philippines",
+        "an do", "dubai", "uae",
     ),
     "Form 3": (
         "form 3", "khieu nai", "quay roi", "su co",
@@ -49,6 +93,12 @@ _FORM_KEYWORDS: dict[FormCode, tuple[str, ...]] = {
         "bi doi xu", "bi ep buoc", "khong an toan", "nguoc dai",
         "bi nguoc dai", "bi bat nat", "bat nat", "de doa",
         "hanh vi khong phu hop", "dung cham",
+        # Bổ sung: các tình huống bị bóc lột/ép buộc lao động — vốn
+        # trước đây có thể bị Form 2 "cướp" mất do khớp nhầm từ khóa
+        # ngắn (xem FIX 4th pass) — giờ thêm trực tiếp để tăng độ phủ
+        # đúng hướng cho Form 3.
+        "ep lam them gio", "khong tra luong", "bi boc lot",
+        "lam viec qua suc", "bi lam dung",
     ),
     "Form 4.3": (
         "form 4", "danh gia", "evaluation", "tu danh gia",
@@ -69,24 +119,76 @@ def _normalize(text: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", stripped))
 
 
-def detect_form(conversation_text: str) -> FormCode | None:
-    """Return the best-matching form based on keyword phrases found in
-    the conversation, or None if nothing matched clearly."""
-    normalized = _normalize(conversation_text)
+def _matches_phrase(normalized_text: str, tokens: set[str], phrase: str) -> bool:
+    """Multi-word phrase -> substring match is safe (an exact
+    multi-word sequence can't accidentally occur inside a single
+    unrelated token). Single-word phrase -> must match a WHOLE token,
+    never a substring buried inside a longer, unrelated word — see
+    module docstring for the concrete bug this prevents."""
+    if " " in phrase:
+        return phrase in normalized_text
+    return phrase in tokens
 
+
+def _score_text(normalized: str, tokens: set[str]) -> dict[FormCode, int]:
     scores: dict[FormCode, int] = {code: 0 for code in _FORM_KEYWORDS}
-
     for code, phrases in _FORM_KEYWORDS.items():
         for phrase in phrases:
-            if phrase in normalized:
+            if _matches_phrase(normalized, tokens, phrase):
                 scores[code] += 1
+    return scores
 
-    best_code = max(scores, key=lambda c: scores[c])
 
-    if scores[best_code] == 0:
+def _best_from_scores(scores: dict[FormCode, int]) -> FormCode | None:
+    best_score = max(scores.values())
+    if best_score == 0:
         return None
+    top_codes = [code for code, score in scores.items() if score == best_score]
+    if len(top_codes) > 1:
+        return None
+    return top_codes[0]
 
-    return best_code
+
+def detect_form(conversation_text: str) -> FormCode | None:
+    """Return the best-matching form based on keyword phrases found in
+    the conversation, or None if nothing matched clearly (including
+    when the match is ambiguous — see module docstring).
+
+    FIX (5th pass): the frontend calls this with
+    text = "<user's original question>\\n<RAG's answer>" (see
+    checkFormRelevance in page.tsx). A RAG answer that mentions
+    multiple forms — one as its confident main recommendation, another
+    only as a hedged aside ("chưa xác nhận... nên liên hệ...") — can
+    out-score the actually-recommended form purely because the hedged
+    mention happens to use more distinct keywords (e.g. a Singapore
+    internship question where the answer leads with Form 1 but also
+    mentions Form 2/"quốc tế" uncertainly). Keyword counting has no
+    concept of "confident" vs "hedged" language, so it can't fix this
+    by itself.
+
+    Practical, LOW-RISK mitigation without needing any frontend or
+    other-file changes: split off just the first line (the user's own
+    original question, per the format above) and score THAT first —
+    the student's own wording is a strong, uncontaminated signal.
+    Only fall back to scoring the full text (question + RAG answer)
+    when the first line alone doesn't clearly match anything. This
+    doesn't fully solve "confident vs hedged" in the RAG answer text,
+    but it means many cases are now decided by the student's actual
+    question before the RAG answer's phrasing can pull the result
+    toward a form it only mentioned in passing.
+    """
+    first_line = conversation_text.split("\n", 1)[0] if conversation_text else ""
+
+    if first_line.strip():
+        normalized_first = _normalize(first_line)
+        tokens_first = set(normalized_first.split())
+        first_line_result = _best_from_scores(_score_text(normalized_first, tokens_first))
+        if first_line_result is not None:
+            return first_line_result
+
+    normalized = _normalize(conversation_text)
+    tokens = set(normalized.split())
+    return _best_from_scores(_score_text(normalized, tokens))
 
 
 def form_selector_node(state: FormAgentState) -> FormAgentState:

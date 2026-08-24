@@ -36,8 +36,9 @@
   flex: 0 0 46px;
   place-items: center;
   border-radius: 14px;
-  background: linear-gradient(145deg, #4f9cff, #1d6ce5);
-  box-shadow: 0 10px 22px rgba(21, 101, 220, 0.32);
+  overflow: hidden;
+  background: transparent;
+  box-shadow: none;
 }
 
 .brand strong,

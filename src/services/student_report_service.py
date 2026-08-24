@@ -1440,6 +1440,8 @@ def submit_report(
             SELECT
                 wr.id,
 
+                wr.title,
+
                 wr.report_type,
 
                 wr.content,
@@ -1452,13 +1454,20 @@ def submit_report(
 
                 wr.status,
 
-                i.id AS internship_id
+                i.id AS internship_id,
+
+                i.lecturer_id,
+
+                u.full_name AS student_name
 
             FROM weekly_reports AS wr
 
             INNER JOIN internships AS i
                 ON i.id =
                     wr.internship_id
+
+            INNER JOIN users AS u
+                ON u.id = i.student_id
 
             WHERE wr.id =
                 :report_id
@@ -1618,6 +1627,43 @@ def submit_report(
                 new_status,
         },
     )
+
+    if report["lecturer_id"] is not None:
+        report_title = report["title"] or "Báo cáo thực tập"
+        is_late = new_status == "LATE"
+        db.execute(
+            text(
+                """
+                INSERT INTO notifications (
+                    user_id,
+                    title,
+                    message,
+                    notification_type,
+                    severity,
+                    related_type,
+                    related_id
+                ) VALUES (
+                    :lecturer_id,
+                    :title,
+                    :message,
+                    'REPORT_SUBMITTED',
+                    :severity,
+                    'WEEKLY_REPORT',
+                    :report_id
+                )
+                """
+            ),
+            {
+                "lecturer_id": report["lecturer_id"],
+                "title": "Báo cáo nộp muộn" if is_late else "Báo cáo mới được nộp",
+                "message": (
+                    f"{report['student_name']} đã nộp \"{report_title}\""
+                    + (" sau thời hạn quy định." if is_late else ".")
+                ),
+                "severity": "WARNING" if is_late else "INFO",
+                "report_id": report_id,
+            },
+        )
 
 
     db.commit()

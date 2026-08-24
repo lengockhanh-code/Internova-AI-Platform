@@ -10,7 +10,7 @@ import type { TimeRange } from "@/lib/adminObservability";
 export default function TracesPage() {
   const [range, setRange] = useState<TimeRange>("24h");
   const [filter, setFilter] = useState("");
-  const state = useResource(() => observabilityApi.traces(range, 500), [range]);
+  const state = useResource(`traces:${range}:500`, () => observabilityApi.traces(range, 500));
   const rows = useMemo(() => (state.data?.items ?? []).filter((x:any) => JSON.stringify(x).toLowerCase().includes(filter.toLowerCase())), [state.data, filter]);
   const err = rows.filter((x:any)=>x.status==="error").length;
   return <PageShell title="Traces" description="Mỗi chatbot request là một trace; mở trace để xem waterfall routing → retrieval → rerank → evidence → generation → validation." range={range} setRange={setRange} refreshing={state.refreshing} onRefresh={state.refresh}>

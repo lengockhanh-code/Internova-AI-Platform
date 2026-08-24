@@ -8,7 +8,7 @@ import type { TimeRange } from "@/lib/adminObservability";
 
 export default function LlmUsagePage() {
   const [range, setRange] = useState<TimeRange>("24h");
-  const state = useResource(() => observabilityApi.llm(range), [range]);
+  const state = useResource(`llm:${range}`, () => observabilityApi.llm(range));
   const d = state.data;
   return <PageShell title="LLM Usage & Cost" description="Theo dõi generation/embedding calls, token, USD cost, model mix, P95 và lỗi provider." range={range} setRange={setRange} refreshing={state.refreshing} onRefresh={state.refresh}>
     {state.error && <ErrorBox error={state.error}/>} {state.loading && !d ? <Loading/> : !d ? <div className={styles.emptyBox}>Chưa có dữ liệu LLM trong khoảng thời gian này.</div> : <>

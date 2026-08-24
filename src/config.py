@@ -136,6 +136,8 @@ class Settings(BaseSettings):
     # RERANKING
     # =========================================================
 
+    cohere_api_key: str = ""
+
     rerank_model: str = (
         "gpt-5.6-terra"
     )

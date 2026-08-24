@@ -4,10 +4,12 @@ import React, {
     createContext,
     useContext,
     useEffect,
+    useLayoutEffect,
     useMemo,
     useState,
 } from "react";
 import { usePathname } from "next/navigation";
+import { applyLocalUiLanguage } from "@/lib/localUiTranslation";
 
 type Theme = "light" | "dark";
 type Locale = "vi" | "en";
@@ -47,9 +49,36 @@ const SettingsContext =
 const GOOGLE_TRANSLATE_SCRIPT_ID = "internova-google-translate-script";
 const GOOGLE_TRANSLATE_ELEMENT_ID = "internova-google-translate-element";
 const GOOGLE_TRANSLATE_STYLE_ID = "internova-google-translate-style";
+const TRANSLATION_PENDING_CLASS = "internova-translation-pending";
+const GOOGLE_TRANSLATE_FALLBACK_ENABLED = false;
 let googleTranslateDomGuardInstalled = false;
 let googleTranslateApplyRun = 0;
 let googleTranslateApplyTimers: ReturnType<typeof setTimeout>[] = [];
+
+function isAutoTranslatePath(pathname: string) {
+    return (
+        pathname.startsWith("/student/") ||
+        pathname.startsWith("/lecturer/")
+    );
+}
+
+function markTranslationPending(locale: Locale) {
+    document.documentElement.dataset.internovaLocale = locale;
+    document.documentElement.classList.add(TRANSLATION_PENDING_CLASS);
+}
+
+function finishTranslation(locale: Locale, delay = 0) {
+    document.documentElement.dataset.internovaLocale = locale;
+    const reveal = () => {
+        document.documentElement.classList.remove(TRANSLATION_PENDING_CLASS);
+    };
+
+    if (delay > 0) {
+        queueGoogleTranslateTask(reveal, delay);
+        return;
+    }
+    reveal();
+}
 
 const translations: Record<Locale, Record<string, string>> = {
     vi: {
@@ -325,6 +354,7 @@ function applyGoogleTranslate(
 
     setGoogleTranslateCookie(locale);
     document.documentElement.setAttribute("lang", locale);
+    document.documentElement.dataset.internovaLocale = locale;
 
     const combo =
         document.querySelector<HTMLSelectElement>(".goog-te-combo");
@@ -337,6 +367,7 @@ function applyGoogleTranslate(
                 combo.dispatchEvent(
                     new Event("change", { bubbles: true }),
                 );
+                finishTranslation(locale, locale === "en" ? 650 : 350);
             } catch {
                 window.setTimeout(
                     () =>
@@ -349,6 +380,8 @@ function applyGoogleTranslate(
                     300,
                 );
             }
+        } else {
+            finishTranslation(locale, 150);
         }
         return;
     }
@@ -364,7 +397,10 @@ function applyGoogleTranslate(
                 ),
             250,
         );
+        return;
     }
+
+    finishTranslation(locale);
 }
 
 function loadGoogleTranslate(
@@ -402,11 +438,11 @@ function loadGoogleTranslate(
         );
 
         window.__internovaGoogleTranslateReady = true;
-        applyGoogleTranslate(locale, 0, runId);
+        applyGoogleTranslate(locale, 0, runId, true);
     };
 
     if (window.__internovaGoogleTranslateReady) {
-        applyGoogleTranslate(locale, 0, runId);
+        applyGoogleTranslate(locale, 0, runId, true);
         return;
     }
 
@@ -419,6 +455,7 @@ function loadGoogleTranslate(
     script.src =
         "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
     script.async = true;
+    script.onerror = () => finishTranslation(locale);
     document.body.appendChild(script);
 }
 
@@ -447,11 +484,7 @@ export function SettingsProvider({
     const [theme, setTheme] = useState<Theme>("light");
     const [locale, setLocaleState] = useState<Locale>("vi");
     const [settingsReady, setSettingsReady] = useState(false);
-    const isStudentChatbotPage =
-        pathname.startsWith("/student/chatbot");
-    const autoTranslateEnabled =
-        pathname.startsWith("/student/") &&
-        !isStudentChatbotPage;
+    const autoTranslateEnabled = isAutoTranslatePath(pathname);
     const studentUiEnabled =
         pathname.startsWith("/student/");
 
@@ -477,11 +510,13 @@ export function SettingsProvider({
             initialTheme === "dark",
         );
         document.documentElement.setAttribute("lang", initialLocale);
+        document.documentElement.dataset.internovaLocale = initialLocale;
 
         setSettingsReady(true);
 
-        if (!window.location.pathname.startsWith("/student/")) {
+        if (!isAutoTranslatePath(window.location.pathname)) {
             resetGoogleTranslateCookie();
+            finishTranslation(initialLocale);
         }
         /* eslint-enable react-hooks/set-state-in-effect */
     }, []);
@@ -493,19 +528,41 @@ export function SettingsProvider({
         );
     }, [studentUiEnabled, theme]);
 
+    useLayoutEffect(() => {
+        if (!settingsReady) {
+            return;
+        }
+
+        if (autoTranslateEnabled) {
+            markTranslationPending(locale);
+            applyLocalUiLanguage(locale);
+            finishTranslation(locale);
+            return;
+        }
+
+        applyLocalUiLanguage("vi");
+        finishTranslation(locale);
+    }, [autoTranslateEnabled, locale, pathname, settingsReady]);
+
     useEffect(() => {
         if (!settingsReady) {
             return;
         }
 
         if (autoTranslateEnabled) {
-            requestGoogleTranslate(locale);
+            if (GOOGLE_TRANSLATE_FALLBACK_ENABLED) {
+                requestGoogleTranslate(locale);
+            } else {
+                cancelQueuedGoogleTranslate();
+                resetGoogleTranslateCookie();
+            }
             return;
         }
 
         cancelQueuedGoogleTranslate();
         resetGoogleTranslateCookie();
         document.documentElement.setAttribute("lang", "vi");
+        finishTranslation("vi");
 
         const combo =
             document.querySelector<HTMLSelectElement>(".goog-te-combo");
@@ -520,7 +577,7 @@ export function SettingsProvider({
                 // Google Translate can mutate the DOM while routes change.
             }
         }
-    }, [autoTranslateEnabled, locale, settingsReady]);
+    }, [autoTranslateEnabled, locale, pathname, settingsReady]);
 
     const value = useMemo<SettingsContextProps>(() => {
         const toggleTheme = () => {
@@ -538,9 +595,13 @@ export function SettingsProvider({
                 return;
             }
 
+            if (autoTranslateEnabled) {
+                markTranslationPending(newLocale);
+            }
             setLocaleState(newLocale);
             localStorage.setItem("internova_locale", newLocale);
             document.documentElement.setAttribute("lang", newLocale);
+            document.documentElement.dataset.internovaLocale = newLocale;
         };
 
         const t = (key: string): string => {
@@ -554,7 +615,7 @@ export function SettingsProvider({
             setLocale,
             t,
         };
-    }, [locale, studentUiEnabled, theme]);
+    }, [autoTranslateEnabled, locale, studentUiEnabled, theme]);
 
     return (
         <SettingsContext.Provider value={value}>

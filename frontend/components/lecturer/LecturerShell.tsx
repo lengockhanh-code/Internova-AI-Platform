@@ -7,10 +7,8 @@ import {
   ChevronDown,
   ClipboardCheck,
   FileText,
-  GraduationCap,
   LayoutDashboard,
   Menu,
-  MessageSquareText,
   Search,
   Settings,
   Star,
@@ -18,11 +16,17 @@ import {
   X,
 } from "lucide-react";
 
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { lecturerFetch as fetch } from "@/lib/lecturerAuth";
+import {
+  fetchLecturerUnreadCount,
+  subscribeLecturerUnreadCount,
+} from "@/lib/lecturerNotifications";
 
+import LecturerLanguageSwitcher from "./LecturerLanguageSwitcher";
 import styles from "./LecturerShell.module.css";
 
 const API_BASE_URL =
@@ -38,9 +42,6 @@ interface LecturerInfo {
 
 interface DashboardResponse {
   lecturer?: Partial<LecturerInfo>;
-  stats?: {
-    openWarnings?: number;
-  };
 }
 
 interface NavItem {
@@ -84,10 +85,6 @@ const managementItems: NavItem[] = [
     label: "Nhắc nhở & Cảnh báo",
     icon: Bell,
     href: "/lecturer/reminders",
-  },
-  {
-    label: "Trao đổi & Góp ý",
-    icon: MessageSquareText,
   },
 ];
 
@@ -181,7 +178,7 @@ export default function LecturerShell({
     academicTitle: null,
     specialization: null,
   });
-  const [warningCount, setWarningCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -221,19 +218,28 @@ export default function LecturerShell({
               : null,
         });
 
-        setWarningCount(
-          typeof data.stats?.openWarnings === "number"
-            ? data.stats.openWarnings
-            : 0,
-        );
       } catch {
         // Header vẫn render với fallback nếu backend tạm thời lỗi.
       }
     }
 
     void loadHeader();
+    const refreshUnreadCount = () => {
+      void fetchLecturerUnreadCount()
+        .then(setUnreadCount)
+        .catch(() => undefined);
+    };
+    refreshUnreadCount();
+    const unsubscribe = subscribeLecturerUnreadCount(setUnreadCount);
+    const interval = window.setInterval(refreshUnreadCount, 60_000);
+    window.addEventListener("focus", refreshUnreadCount);
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      unsubscribe();
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshUnreadCount);
+    };
   }, []);
 
   const displayName = useMemo(() => {
@@ -258,11 +264,17 @@ export default function LecturerShell({
       >
         <div className={styles.brand}>
           <div className={styles.brandIcon}>
-            <GraduationCap size={28} strokeWidth={2} />
+            <Image
+              alt="AI Internova logo"
+              height={46}
+              priority
+              src="/vinuni-internship-logo.svg"
+              width={46}
+            />
           </div>
 
-          <div className={styles.brandText}>
-            <strong>AI Internship</strong>
+          <div className={`${styles.brandText} notranslate`} translate="no">
+            <strong>AI Internova</strong>
             <span>Hỗ trợ thực tập sinh viên</span>
           </div>
 
@@ -294,7 +306,13 @@ export default function LecturerShell({
           <p className={styles.sidebarLabel}>CÀI ĐẶT</p>
 
           <div className={styles.navList}>
-            <button className={styles.navItem} type="button">
+            <button
+              className={`${styles.navItem} ${
+                pathname === "/lecturer/notifications" ? styles.navItemActive : ""
+              }`}
+              onClick={() => navigate("/lecturer/notifications")}
+              type="button"
+            >
               <Bell size={19} />
               <span>Thông báo</span>
             </button>
@@ -340,6 +358,8 @@ export default function LecturerShell({
           </div>
 
           <div className={styles.topbarRight}>
+            <LecturerLanguageSwitcher />
+
             <button
               aria-label="Tìm kiếm"
               className={styles.iconButton}
@@ -351,12 +371,13 @@ export default function LecturerShell({
             <button
               aria-label="Thông báo"
               className={styles.notificationButton}
+              onClick={() => navigate("/lecturer/notifications")}
               type="button"
             >
               <Bell size={20} />
 
-              {warningCount > 0 && (
-                <span>{Math.min(warningCount, 99)}</span>
+              {unreadCount > 0 && (
+                <span>{Math.min(unreadCount, 99)}</span>
               )}
             </button>
 

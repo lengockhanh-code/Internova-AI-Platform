@@ -11,7 +11,7 @@ import type { TimeRange } from "@/lib/adminObservability";
 
 export default function RagAnalyticsPage() {
   const [range, setRange] = useState<TimeRange>("24h");
-  const state = useResource(() => observabilityApi.rag(range), [range]);
+  const state = useResource(`rag:${range}`, () => observabilityApi.rag(range));
   const d = state.data;
 
   return (
@@ -57,11 +57,17 @@ export default function RagAnalyticsPage() {
         </div>
 
         <div className={styles.grid2}>
-          <Panel title="Reranker Reliability" subtitle="LLM rerank và fallback về RRF">
+          <Panel title="Reranker Reliability" subtitle="Dedicated reranker và fallback về RRF">
             <div className={styles.list}>
-              <div className={styles.listRow}><span>LLM rerank used</span><strong>{formatNumber(d.rerank?.used_llm_calls)}</strong></div>
+              <div className={styles.listRow}><span>Dedicated reranker used</span><strong>{formatNumber(d.rerank?.used_reranker_calls)}</strong></div>
               <div className={styles.listRow}><span>Fallback calls</span><strong>{formatNumber(d.rerank?.fallback_calls)}</strong></div>
               <div className={styles.listRow}><span>Fallback rate</span><strong>{Number(d.rerank?.fallback_rate_pct || 0).toFixed(2)}%</strong></div>
+              {(d.rerank?.fallback_reasons ?? []).map(item => (
+                <div className={styles.listRow} key={item.reason}>
+                  <span>{item.reason.replace(/^reranker_error:.*/, "reranker_error")}</span>
+                  <strong>{formatNumber(item.count)}</strong>
+                </div>
+              ))}
             </div>
           </Panel>
           <Panel title="Source Scope" subtitle="Miền tài liệu được phép retrieval">

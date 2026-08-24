@@ -21,8 +21,10 @@ is caller-driven re-invocation:
        conversation_text=<everything so far>, human_approved=False).
     2. Caller calls `agent.invoke(state)`.
     3. The graph runs until it reaches a NATURAL PAUSE POINT — either
-       `collecting_info` (ask_message is set, waiting on the student)
-       or `awaiting_review` (review_summary_markdown is set, waiting on
+       `awaiting_confirmation` (ask_message is set, waiting on the
+       student's yes/no to even start), `collecting_info` (ask_message
+       is set, waiting on the student for missing fields), or
+       `awaiting_review` (review_summary_markdown is set, waiting on
        the student's approval) — and returns.
     4. Caller shows `ask_message` or `review_summary_markdown` /
        filled_docx_bytes to the student, then WAITS for their next
@@ -41,6 +43,17 @@ whole thing simple and fully inspectable turn by turn, at the cost of
 the caller needing to persist FormAgentState between turns (e.g. in
 st.session_state) — a deliberate, documented tradeoff, not an
 oversight.
+
+FIX: after_intent() now also pauses (routes to END) on status
+"awaiting_confirmation" — set by intent_node on the first turn of a
+session when the student's message was neither a clear "yes" nor a
+clear cancellation (see intent.py's docstring). Previously
+intent_node only ever set "cancelled" or left status unchanged, so
+after_intent only needed to check for "cancelled" before deciding
+between form_selector/collect_info. No change was needed to the
+add_conditional_edges(...) mapping for "intent" below, since END was
+already a valid destination in that mapping — only the routing
+function's condition needed updating.
 """
 
 from __future__ import annotations
@@ -56,7 +69,12 @@ from src.agents.form_agent.state import FormAgentState
 
 
 def after_intent(state: FormAgentState) -> str:
-    if state.get("status") == "cancelled":
+    if state.get("status") in ("cancelled", "awaiting_confirmation"):
+        # cancelled: student declined outright.
+        # awaiting_confirmation: message was ambiguous — ask_message is
+        # set by intent_node explaining that; caller shows it and waits
+        # for the student's next message before invoking the graph
+        # again (this does NOT start form_selector/collect_info yet).
         return END
     if state.get("detected_form"):
         return "collect_info"
@@ -133,4 +151,4 @@ def build_graph() -> StateGraph:
     return graph.compile()  # pyrefly: ignore[bad-return]
 
 
-form_agent = build_graph()  
+form_agent = build_graph()

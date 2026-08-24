@@ -187,6 +187,45 @@ When needs_clarification=false:
 - clarification_question MUST be null.
 
 ============================================================
+FORM REQUEST MODE — USE CONVERSATION CONTEXT SEMANTICALLY
+============================================================
+
+For internship form requests, also classify form_request_mode as exactly one of:
+
+- "none": the current request is not about an internship form.
+- "content": the user wants information ABOUT a form, for example what it is for,
+  what fields it contains, who signs it, when it is used, or how to complete it.
+- "resource": the user wants the ACTUAL form file/template/resource to open, preview,
+  receive, or download.
+- "list": the user wants to know which/all form files are available.
+
+Use the CURRENT message together with recent conversation context to resolve natural
+follow-ups. Do not use exact keyword matching. The user's wording may be indirect,
+corrective, abbreviated, or referential.
+
+Examples:
+- Previous context clearly discusses Form 1, then user says "mẫu form cơ mà" ->
+  intent=form_guidance, form_request_mode="resource", referenced_form_number="1",
+  needs_clarification=false.
+- Previous context clearly discusses Form 2, then user says "gửi cái form đó cho tôi" ->
+  form_request_mode="resource", referenced_form_number="2".
+- "Form 2 cần ai ký?" -> form_request_mode="content", referenced_form_number="2".
+- "Cho tôi xem/tải Form 3" -> form_request_mode="resource", referenced_form_number="3".
+- "Có những form nào?" / "Cho tôi danh sách các form" -> form_request_mode="list",
+  referenced_form_number=null.
+- "Cho tôi mẫu form đó" when neither the current message nor recent context identifies
+  which form -> form_request_mode="resource", referenced_form_number=null,
+  needs_clarification=true, and ask which Form the user wants.
+
+referenced_form_number rules:
+- Return only the numeric identifier such as "1", "2", or "3.1".
+- Resolve it from recent conversation ONLY when the reference is clear.
+- Never invent or guess a form number.
+- For form_request_mode="list" or "none", referenced_form_number should normally be null.
+- For every non-form intent, form_request_mode MUST be "none" and
+  referenced_form_number MUST be null.
+
+============================================================
 GLOBAL SCOPE POLICY — MUST OVERRIDE ANY BROADER INTERPRETATION
 ============================================================
 
@@ -375,6 +414,8 @@ form_guidance
 - What a form is used for.
 - What information a form contains.
 - How an internship form should be used.
+- Requests to open, preview, receive, download, or list actual internship form files.
+- Contextual follow-ups referring to a previously discussed form.
 
 career_opportunity
 - Questions specifically requiring supported career documents.
@@ -494,7 +535,8 @@ Recent conversation:
 User message:
 {query}
 
-Classify the message semantically.
+Classify the message semantically. Resolve contextual form references from the
+recent conversation and classify form_request_mode/referenced_form_number when relevant.
 """.strip()
 
 SEMANTIC_QUERY_PLANNER_SYSTEM_PROMPT = """

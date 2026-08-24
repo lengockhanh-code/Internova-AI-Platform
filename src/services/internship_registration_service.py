@@ -83,6 +83,9 @@ def get_current_application(
                 ia.expected_start_date,
                 ia.expected_end_date,
                 ia.submitted_at,
+                ia.assigned_lecturer_id,
+
+                u.full_name AS student_name,
 
                 c.name AS company_name,
                 c.industry,
@@ -95,6 +98,9 @@ def get_current_application(
                 cm.phone AS mentor_phone
 
             FROM internship_applications AS ia
+
+            INNER JOIN users AS u
+                ON u.id = ia.student_id
 
             LEFT JOIN companies AS c
                 ON c.id = ia.company_id
@@ -782,6 +788,39 @@ def submit_application(
                 student_id,
         },
     )
+
+    if application["assigned_lecturer_id"] is not None:
+        db.execute(
+            text(
+                """
+                INSERT INTO notifications (
+                    user_id,
+                    title,
+                    message,
+                    notification_type,
+                    severity,
+                    related_type,
+                    related_id
+                ) VALUES (
+                    :lecturer_id,
+                    'Hồ sơ thực tập mới',
+                    :message,
+                    'APPLICATION_SUBMITTED',
+                    'INFO',
+                    'INTERNSHIP_APPLICATION',
+                    :application_id
+                )
+                """
+            ),
+            {
+                "lecturer_id": application["assigned_lecturer_id"],
+                "message": (
+                    f"{application['student_name']} đã nộp hồ sơ đăng ký "
+                    "thực tập và đang chờ xét duyệt."
+                ),
+                "application_id": application["id"],
+            },
+        )
 
     db.commit()
 

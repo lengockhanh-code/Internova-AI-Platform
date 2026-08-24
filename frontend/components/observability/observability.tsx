@@ -4,7 +4,7 @@ import {
   Activity, AlertTriangle, CheckCircle2, Clock3, Database,
   Gauge, RefreshCw, ShieldCheck, Sparkles, Users, Workflow,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { ApiError, formatMs } from "@/lib/adminObservability";
@@ -13,41 +13,103 @@ import styles from "./observability.module.css";
 
 export { styles };
 
-export function useResource<T>(loader: () => Promise<T>, deps: unknown[] = [], refreshMs = 30000) {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+type ResourceCacheEntry = {
+  data?: unknown;
+  error: string | null;
+  promise: Promise<unknown> | null;
+};
 
-  const load = async (manual = false) => {
-    manual ? setRefreshing(true) : setLoading(true);
+const resourceCache = new Map<string, ResourceCacheEntry>();
+
+function cachedData<T>(key: string): T | null {
+  const entry = resourceCache.get(key);
+  return entry && "data" in entry ? entry.data as T : null;
+}
+
+async function loadCachedResource<T>(key: string, loader: () => Promise<T>): Promise<T> {
+  const current = resourceCache.get(key);
+  if (current?.promise) return current.promise as Promise<T>;
+
+  const entry = current ?? { error: null, promise: null };
+  const promise = loader().then(data => {
+    resourceCache.set(key, { data, error: null, promise: null });
+    return data;
+  }).catch(error => {
+    entry.error = error instanceof Error ? error.message : String(error);
+    entry.promise = null;
+    resourceCache.set(key, entry);
+    throw error;
+  });
+
+  entry.promise = promise;
+  resourceCache.set(key, entry);
+  return promise;
+}
+
+export function useResource<T>(key: string, loader: () => Promise<T>, refreshMs = 30000) {
+  const initialData = cachedData<T>(key);
+  const [snapshot, setSnapshot] = useState<{key: string; data: T | null; error: string | null}>({
+    key,
+    data: initialData,
+    error: resourceCache.get(key)?.error ?? null,
+  });
+  const [loading, setLoading] = useState(initialData === null);
+  const [refreshing, setRefreshing] = useState(false);
+  const loaderRef = useRef(loader);
+  const mountedRef = useRef(false);
+  const keyRef = useRef(key);
+  const retryTimerRef = useRef<number | undefined>(undefined);
+  loaderRef.current = loader;
+  keyRef.current = key;
+
+  const load = useCallback(async (manual = false) => {
+    const hasCachedData = cachedData<T>(key) !== null;
+    if (manual) setRefreshing(true);
+    else if (!hasCachedData) setLoading(true);
     try {
-      setData(await loader());
-      setError(null);
+      const data = await loadCachedResource(key, loaderRef.current);
+      if (mountedRef.current && keyRef.current === key) setSnapshot({ key, data, error: null });
     } catch (e) {
       const isRateLimited = e instanceof ApiError && e.rateLimited;
 
       if (isRateLimited) {
         const retryAfter = Math.max(1, e.retryAfterSeconds ?? 30);
-        window.setTimeout(() => void load(false), retryAfter * 1000);
-        setError(null);
-      } else {
-        setError(e instanceof Error ? e.message : String(e));
+        const entry = resourceCache.get(key);
+        if (entry) entry.error = null;
+        if (mountedRef.current && keyRef.current === key) {
+          if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
+          retryTimerRef.current = window.setTimeout(() => void load(false), retryAfter * 1000);
+          setSnapshot(current => ({ ...current, error: null }));
+        }
+      } else if (mountedRef.current && keyRef.current === key) {
+        setSnapshot(current => ({ ...current, error: e instanceof Error ? e.message : String(e) }));
       }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (mountedRef.current && keyRef.current === key) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  };
+  }, [key]);
 
   useEffect(() => {
+    mountedRef.current = true;
+    const data = cachedData<T>(key);
+    setSnapshot({ key, data, error: resourceCache.get(key)?.error ?? null });
+    setLoading(data === null);
     void load(false);
     const timer = refreshMs > 0 ? window.setInterval(() => void load(false), refreshMs) : undefined;
-    return () => { if (timer) window.clearInterval(timer); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+    return () => {
+      mountedRef.current = false;
+      if (timer) window.clearInterval(timer);
+      if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
+    };
+  }, [key, load, refreshMs]);
 
-  return { data, error, loading, refreshing, refresh: () => load(true) };
+  const currentData = snapshot.key === key ? snapshot.data : cachedData<T>(key);
+  const currentError = snapshot.key === key ? snapshot.error : resourceCache.get(key)?.error ?? null;
+  const currentLoading = currentData === null && (snapshot.key !== key || loading);
+  return { data: currentData, error: currentError, loading: currentLoading, refreshing, refresh: () => load(true) };
 }
 
 export function PageShell({

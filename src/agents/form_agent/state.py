@@ -20,6 +20,15 @@ src.rag.generation.form_filler, so this file has zero dependency on
 anything outside the form_agent/ subtree — nothing here can break or
 show an import error based on what does or doesn't exist in the shared
 src/rag/generation/ folder the rest of the team works in.
+
+FIX (2nd pass): added "awaiting_confirmation" to FormAgentStatus.
+intent.py's confirmation check (first-turn only — see that file's
+docstring) now returns this status when the student's message is
+neither a clear "yes" nor a clear cancellation, so the flow doesn't
+silently start field-collection off an unrelated/ambiguous message.
+Without this value declared here, that assignment fails static type
+checking (Literal type mismatch on the `status` key) even though it
+would work fine at runtime.
 """
 
 from __future__ import annotations
@@ -30,12 +39,16 @@ FormCode = Literal["Form 1", "Form 2", "Form 3", "Form 4.3"]
 
 
 FormAgentStatus = Literal[
-    "selecting_form",       # form not yet identified
-    "collecting_info",      # form known, still missing required fields
-    "ready_to_fill",        # all required fields present, about to generate docx
-    "awaiting_review",      # docx generated, waiting on student confirmation
-    "approved",             # student confirmed — done, file ready for download
-    "cancelled",             # student declined to continue
+    "selecting_form",         # form not yet identified
+    "awaiting_confirmation",  # first turn only — student's reply was
+                               # neither a clear yes nor a clear
+                               # cancellation; waiting on an explicit
+                               # confirmation before starting collection
+    "collecting_info",        # form known, still missing required fields
+    "ready_to_fill",          # all required fields present, about to generate docx
+    "awaiting_review",        # docx generated, waiting on student confirmation
+    "approved",               # student confirmed — done, file ready for download
+    "cancelled",               # student declined to continue
 ]
 
 

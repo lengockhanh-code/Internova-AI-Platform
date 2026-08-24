@@ -19,7 +19,7 @@ type AlertItem = {
 
 export default function AlertsPage() {
   const [range, setRange] = useState<TimeRange>("24h");
-  const state = useResource(() => observabilityApi.alerts(range), [range]);
+  const state = useResource(`alerts:${range}`, () => observabilityApi.alerts(range));
   const d = state.data;
 
   const mutate = async (id: string, action: "ack" | "resolve") => {

@@ -11,7 +11,6 @@ import {
     BarChart2,
     ClipboardList,
     Bot,
-    GraduationCap,
     BriefcaseBusiness,
     Bell,
     Settings,
@@ -277,8 +276,11 @@ export default function Sidebar() {
                         styles.sidebarFooterCard
                     }
                 >
-                    <GraduationCap
-                        size={22}
+                    <Image
+                        src="/vinuni-internship-logo.svg"
+                        alt="AI Internova logo"
+                        width={40}
+                        height={40}
                         className={
                             styles.sidebarFooterIcon
                         }

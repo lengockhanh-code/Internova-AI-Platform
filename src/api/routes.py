@@ -45,6 +45,15 @@ from src.services.redis_cache_service import (
     redis_cache,
 )
 
+# FIX: additive-only import — form_agent's own bridge module. See
+# src/agents/form_agent/bridge.py for the full rationale. Nothing else
+# in this file changes; this only adds a short guard clause near the
+# top of chat() and chat_stream() (search "FORM AGENT DISPATCH" below).
+# try_dispatch() covers BOTH "already mid form-filling" and "student
+# just said yes to a prior suggestion" — no other frontend call needed
+# to trigger it besides the existing /form-agent/detect call.
+from src.agents.form_agent.bridge import try_dispatch as _form_agent_try_dispatch
+
 
 logger = logging.getLogger(
     __name__
@@ -424,6 +433,52 @@ def build_chat_result(
 
 
 # =============================================================================
+# FORM AGENT DISPATCH (additive — see src/agents/form_agent/bridge.py)
+# =============================================================================
+#
+# Builds a ChatResultResponse-shaped payload from a form_agent turn, so
+# the response going back to the frontend has the EXACT SAME SHAPE as a
+# normal RAG answer (ChatResponse/ChatResultResponse) — no frontend
+# changes needed to render it. route_intent/route_scope are set to
+# "form_agent" so the frontend can tell the two apart if it ever needs
+# to (e.g. to avoid showing a citations/confidence block for these).
+#
+# Nothing here reads from or writes to chat_service, query_pipeline, or
+# any other RAG file — it only shapes the dict that bridge.run_turn()
+# already returns.
+
+
+def _build_form_agent_chat_response(
+    session_id: str | None,
+    form_result: dict,
+) -> ChatResponse:
+
+    display_text = (
+        form_result.get("ask_message")
+        or form_result.get("review_summary_markdown")
+        or form_result.get("error")
+        or ""
+    )
+
+    structured_result = ChatResultResponse(
+        answer_status="answered" if not form_result.get("error") else "insufficient_evidence",
+        answer=display_text,
+        answer_language="vi",
+        confidence=None,
+        needs_retrieval=False,
+        route_intent="form_agent",
+        route_scope="form_agent",
+        sources=[],
+    )
+
+    return ChatResponse(
+        response=display_text,
+        session_id=session_id,
+        result=structured_result,
+    )
+
+
+# =============================================================================
 # Streaming helpers
 # =============================================================================
 
@@ -541,6 +596,25 @@ async def chat(
         current_user,
     )
 
+    # FIX (FORM AGENT DISPATCH — additive):
+    # try_dispatch() returns a result dict if EITHER (a) this chat
+    # session_id already has an active form-filling session, or
+    # (b) /detect recently flagged a form suggestion for this session
+    # and this message is a clear "yes" — auto-starting the session
+    # right here. Returns None for the normal case (no active session,
+    # no pending suggestion, or an unrelated/ambiguous message), in
+    # which case everything below runs completely unchanged.
+    form_result = await run_in_threadpool(
+        _form_agent_try_dispatch,
+        request.session_id,
+        message,
+    )
+    if form_result is not None:
+        return _build_form_agent_chat_response(
+            request.session_id,
+            form_result,
+        )
+
     # One semantic-router decision for the whole request. This same decision is
     # reused for personal DB dispatch or passed into the normal RAG pipeline.
     route_decision = await run_in_threadpool(
@@ -651,6 +725,79 @@ async def chat_stream(
         enforce_chat_rate_limit,
         current_user,
     )
+
+    # FIX (FORM AGENT DISPATCH — additive): same guard as chat() above
+    # (see try_dispatch's docstring in bridge.py), adapted to this
+    # endpoint's NDJSON streaming protocol. Falls through unchanged to
+    # all existing code below when try_dispatch() returns None.
+    _pending_form_check = await run_in_threadpool(
+        _form_agent_try_dispatch,
+        request.session_id,
+        message,
+    )
+
+    if _pending_form_check is not None:
+        _form_result_precomputed = _pending_form_check
+
+        async def form_agent_event_generator():
+            form_started = time.perf_counter()
+
+            yield serialize_stream_event(
+                {
+                    "type": "status",
+                    "phase": "thinking",
+                    "session_id": request.session_id,
+                    "needs_retrieval": False,
+                    "route_intent": "form_agent",
+                    "route_scope": "form_agent",
+                    "cache_hit": False,
+                }
+            )
+
+            form_result = _form_result_precomputed
+
+            chat_response = _build_form_agent_chat_response(
+                request.session_id,
+                form_result,
+            )
+
+            yield serialize_stream_event(
+                {
+                    "type": "status",
+                    "phase": "answering",
+                    "session_id": request.session_id,
+                    "needs_retrieval": False,
+                    "route_intent": "form_agent",
+                    "route_scope": "form_agent",
+                    "cache_hit": False,
+                }
+            )
+
+            yield serialize_stream_event(
+                {
+                    "type": "final",
+                    "session_id": request.session_id,
+                    "response": chat_response.response,
+                    "result": chat_response.result.model_dump(),
+                }
+            )
+
+            logger.info(
+                "Form agent stream complete ms=%s",
+                round(
+                    (time.perf_counter() - form_started) * 1000.0,
+                    1,
+                ),
+            )
+
+        return StreamingResponse(
+            form_agent_event_generator(),
+            media_type="application/x-ndjson; charset=utf-8",
+            headers={
+                "Cache-Control": "no-cache, no-transform",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     # Reuse the same semantic router for privacy + RAG routing. No dedicated
     # personal-classifier LLM call is made.

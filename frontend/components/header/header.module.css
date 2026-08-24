@@ -42,19 +42,20 @@
 }
 
 .logoIcon {
-    display: flex;
-    width: 40px;
-    height: 40px;
+    display: grid;
+    width: 42px;
+    height: 42px;
 
     flex-shrink: 0;
 
     align-items: center;
     justify-content: center;
+}
 
-    border-radius: 12px;
-
-    background: #eff6ff;
-    color: #2563eb;
+.logoIcon img {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .logoText {
@@ -815,56 +816,7 @@
     background-color: #475569; /* Màu line tối */
 }
 
-/* Container của nút tiếng Anh/tiếng Việt (Dạng Pill) */
-.langPillContainer {
-    display: flex;
-    align-items: center;
-    background-color: #f1f5f9;
-    padding: 3px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    flex-shrink: 0;
-}
-
-:global(.dark) .langPillContainer {
-    background-color: #334155;
-    border-color: #475569;
-}
-
-/* Định dạng chung nút bấm ngôn ngữ */
-.langButton {
-    padding: 4px 10px;
-    font-size: 13px;
-    font-weight: 700;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
-    outline: none;
-}
-
-/* Khi EN hoạt động: màu chữ xanh dương trên nền xám nhẹ/trong suốt */
-.langActiveEN {
-    background-color: #ffffff;
-    color: #2563eb; /* Màu xanh lam thương hiệu VinUni */
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-:global(.dark) .langActiveEN {
-    background-color: #1e293b;
-    color: #3b82f6;
-}
-
-/* Khi VI hoạt động: màu chữ trắng trên nền đỏ thương hiệu VinUni */
-.langActiveVI {
-    background-color: #bd1b21; /* Màu đỏ thẫm VinUni */
-    color: #ffffff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-}
-
 /* Nút chuyển đổi Theme */
-.langButton:disabled,
 .themeToggleButton:disabled {
     cursor: wait;
     opacity: 0.65;
@@ -905,7 +857,6 @@
     color: #f8fafc;
 }
 
-:global(.dark) .logoIcon,
 :global(.dark) .headerBadge,
 :global(.dark) .dropdownRoleBadge,
 :global(.dark) .roleTag {

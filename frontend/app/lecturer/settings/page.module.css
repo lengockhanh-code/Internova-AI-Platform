@@ -54,11 +54,12 @@
 .logoutBox span { margin-top: 4px; color: #a07874; font-size: 10px; }
 .logoutBox button { display: flex; align-items: center; gap: 6px; border: 0; border-radius: 8px; background: #c94f46; padding: 9px 12px; color: #fff; font-size: 10px; font-weight: 800; cursor: pointer; }
 .preference { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid #edf1f5; padding: 17px 2px; }
-.preference strong, .preference span { display: block; }
-.preference strong { font-size: 12px; }
-.preference span { max-width: 620px; margin-top: 5px; color: #8592a5; font-size: 10px; line-height: 1.5; }
-.switch, .switchOn { position: relative; width: 43px; height: 24px; flex: 0 0 43px; border: 0; border-radius: 999px; background: #cbd3de; cursor: pointer; transition: background .18s; }
-.switch span, .switchOn span { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,.18); transition: transform .18s; }
+.preference > div { min-width: 0; }
+.preference > div > strong, .preference > div > span { display: block; }
+.preference > div > strong { font-size: 12px; }
+.preference > div > span { max-width: 620px; margin-top: 5px; color: #8592a5; font-size: 10px; line-height: 1.5; }
+.switch, .switchOn { position: relative; width: 43px; height: 24px; flex: 0 0 43px; align-self: center; border: 0; border-radius: 999px; background: #cbd3de; padding: 0; cursor: pointer; transition: background .18s; }
+.switch span, .switchOn span { position: absolute; top: 3px; left: 3px; display: block; width: 18px; height: 18px; margin: 0; border-radius: 50%; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,.18); transition: transform .18s; }
 .switchOn { background: #2d78d8; }
 .switchOn span { transform: translateX(19px); }
 .modalBackdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgba(8, 24, 48, .55); padding: 20px; }

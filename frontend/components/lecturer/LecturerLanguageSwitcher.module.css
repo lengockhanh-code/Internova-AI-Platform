@@ -1,0 +1,100 @@
+.switcher {
+  display: inline-flex;
+  height: 38px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid #d8e2ee;
+  border-radius: 9px;
+  background: #f3f6fa;
+  color: #758399;
+}
+
+.icon {
+  margin: 0 3px 0 5px;
+}
+
+.switcher button {
+  display: grid;
+  min-width: 32px;
+  height: 30px;
+  place-items: center;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #718096;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .03em;
+  transition: background 150ms ease, box-shadow 150ms ease, color 150ms ease;
+}
+
+.switcher button:hover:not(.active) {
+  background: #e8eef6;
+  color: #31577f;
+}
+
+.switcher .active {
+  background: #fff;
+  color: #176dde;
+  box-shadow: 0 1px 4px rgba(31, 63, 104, .13);
+}
+
+.switcher button:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 1px;
+}
+
+:global(.dark) .switcher {
+  border-color: #475569;
+  background: #263449;
+  color: #a9b6c8;
+}
+
+:global(.dark) .switcher button {
+  color: #aebbd0;
+}
+
+:global(.dark) .switcher button:hover:not(.active) {
+  background: #34445b;
+  color: #e5edf8;
+}
+
+:global(.dark) .switcher .active {
+  background: #172235;
+  color: #60a5fa;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .28);
+}
+
+@media (max-width: 640px) {
+  .switcher {
+    height: 36px;
+  }
+
+  .icon {
+    display: none;
+  }
+
+  .switcher button {
+    min-width: 29px;
+    height: 28px;
+    padding: 0 5px;
+  }
+}
+
+@media (max-width: 390px) {
+  .switcher button {
+    min-width: 27px;
+    padding: 0 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switcher button {
+    transition: none;
+  }
+}

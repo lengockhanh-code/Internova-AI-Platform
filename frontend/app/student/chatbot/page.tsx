@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
     memo,
@@ -10,6 +10,7 @@ import {
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import Image from "next/image";
 
 import Header from "@/components/header/header";
 import Sidebar from "@/components/sidebar/sidebar";
@@ -63,6 +64,7 @@ type ChatRuntimeWindow = Window & {
 const INITIAL_VISIBLE_MESSAGES = 30;
 const LOAD_OLDER_MESSAGES_STEP = 25;
 const NEAR_BOTTOM_THRESHOLD_PX = 180;
+const CHAT_INPUT_MAX_HEIGHT_PX = 200;
 
 
 function findScrollableParent(
@@ -287,32 +289,32 @@ export default function RagChatPage() {
 
     // ── FORM AGENT: mỗi lượt là 1 tin nhắn assistant bình thường,
     // hiện tự nhiên trong dòng chat — không còn panel cố định.
-    // activeFormAgentConfirmMessageId: đang chờ sinh viên gõ Có/Không
-    // (chưa gọi API gì cả). activeFormAgentSessionId/Status: phiên đã
-    // bắt đầu thật, đang chờ trả lời bù thông tin.
-    const [activeFormAgentConfirmMessageId, setActiveFormAgentConfirmMessageId] = useState<string | null>(null);
+    const [pendingSuggestedForm, setPendingSuggestedForm] = useState<string | null>(null);
     const [activeFormAgentSessionId, setActiveFormAgentSessionId] = useState<string | null>(null);
     const [activeFormAgentStatus, setActiveFormAgentStatus] = useState<string | null>(null);
 
-    // Nhận diện Có/Không theo TỪ NGUYÊN VẸN (không phải "chuỗi con"
-    // nằm bên trong từ khác) — tránh lặp lại lỗi "chuyên" (chứa "huy")
-    // từng gặp trước đây. "co" khớp đúng từ "có", không khớp bên
-    // trong "công" hay "còn".
-    function parseYesNo(text: string): "yes" | "no" | "unclear" {
-        const normalized = text
+    const CONFIRM_ONLY_TOKENS = new Set([
+        "co", "uh", "um", "uk", "u", "ok", "okay", "duoc", "roi",
+        "dong", "y", "vang", "ung", "yes", "yep", "sure",
+        "giup", "minh", "mik", "mjk", "em", "toi", "voi",
+        "nhe", "di", "luon", "dien", "form", "don", "gium", "ho",
+        "da", "a", "can",
+        "lam", "tao", "dung", "1", "2", "3", "4", "5",
+    ]);
+
+    function isPureConfirmReply(message: string): boolean {
+        const normalized = message
             .toLowerCase()
             .replace(/đ/g, "d")
             .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "");
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/(\d)\.(\d)/g, "$1 $2");
 
         const tokens = normalized.split(/\s+/).filter(Boolean);
 
-        const noWords = ["khong", "thoi", "khoi", "no"];
-        const yesWords = ["co", "ok", "duoc", "u", "vang", "yes", "dong", "giup"];
+        if (tokens.length === 0 || tokens.length > 10) return false;
 
-        if (tokens.some(t => noWords.includes(t))) return "no";
-        if (tokens.some(t => yesWords.includes(t))) return "yes";
-        return "unclear";
+        return tokens.every(t => CONFIRM_ONLY_TOKENS.has(t));
     }
 
     function updateMessageById(
@@ -326,11 +328,10 @@ export default function RagChatPage() {
         );
     }
 
-    // Bấm nút gợi ý dưới câu trả lời RAG → THÊM 1 tin nhắn mới (câu
-    // hỏi xác nhận, KHÔNG có nút) → chờ sinh viên gõ trả lời ở ô nhập
-    // chính.
-    function handleFormAgentRequest(formName?: string) {
+    // Bắt đầu phiên Form Agent trực tiếp (từ nút bấm hoặc từ câu chat xác nhận)
+    async function startFormAgent(formName?: string, userPrompt?: string) {
         const newId = crypto.randomUUID();
+
         setMessages(current => [
             ...current,
             {
@@ -338,40 +339,29 @@ export default function RagChatPage() {
                 role: "assistant",
                 content: "",
                 isFormAgentMessage: true,
-                formAgentPhase: "confirm",
+                formAgentPhase: "working",
                 formAgentDetectedName: formName,
+                formAgentLoading: true,
             },
         ]);
-        setActiveFormAgentConfirmMessageId(newId);
+
         requestAnimationFrame(() => scrollToBottom("smooth"));
-    }
-
-    // Sinh viên gõ Có → thực sự gọi API, cập nhật ĐÚNG tin nhắn xác
-    // nhận đó thành bước "working" với câu hỏi đầu tiên. `extraContext`
-    // là chính câu trả lời của sinh viên — có thể vừa xác nhận vừa
-    // chứa luôn thông tin (vd "ừ, công ty là FPT"), nên gộp vào luôn.
-    async function handleFormAgentConfirmYes(messageId: string, extraContext?: string) {
-        const seedText = [
-            ...messages.filter(m => m.role === "user").map(m => m.content),
-            extraContext ?? "",
-        ]
-            .filter(Boolean)
-            .join("\n");
-
-        updateMessageById(messageId, m => ({ ...m, formAgentLoading: true }));
 
         try {
             const res = await fetch(`${API_URL}/api/v1/form-agent/turn`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ session_id: null, message: seedText }),
+                body: JSON.stringify({
+                    session_id: null,
+                    message: userPrompt || "bắt đầu điền đơn",
+                    detected_form: formName || undefined,
+                }),
             });
             if (!res.ok) throw new Error(`Lỗi server: ${res.status}`);
             const data = await res.json();
 
-            updateMessageById(messageId, m => ({
+            updateMessageById(newId, m => ({
                 ...m,
-                formAgentPhase: "working",
                 formAgentSessionId: data.session_id,
                 formAgentStatus: data.status,
                 content: data.ask_message || data.review_summary_markdown || "",
@@ -382,25 +372,21 @@ export default function RagChatPage() {
 
             setActiveFormAgentSessionId(data.session_id);
             setActiveFormAgentStatus(data.status);
-            setActiveFormAgentConfirmMessageId(null);
+            setPendingSuggestedForm(null);
         } catch (err) {
-            updateMessageById(messageId, m => ({
+            updateMessageById(newId, m => ({
                 ...m,
-                formAgentPhase: "working",
                 formAgentLoading: false,
                 formAgentErrorMsg: err instanceof Error ? err.message : "Đã có lỗi xảy ra",
             }));
-            setActiveFormAgentConfirmMessageId(null);
+            setPendingSuggestedForm(null);
         }
     }
 
-    function handleFormAgentConfirmNo(messageId: string) {
-        updateMessageById(messageId, m => ({
-            ...m,
-            formAgentPhase: "working",
-            formAgentStatus: "cancelled",
-        }));
-        setActiveFormAgentConfirmMessageId(null);
+    // Bấm nút gợi ý -> Chạy Form Agent trực tiếp ngay lập tức
+    function handleFormAgentRequest(formName?: string) {
+        setPendingSuggestedForm(null);
+        void startFormAgent(formName, "bắt đầu điền đơn");
     }
 
     // Sinh viên gõ câu trả lời cho agent NGAY TẠI Ô NHẬP CHÍNH →
@@ -541,6 +527,11 @@ export default function RagChatPage() {
 
     const messageListRef =
         useRef<HTMLDivElement | null>(
+            null
+        );
+
+    const chatInputRef =
+        useRef<HTMLTextAreaElement | null>(
             null
         );
 
@@ -1196,7 +1187,9 @@ export default function RagChatPage() {
         streamBufferRef.current = "";
         setShowJumpToLatest(false);
 
-
+        setPendingSuggestedForm(null);
+        setActiveFormAgentSessionId(null);
+        setActiveFormAgentStatus(null);
     }
 
 
@@ -1249,47 +1242,10 @@ export default function RagChatPage() {
             return;
         }
 
-        // ── FORM AGENT: nếu đang chờ trả lời Có/Không (bước xác nhận
-        // ban đầu), phân tích câu trả lời gõ tự nhiên ngay tại đây —
-        // không có nút bấm nào cả. ───────────────────────────────────
-        if (activeFormAgentConfirmMessageId) {
-            const confirmMessageId = activeFormAgentConfirmMessageId;
-            const intent = parseYesNo(message);
-
-            const userMessage: Message = {
-                id: crypto.randomUUID(),
-                role: "user",
-                content: message,
-            };
-
-            setMessages(current => [...current, userMessage]);
-            setInput("");
-            isNearBottomRef.current = true;
-            setShowJumpToLatest(false);
-
-            requestAnimationFrame(() => {
-                scrollToBottom("smooth");
-            });
-
-            if (intent === "no") {
-                handleFormAgentConfirmNo(confirmMessageId);
-            } else {
-                // "yes" hoặc "unclear" đều coi là đồng ý tiếp tục — gộp
-                // luôn câu trả lời của sinh viên vào ngữ cảnh, vì có
-                // thể họ vừa xác nhận vừa cho luôn thông tin trong 1
-                // câu (vd "ừ, công ty là FPT").
-                void handleFormAgentConfirmYes(confirmMessageId, message);
-            }
-            return;
-        }
-        // ── HẾT PHẦN FORM AGENT (xác nhận) ────────────────────────────
-
-        // ── FORM AGENT: nếu đang có phiên chờ trả lời (đang hỏi bù
-        // thông tin), ô nhập chính sẽ gửi thẳng cho agent thay vì
-        // chạy luồng RAG bình thường bên dưới. ─────────────────────
+        // ── FORM AGENT 1: Nếu đang có phiên Form Agent đang chạy ───────
         if (
             activeFormAgentSessionId &&
-            activeFormAgentStatus === "collecting_info"
+            (activeFormAgentStatus === "collecting_info" || activeFormAgentStatus === "awaiting_review")
         ) {
             const userMessage: Message = {
                 id: crypto.randomUUID(),
@@ -1306,8 +1262,62 @@ export default function RagChatPage() {
                 scrollToBottom("smooth");
             });
 
+            // Kiểm tra câu từ chối / hủy phiên thực sự
+            const cancelPhrases = [
+                "huy", "huy phien", "huy don", "huy dien don", "cancel",
+                "dung lai", "dung phien", "dung dien don", "khong dien nua",
+                "khong muon dien nua", "thoi khong lam nua", "thoi khong dien nua"
+            ];
+            const normalized = message
+                .toLowerCase()
+                .replace(/đ/g, "d")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
+            const tokens = normalized.split(/\s+/).filter(Boolean);
+            const isExplicitCancel = cancelPhrases.some(p => {
+                if (p.includes(" ")) return normalized.includes(p);
+                return tokens.includes(p);
+            });
+            if (isExplicitCancel) {
+                void handleFormAgentCancelSession(activeFormAgentSessionId, activeFormAgentSessionId);
+                return;
+            }
+
             void continueFormAgentTurn(message);
             return;
+        }
+
+        // ── FORM AGENT 2: Nếu có form vừa được gợi ý VÀ người dùng gõ xác nhận ──
+        if (pendingSuggestedForm && !activeFormAgentSessionId) {
+            const noWords = ["khong", "thoi", "khoi", "no", "khong can"];
+            const normalized = message
+                .toLowerCase()
+                .replace(/đ/g, "d")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
+            const tokens = normalized.split(/\s+/).filter(Boolean);
+            const isExplicitNo = tokens.some(t => noWords.includes(t));
+
+            if (!isExplicitNo && isPureConfirmReply(message)) {
+                const userMessage: Message = {
+                    id: crypto.randomUUID(),
+                    role: "user",
+                    content: message,
+                };
+                setMessages(current => [...current, userMessage]);
+                setInput("");
+                isNearBottomRef.current = true;
+                setShowJumpToLatest(false);
+                requestAnimationFrame(() => scrollToBottom("smooth"));
+
+                const targetForm = pendingSuggestedForm;
+                setPendingSuggestedForm(null);
+                void startFormAgent(targetForm, message);
+                return;
+            }
+
+            // Nếu là câu hỏi khác hoặc câu từ chối -> xóa pending form và tiếp tục chạy xuống RAG
+            setPendingSuggestedForm(null);
         }
         // ── HẾT PHẦN FORM AGENT ──────────────────────────────────────
 
@@ -1448,6 +1458,7 @@ export default function RagChatPage() {
                 const data: { detected_form?: string | null } =
                     await res.json();
                 if (data.detected_form) {
+                    setPendingSuggestedForm(data.detected_form);
                     updateAssistantMessage(current => ({
                         ...current,
                         detectedForm: data.detected_form,
@@ -1892,6 +1903,35 @@ export default function RagChatPage() {
 
 
     /* ============================================================
+       AUTO-RESIZE CHAT INPUT
+    ============================================================ */
+
+    useLayoutEffect(() => {
+        const textarea = chatInputRef.current;
+
+        if (!textarea) {
+            return;
+        }
+
+        // Reset first so the textarea can shrink again when text is deleted
+        // or after a message is sent.
+        textarea.style.height = "auto";
+
+        const nextHeight = Math.min(
+            textarea.scrollHeight,
+            CHAT_INPUT_MAX_HEIGHT_PX
+        );
+
+        textarea.style.height = `${nextHeight}px`;
+        textarea.style.overflowY =
+            textarea.scrollHeight > CHAT_INPUT_MAX_HEIGHT_PX
+                ? "auto"
+                : "hidden";
+    }, [input]);
+
+
+
+    /* ============================================================
        ENTER TO SEND
     ============================================================ */
 
@@ -1975,9 +2015,13 @@ export default function RagChatPage() {
                                         styles.titleIcon
                                     }
                                 >
-                                    <Bot
-                                        size={36}
-                                        strokeWidth={1.8}
+                                    <Image
+                                        src="/vinuni-internship-logo.svg"
+                                        alt="AI Internova logo"
+                                        width={44}
+                                        height={44}
+                                        priority
+                                        className={styles.titleLogo}
                                     />
                                 </span>
 
@@ -2115,8 +2159,6 @@ export default function RagChatPage() {
                                             }
                                             locale={locale}
                                             onFillRequest={(formName) => handleFormAgentRequest(formName)}
-                                            onFormAgentConfirmYes={handleFormAgentConfirmYes}
-                                            onFormAgentConfirmNo={handleFormAgentConfirmNo}
                                             onFormAgentApprove={handleFormAgentApprove}
                                             onFormAgentCancelSession={handleFormAgentCancelSession}
                                         />
@@ -2278,10 +2320,16 @@ export default function RagChatPage() {
                                 >
 
                                     <textarea
+                                        ref={chatInputRef}
                                         rows={1}
                                         value={
                                             input
                                         }
+                                        style={{
+                                            maxHeight: `${CHAT_INPUT_MAX_HEIGHT_PX}px`,
+                                            overflowY: "hidden",
+                                            resize: "none",
+                                        }}
                                         onChange={
                                             event =>
                                                 setInput(
@@ -2294,12 +2342,18 @@ export default function RagChatPage() {
                                             handleKeyDown
                                         }
                                         placeholder={
-                                            activeFormAgentConfirmMessageId
-                                                ? (locale === "en" ? "Type 'yes' or 'no'..." : "Gõ 'có' hoặc 'không'...")
-                                                : activeFormAgentSessionId &&
-                                                    activeFormAgentStatus === "collecting_info"
-                                                    ? (locale === "en" ? "Enter additional information for the form..." : "Nhập thông tin bổ sung cho đơn...")
-                                                    : (locale === "en" ? "Ask about internship policies, procedures, forms..." : "Nhập câu hỏi của bạn về học vụ, quy định, thủ tục thực tập...")
+                                            activeFormAgentSessionId &&
+                                            (activeFormAgentStatus === "collecting_info" || activeFormAgentStatus === "awaiting_review")
+                                                ? (locale === "en"
+                                                    ? "Enter information for the form (or type 'cancel' to stop)..."
+                                                    : "Nhập thông tin cho đơn (hoặc gõ 'hủy' để dừng)...")
+                                                : pendingSuggestedForm
+                                                    ? (locale === "en"
+                                                        ? `Type 'yes' to fill ${pendingSuggestedForm}, or ask another question...`
+                                                        : `Gõ 'có' để điền ${pendingSuggestedForm}, hoặc nhập câu hỏi tiếp theo...`)
+                                                    : (locale === "en"
+                                                        ? "Ask about internship policies, procedures, forms..."
+                                                        : "Nhập câu hỏi của bạn về học vụ, quy định, thủ tục thực tập...")
                                         }
                                     />
 
@@ -2350,16 +2404,12 @@ const MessageBubble = memo(function MessageBubble({
     message,
     locale = "vi",
     onFillRequest,
-    onFormAgentConfirmYes,
-    onFormAgentConfirmNo,
     onFormAgentApprove,
     onFormAgentCancelSession,
 }: {
     message: Message;
     locale?: "vi" | "en";
     onFillRequest?: (formName?: string) => void;
-    onFormAgentConfirmYes?: (messageId: string) => void;
-    onFormAgentConfirmNo?: (messageId: string) => void;
     onFormAgentApprove?: (messageId: string, sessionId: string) => void;
     onFormAgentCancelSession?: (messageId: string, sessionId: string) => void;
 }) {
@@ -2528,7 +2578,7 @@ const MessageBubble = memo(function MessageBubble({
                         ) : message.isFormAgentMessage ? (
 
                             <FormAgentPanel
-                                phase={message.formAgentPhase ?? "confirm"}
+                                phase={message.formAgentPhase ?? "working"}
                                 detectedFormName={message.formAgentDetectedName}
                                 status={message.formAgentStatus}
                                 displayText={message.content}
@@ -2537,8 +2587,6 @@ const MessageBubble = memo(function MessageBubble({
                                 docxReady={message.formAgentDocxReady}
                                 sessionId={message.formAgentSessionId}
                                 locale={locale}
-                                onConfirmYes={() => onFormAgentConfirmYes?.(message.id)}
-                                onConfirmNo={() => onFormAgentConfirmNo?.(message.id)}
                                 onApprove={() =>
                                     message.formAgentSessionId &&
                                     onFormAgentApprove?.(message.id, message.formAgentSessionId)

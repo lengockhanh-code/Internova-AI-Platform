@@ -125,6 +125,10 @@ interface EditStudentResponse {
 
 
 interface UpdateStudentPayload {
+  className:
+    | string
+    | null;
+
   semesterId: number;
 
   companyId:
@@ -225,6 +229,12 @@ export default function EditLecturerStudentPage() {
     setSuccess,
   ] =
     useState("");
+
+
+  const [
+    className,
+    setClassName,
+  ] = useState("");
 
 
   const [
@@ -342,6 +352,13 @@ export default function EditLecturerStudentPage() {
 
         setData(
           payload,
+        );
+
+
+        setClassName(
+          payload.student
+            .className ||
+            "",
         );
 
 
@@ -505,6 +522,10 @@ export default function EditLecturerStudentPage() {
     const payload:
       UpdateStudentPayload =
       {
+        className:
+          className.trim() ||
+          null,
+
         semesterId:
           parsedSemesterId,
 
@@ -729,8 +750,9 @@ export default function EditLecturerStudentPage() {
                 </h2>
 
                 <p>
-                  Các thông tin học
-                  tập được lấy từ hồ
+                  Có thể cập nhật lớp;
+                  các thông tin học tập
+                  còn lại được lấy từ hồ
                   sơ sinh viên.
                 </p>
               </div>
@@ -760,15 +782,32 @@ export default function EditLecturerStudentPage() {
 
 
               <div>
-                <span>
-                  Lớp
-                </span>
+                <label
+                  className={
+                    styles.classField
+                  }
+                >
+                  <span>
+                    Lớp
+                  </span>
 
-                <strong>
-                  {data.student
-                    .className ||
-                    "Chưa cập nhật"}
-                </strong>
+                  <input
+                    aria-label="Lớp sinh viên"
+                    maxLength={100}
+                    onChange={(
+                      event,
+                    ) =>
+                      setClassName(
+                        event.target
+                          .value,
+                      )
+                    }
+                    placeholder="Ví dụ: CS2026-A"
+                    value={
+                      className
+                    }
+                  />
+                </label>
               </div>
 
 

@@ -10,11 +10,9 @@ import {
   ChevronRight,
   ClipboardCheck,
   FileText,
-  GraduationCap,
   LayoutDashboard,
   LoaderCircle,
   Menu,
-  MessageSquareText,
   PanelLeftClose,
   Search,
   Settings,
@@ -22,9 +20,15 @@ import {
   UsersRound,
 } from "lucide-react";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 
+import LecturerLanguageSwitcher from "@/components/lecturer/LecturerLanguageSwitcher";
 import { lecturerFetch as fetch } from "@/lib/lecturerAuth";
+import {
+  fetchLecturerUnreadCount,
+  subscribeLecturerUnreadCount,
+} from "@/lib/lecturerNotifications";
 
 import {
   type CSSProperties,
@@ -258,10 +262,6 @@ const managementItems: NavItem[] = [
   {
     label: "Nhắc nhở & Cảnh báo",
     icon: Bell,
-  },
-  {
-    label: "Trao đổi & Góp ý",
-    icon: MessageSquareText,
   },
 ];
 
@@ -529,6 +529,9 @@ export default function LecturerDashboardPage() {
   const [sidebarOpen, setSidebarOpen] =
     useState<boolean>(false);
 
+  const [unreadNotificationCount, setUnreadNotificationCount] =
+    useState<number>(0);
+
 
   // ===========================================================================
   // Load dashboard
@@ -609,6 +612,22 @@ export default function LecturerDashboardPage() {
       controller.abort();
     };
   }, [apiBaseUrl]);
+
+  useEffect(() => {
+    let active = true;
+    void fetchLecturerUnreadCount()
+      .then((count) => {
+        if (active) setUnreadNotificationCount(count);
+      })
+      .catch(() => undefined);
+    const unsubscribe = subscribeLecturerUnreadCount(
+      setUnreadNotificationCount,
+    );
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
 
 
   // ===========================================================================
@@ -825,6 +844,11 @@ export default function LecturerDashboardPage() {
   function goToReminders(): void {
     setSidebarOpen(false);
     router.push("/lecturer/reminders");
+  }
+
+  function goToNotifications(): void {
+    setSidebarOpen(false);
+    router.push("/lecturer/notifications");
   }
 
   function goToSettings(): void {
@@ -1074,14 +1098,18 @@ export default function LecturerDashboardPage() {
               styles.brandIcon
             }
           >
-            <GraduationCap
-              size={28}
+            <Image
+              alt="AI Internova logo"
+              height={46}
+              priority
+              src="/vinuni-internship-logo.svg"
+              width={46}
             />
           </div>
 
-          <div>
+          <div className="notranslate" translate="no">
             <strong>
-              AI Internship
+              AI Internova
             </strong>
 
             <span>
@@ -1146,6 +1174,7 @@ export default function LecturerDashboardPage() {
               className={
                 styles.sidebarItem
               }
+              onClick={goToNotifications}
               type="button"
             >
               <Bell size={19} />
@@ -1257,6 +1286,8 @@ export default function LecturerDashboardPage() {
               styles.topbarActions
             }
           >
+            <LecturerLanguageSwitcher />
+
             <button
               aria-label="Tìm kiếm"
               className={
@@ -1272,16 +1303,15 @@ export default function LecturerDashboardPage() {
               className={
                 styles.notificationButton
               }
+              onClick={goToNotifications}
               type="button"
             >
               <Bell size={20} />
 
-              {data.stats
-                .openWarnings > 0 ? (
+              {unreadNotificationCount > 0 ? (
                 <span>
                   {Math.min(
-                    data.stats
-                      .openWarnings,
+                    unreadNotificationCount,
                     99,
                   )}
                 </span>

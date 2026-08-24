@@ -29,6 +29,7 @@ import {
 } from "react";
 
 import { useRouter } from "next/navigation";
+import { useSettings } from "@/context/settings-provider";
 
 import styles from "./page.module.css";
 
@@ -187,7 +188,8 @@ function getPriorityClass(
 
 
 function formatDate(
-    value: string | null
+    value: string | null,
+    locale: "vi" | "en",
 ) {
     if (!value) {
         return "Chưa có deadline";
@@ -196,7 +198,9 @@ function formatDate(
     const date = new Date(value);
 
     return new Intl.DateTimeFormat(
-        "vi-VN",
+        locale === "en"
+            ? "en-US"
+            : "vi-VN",
         {
             day: "2-digit",
             month: "2-digit",
@@ -249,6 +253,7 @@ function getRemainingDays(
 ============================================================ */
 
 export default function ChecklistPage() {
+    const { locale } = useSettings();
     const router = useRouter();
 
 
@@ -1493,7 +1498,8 @@ export default function ChecklistPage() {
                                                                         />
 
                                                                         {formatDate(
-                                                                            task.dueAt
+                                                                            task.dueAt,
+                                                                            locale,
                                                                         )}
                                                                     </span>
 
@@ -1709,7 +1715,9 @@ export default function ChecklistPage() {
                                             <div>
                                                 <p>
                                                     {new Intl.DateTimeFormat(
-                                                        "vi-VN",
+                                                        locale === "en"
+                                                            ? "en-US"
+                                                            : "vi-VN",
                                                         {
                                                             month:
                                                                 "long",

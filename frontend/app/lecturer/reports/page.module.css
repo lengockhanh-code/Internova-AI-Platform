@@ -188,12 +188,13 @@
 .contentSection h3, .attachmentSection h3, .reviewSection h3, .commentSection h3 { margin: 0; color: #25334a; font-size: 15px; }
 .reportContent { min-height: 96px; margin-top: 11px; padding: 14px; border: 1px solid #e3eaf2; border-radius: 7px; background: #f9fbfd; color: #46546a; font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
 
-.attachmentRow { display: grid; grid-template-columns: auto minmax(0, 1fr) 34px 34px; align-items: center; gap: 9px; margin-top: 10px; padding: 10px; border: 1px solid #e3eaf2; border-radius: 7px; color: #287df4; }
+.attachmentRow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; margin-top: 10px; padding: 10px; border: 1px solid #e3eaf2; border-radius: 7px; color: #287df4; }
 .attachmentRow span { min-width: 0; }
 .attachmentRow strong, .attachmentRow small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attachmentRow strong { color: #334155; font-size: 12px; }
 .attachmentRow small { margin-top: 3px; color: #8a97aa; font-size: 11px; }
-.attachmentRow button { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid #dce5ef; border-radius: 7px; background: #fff; color: #52657f; cursor: pointer; }
+.attachmentActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.attachmentRow button { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; border: 1px solid #dce5ef; border-radius: 7px; background: #fff; color: #52657f; cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; }
 .attachmentRow button:hover { border-color: #9ec5f8; color: #287df4; }
 
 .sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #64748b; }
@@ -262,6 +263,8 @@
   .timeline > div { padding: 0; border-right: 0; }
   .reviewFields { grid-template-columns: 1fr; }
   .detailHeader { align-items: flex-start; flex-direction: column; justify-content: center; padding-top: 13px; padding-bottom: 13px; }
+  .attachmentRow { grid-template-columns: auto minmax(0, 1fr); }
+  .attachmentActions { grid-column: 2; justify-content: flex-start; }
 }
 
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }

@@ -9,7 +9,7 @@ import type { TimeRange } from "@/lib/adminObservability";
 
 export default function ErrorsPage() {
   const [range, setRange] = useState<TimeRange>("24h");
-  const state = useResource(() => observabilityApi.errors(range, 500), [range]);
+  const state = useResource(`errors:${range}:500`, () => observabilityApi.errors(range, 500));
   const d = state.data;
   return <PageShell title="Errors" description="Các observation lỗi theo component, kèm Trace ID để điều tra nguyên nhân và fallback." range={range} setRange={setRange} refreshing={state.refreshing} onRefresh={state.refresh} status={d?.total > 0 ? "warning" : "healthy"}>
     {state.error && <ErrorBox error={state.error}/>} {state.loading && !d ? <Loading/> : !d ? <div className={styles.emptyBox}>Chưa có dữ liệu lỗi trong khoảng thời gian này.</div> : <>

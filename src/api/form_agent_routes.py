@@ -14,6 +14,15 @@ documented simplification to get the feature working end-to-end
 without touching the database layer; swapping this for a real DB
 table later does not require changing this file's public API (the
 request/response models stay the same).
+
+FIX (2nd pass): /detect now optionally accepts the CHAT's session_id
+and remembers the last detected form for it in _PENDING_SUGGESTIONS.
+This lets bridge.py recognize "the student just said yes to a form
+suggestion" on the very next /chat turn WITHOUT reading anything from
+RAG's own conversation memory (src.rag.memory) — the frontend already
+calls /detect after every RAG answer (to decide whether to show the
+suggestion text), so this reuses that exact call instead of adding a
+new dependency on RAG internals.
 """
 
 from __future__ import annotations
@@ -27,17 +36,23 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 
 from src.agents.form_agent.graph import form_agent
-from src.agents.form_agent.state import FormAgentState
+from src.agents.form_agent.state import FormAgentState, FormCode
 
 router = APIRouter(prefix="/form-agent", tags=["form-agent"])
 
 _SESSIONS: dict[str, FormAgentState] = {}
 _LOCK = Lock()
 
+# chat-session-id -> last detected form, set by /detect. Lives here
+# (not in bridge.py) because it's naturally next to _SESSIONS and
+# guarded by the same _LOCK. See module docstring above.
+_PENDING_SUGGESTIONS: dict[str, FormCode] = {}
+
 
 class FormAgentTurnRequest(BaseModel):
     session_id: Optional[str] = None
     message: str
+    detected_form: Optional[FormCode] = None
 
 
 class FormAgentTurnResponse(BaseModel):
@@ -56,6 +71,7 @@ class FormAgentConfirmRequest(BaseModel):
 
 class FormAgentDetectRequest(BaseModel):
     text: str
+    session_id: Optional[str] = None
 
 
 class FormAgentDetectResponse(BaseModel):
@@ -91,10 +107,25 @@ async def form_agent_detect(request: FormAgentDetectRequest) -> FormAgentDetectR
     inline '🤖 Cần mình giúp điền...' suggestion under a chat message —
     intentionally independent of how chat_service.py tags its own
     sources (that tagging is out of scope to modify, and isn't
-    reliable for this purpose)."""
+    reliable for this purpose).
+
+    FIX: if the caller also passes the chat's session_id, remember the
+    detected form (or forget it, if none was found) for that session —
+    see _PENDING_SUGGESTIONS and bridge.maybe_autostart(), which uses
+    this to auto-start a form_agent session on the student's next
+    plain-text "yes", without needing to read RAG's own memory.
+    """
     from src.agents.form_agent.nodes.form_selector import detect_form
 
     detected = detect_form(request.text)
+
+    if request.session_id:
+        with _LOCK:
+            if detected:
+                _PENDING_SUGGESTIONS[request.session_id] = detected
+            else:
+                _PENDING_SUGGESTIONS.pop(request.session_id, None)
+
     return FormAgentDetectResponse(detected_form=detected)
 
 
@@ -119,8 +150,10 @@ async def form_agent_turn(request: FormAgentTurnRequest) -> FormAgentTurnRespons
             session_id = request.session_id
             state = _SESSIONS[session_id]
         else:
-            session_id = str(uuid.uuid4())
+            session_id = request.session_id or str(uuid.uuid4())
             state = _fresh_state()
+            if request.detected_form:
+                state["detected_form"] = request.detected_form
 
         if state.get("status") == "awaiting_review":
             state["status"] = "collecting_info"
@@ -194,5 +227,3 @@ async def form_agent_download(session_id: str) -> Response:
             "Content-Disposition": f'attachment; filename="{form_code}_da_dien.docx"'
         },
     )
-
-

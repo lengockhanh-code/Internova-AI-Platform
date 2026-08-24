@@ -694,15 +694,15 @@ def update_lecturer_student(
     lecturer_id: int | str | None = None,
 ) -> dict:
     """
-    Cập nhật thông tin internship của sinh viên.
+    Cập nhật lớp và thông tin internship của sinh viên.
 
     Không sửa:
         - họ tên
         - mã sinh viên
-        - lớp
         - ngành
 
-    Chỉ sửa:
+    Sửa:
+        - lớp
         - semester
         - company
         - position
@@ -959,8 +959,25 @@ def update_lecturer_student(
         )
 
 
+    should_update_class = (
+        "className"
+        in payload.model_fields_set
+    )
+
+    normalized_class_name = (
+        payload.className.strip()
+        if payload.className
+        else ""
+    )
+
+    class_name = (
+        normalized_class_name
+        or None
+    )
+
+
     # =========================================================
-    # 8. UPDATE INTERNSHIP
+    # 8. UPDATE STUDENT PROFILE + INTERNSHIP
     #
     # QUAN TRỌNG:
     #
@@ -971,6 +988,36 @@ def update_lecturer_student(
     # =========================================================
 
     try:
+
+        if should_update_class:
+            updated_profile = db.execute(
+                text(
+                    """
+                    UPDATE public.student_profiles
+
+                    SET
+                        class_name = :class_name,
+                        updated_at = NOW()
+
+                    WHERE student_id = :student_id
+
+                    RETURNING student_id
+                    """
+                ),
+                {
+                    "class_name":
+                        class_name,
+
+                    "student_id":
+                        student_id,
+                },
+            ).mappings().first()
+
+
+            if updated_profile is None:
+                raise ValueError(
+                    "Không tìm thấy hồ sơ học tập của sinh viên."
+                )
 
         updated = db.execute(
             text(
@@ -1078,6 +1125,9 @@ def update_lecturer_student(
                     "student_id"
                 ]
             ),
+
+        "className":
+            class_name,
 
         "message":
             "Đã cập nhật thông tin sinh viên thành công.",

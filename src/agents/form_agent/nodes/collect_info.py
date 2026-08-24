@@ -7,9 +7,7 @@ is expected to drive multi-turn collection. Each call:
 
   1. Re-extracts field values from the full conversation_text so far
      (including anything the student just added this turn).
-  2. Merges newly-found values into the existing field_values (never
-     overwrites a value the student already gave with an extraction
-     that returned null — only fills gaps).
+  2. Merges newly-found values into the existing field_values.
   3. Checks what's still missing. If something required is still
      missing, sets ask_message and status stays "collecting_info" —
      the caller should show ask_message to the student and wait for
@@ -23,6 +21,26 @@ is expected to drive multi-turn collection. Each call:
      form with no explanation.
   5. Only after that one-time offer has been made does status become
      "ready_to_fill" and the graph moves on to form_filler.py.
+
+FIX: merge logic previously only filled GAPS — a field that already
+had a value could never be updated by a later extraction, even when
+that later extraction was reading an explicit correction from the
+student (e.g. "à nhầm, công ty là B chứ không phải A"). This directly
+broke the "correction" flow described in form_agent_routes.py
+(POST /turn while status == "awaiting_review" is documented as a
+correction request), because the corrected value from the student's
+new message could never overwrite the old one — the old, wrong value
+stayed locked in and the regenerated .docx kept showing it.
+
+The fix is simply: trust each fresh extraction's non-null values and
+let them overwrite (extract_fields() re-reads the WHOLE conversation
+every call, so a non-null result reflects the most current, complete
+context — including any correction the student just made). Protection
+against a flaky/failed LLM call losing data is already handled
+separately and correctly: _extract_fields_batch() returns None per
+field on error, and `if value:` below simply skips None values,
+leaving the existing (already correct) value untouched. No extra
+"don't overwrite" guard is needed on top of that.
 """
 
 from __future__ import annotations
@@ -54,13 +72,16 @@ def collect_info_node(state: FormAgentState) -> FormAgentState:
 
     extracted = extract_fields(conversation_text, form_code)
 
-    # Merge: only fill gaps, never let a fresh extraction blank out a
-    # value the student already confirmed in an earlier turn (the LLM
-    # re-reads the WHOLE conversation each time, so in practice this
-    # should rarely disagree — but never let it regress silently).
+    # Merge: a fresh, non-null extraction always wins — extract_fields()
+    # re-reads the FULL conversation each turn, so a non-null result is
+    # the model's best current read of the truth, including any
+    # correction the student just made. Only a None result (field not
+    # found this time, e.g. because that batch's LLM call errored, or
+    # the field genuinely isn't mentioned) falls back to the existing
+    # value, so we never silently lose already-confirmed info.
     merged_values = dict(existing_values)
     for key, value in extracted.items():
-        if value and not merged_values.get(key):
+        if value:
             merged_values[key] = value
 
     missing_names = find_missing_required(merged_values, form_code)

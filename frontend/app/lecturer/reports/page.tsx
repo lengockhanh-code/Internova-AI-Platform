@@ -354,7 +354,75 @@ export default function LecturerReportsPage() {
                     <div className={styles.reportContent}>{selected.content?.trim() || selected.scheduleDescription || "Chưa có nội dung báo cáo."}</div>
                   </section>
 
-                  {selected.reportId && (selected.fileName || selected.completionLetterName) && <section className={styles.attachmentSection}><h3>Tệp đính kèm</h3>{selected.fileName && <div className={styles.attachmentRow}><FileText size={18} /><span><strong>{selected.fileName}</strong><small>{formatFileSize(selected.fileSize)} · {selected.mimeType || "Tệp báo cáo"}</small></span><button title="Xem file" onClick={() => openFile("report", false)} type="button"><Eye size={16} /></button><button title="Tải file" onClick={() => openFile("report", true)} type="button"><Download size={16} /></button></div>}{selected.completionLetterName && <div className={styles.attachmentRow}><FileCheck2 size={18} /><span><strong>{selected.completionLetterName}</strong><small>{formatFileSize(selected.completionLetterSize)} · Giấy xác nhận hoàn thành</small></span><button title="Xem giấy xác nhận" onClick={() => openFile("completion-letter", false)} type="button"><Eye size={16} /></button><button title="Tải giấy xác nhận" onClick={() => openFile("completion-letter", true)} type="button"><Download size={16} /></button></div>}</section>}
+                  {selected.reportId && (selected.fileName || selected.completionLetterName) && (
+                    <section className={styles.attachmentSection}>
+                      <h3>Tệp đính kèm</h3>
+
+                      {selected.fileName && (
+                        <div className={styles.attachmentRow}>
+                          <FileText size={18} />
+                          <span>
+                            <strong>{selected.fileName}</strong>
+                            <small>
+                              {formatFileSize(selected.fileSize)} · {selected.mimeType || "Tệp báo cáo"}
+                            </small>
+                          </span>
+                          <div className={styles.attachmentActions}>
+                            <button
+                              aria-label={`Xem file báo cáo ${selected.fileName}`}
+                              onClick={() => void openFile("report", false)}
+                              title="Xem file báo cáo"
+                              type="button"
+                            >
+                              <Eye size={16} />
+                              Xem file báo cáo
+                            </button>
+                            <button
+                              aria-label={`Tải file báo cáo ${selected.fileName}`}
+                              onClick={() => void openFile("report", true)}
+                              title="Tải file"
+                              type="button"
+                            >
+                              <Download size={16} />
+                              Tải file
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {selected.completionLetterName && (
+                        <div className={styles.attachmentRow}>
+                          <FileCheck2 size={18} />
+                          <span>
+                            <strong>{selected.completionLetterName}</strong>
+                            <small>
+                              {formatFileSize(selected.completionLetterSize)} · Giấy xác nhận hoàn thành
+                            </small>
+                          </span>
+                          <div className={styles.attachmentActions}>
+                            <button
+                              aria-label={`Xem giấy xác nhận ${selected.completionLetterName}`}
+                              onClick={() => void openFile("completion-letter", false)}
+                              title="Xem giấy xác nhận"
+                              type="button"
+                            >
+                              <Eye size={16} />
+                              Xem giấy xác nhận
+                            </button>
+                            <button
+                              aria-label={`Tải giấy xác nhận ${selected.completionLetterName}`}
+                              onClick={() => void openFile("completion-letter", true)}
+                              title="Tải giấy xác nhận"
+                              type="button"
+                            >
+                              <Download size={16} />
+                              Tải giấy xác nhận
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </section>
+                  )}
 
                   {selected.reportId && selected.submittedAt && <section className={styles.reviewSection}><div className={styles.sectionHeading}><div><h3>Đánh giá báo cáo</h3><p>{workflowLabel(selected.workflowStatus)}</p></div>{selected.lecturerScore !== null && <strong className={styles.scoreDisplay}>{selected.lecturerScore.toFixed(1)}/10</strong>}</div><div className={styles.decisionControl}><button className={decision === "APPROVED" ? styles.decisionActiveApprove : ""} onClick={() => setDecision("APPROVED")} type="button"><CheckCircle2 size={16} />Duyệt</button><button className={decision === "REVISION_REQUIRED" ? styles.decisionActiveRevision : ""} onClick={() => setDecision("REVISION_REQUIRED")} type="button"><XCircle size={16} />Yêu cầu sửa</button></div><div className={styles.reviewFields}>{decision === "APPROVED" && <label><span>Điểm (0-10)</span><input max="10" min="0" step="0.1" type="number" value={score} onChange={(event) => setScore(event.target.value)} /></label>}<label className={styles.feedbackField}><span>Phản hồi</span><textarea maxLength={5000} rows={4} value={feedback} onChange={(event) => setFeedback(event.target.value)} /></label></div>{reviewMessage && <p className={reviewMessage.startsWith("Đã lưu") ? styles.successMessage : styles.formError}>{reviewMessage}</p>}<button className={styles.saveReviewButton} disabled={savingReview} onClick={() => void handleReview()} type="button">{savingReview ? <Loader2 className={styles.spin} size={16} /> : <Star size={16} />}Lưu đánh giá</button></section>}
 

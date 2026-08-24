@@ -4,7 +4,6 @@ import {
     Bell,
     CheckCircle2,
     ChevronDown,
-    GraduationCap,
     Loader2,
     Lock,
     LogOut,
@@ -17,6 +16,7 @@ import {
     UserRound,
     X,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -32,6 +32,7 @@ import {
     subscribeStudentUnreadCount,
 } from "@/lib/studentNotifications";
 import { useSettings } from "@/context/settings-provider";
+import LecturerLanguageSwitcher from "@/components/lecturer/LecturerLanguageSwitcher";
 
 
 const API_BASE_URL =
@@ -54,13 +55,32 @@ interface StudentNotification {
     createdAt: string | null;
 }
 
+interface RawStudentNotification {
+    id?: string | number;
+    notificationId?: string | number;
+    notification_id?: string | number;
+    title?: string;
+    subject?: string;
+    name?: string;
+    message?: string;
+    content?: string;
+    body?: string;
+    description?: string;
+    isRead?: boolean;
+    is_read?: boolean;
+    read?: boolean;
+    createdAt?: string;
+    created_at?: string;
+    sentAt?: string;
+    sent_at?: string;
+}
+
 
 export default function Header() {
     const router = useRouter();
-    const { theme, locale, toggleTheme, setLocale, t } = useSettings();
+    const { theme, locale, toggleTheme, t } = useSettings();
     const [user, setUser] = useState<UserInfo | null>(null);
     const [unreadCount, setUnreadCount] = useState(0);
-    const [languageBusy, setLanguageBusy] = useState(false);
     const [themeBusy, setThemeBusy] = useState(false);
 
     // Account dropdown state
@@ -128,8 +148,13 @@ export default function Header() {
     }, [t]);
 
 
-    function normalizeNotification(raw: any): StudentNotification | null {
-        const id = raw?.id ?? raw?.notificationId ?? raw?.notification_id;
+    function normalizeNotification(raw: unknown): StudentNotification | null {
+        if (!raw || typeof raw !== "object") {
+            return null;
+        }
+
+        const item = raw as RawStudentNotification;
+        const id = item.id ?? item.notificationId ?? item.notification_id;
         if (id === undefined || id === null) {
             return null;
         }
@@ -137,28 +162,28 @@ export default function Header() {
         return {
             id,
             title:
-                raw?.title ??
-                raw?.subject ??
-                raw?.name ??
+                item.title ??
+                item.subject ??
+                item.name ??
                 (locale === "vi" ? "Thông báo" : "Notification"),
             message:
-                raw?.message ??
-                raw?.content ??
-                raw?.body ??
-                raw?.description ??
+                item.message ??
+                item.content ??
+                item.body ??
+                item.description ??
                 "",
             isRead:
                 Boolean(
-                    raw?.isRead ??
-                    raw?.is_read ??
-                    raw?.read ??
+                    item.isRead ??
+                    item.is_read ??
+                    item.read ??
                     false
                 ),
             createdAt:
-                raw?.createdAt ??
-                raw?.created_at ??
-                raw?.sentAt ??
-                raw?.sent_at ??
+                item.createdAt ??
+                item.created_at ??
+                item.sentAt ??
+                item.sent_at ??
                 null,
         };
     }
@@ -391,16 +416,6 @@ setLatestNotifications(normalized);
         window.location.replace("/auth/login");
     }
 
-    function handleLocaleChange(nextLocale: "en" | "vi") {
-        if (languageBusy || nextLocale === locale) {
-            return;
-        }
-
-        setLanguageBusy(true);
-        setLocale(nextLocale);
-        window.setTimeout(() => setLanguageBusy(false), 900);
-    }
-
     function handleThemeToggle() {
         if (themeBusy) {
             return;
@@ -523,9 +538,19 @@ setLatestNotifications(normalized);
                     <Menu size={20} />
                 </button>
 
-                <Link href="/student/dashboard" className={styles.logoBrandLink}>
+                <Link
+                    className={`${styles.logoBrandLink} notranslate`}
+                    href="/student/dashboard"
+                    translate="no"
+                >
                     <span className={styles.logoIcon}>
-                        <GraduationCap size={22} />
+                        <Image
+                            alt="AI Internova logo"
+                            height={42}
+                            priority
+                            src="/vinuni-internship-logo.svg"
+                            width={42}
+                        />
                     </span>
 
                     <div className={`${styles.logoText} notranslate`} translate="no">
@@ -537,30 +562,7 @@ setLatestNotifications(normalized);
             <div className={styles.headerRight}>
                 {user && (
                     <>
-                        {/* TOGGLE CHUYỂN ĐỔI NGÔN NGỮ (PILL SHAPE - EN/VI) */}
-                        <div
-                            className={`${styles.langPillContainer} notranslate`}
-                            translate="no"
-                        >
-                            <button
-                                type="button"
-                                className={`${styles.langButton} ${locale === "en" ? styles.langActiveEN : ""}`}
-                                disabled={languageBusy}
-                                onClick={() => handleLocaleChange("en")}
-                                translate="no"
-                            >
-                                EN
-                            </button>
-                            <button
-                                type="button"
-                                className={`${styles.langButton} ${locale === "vi" ? styles.langActiveVI : ""}`}
-                                disabled={languageBusy}
-                                onClick={() => handleLocaleChange("vi")}
-                                translate="no"
-                            >
-                                VI
-                            </button>
-                        </div>
+                        <LecturerLanguageSwitcher />
 
                         {/* NÚT CHUYỂN ĐỔI THEME TỐI/SÁNG */}
                         <button
