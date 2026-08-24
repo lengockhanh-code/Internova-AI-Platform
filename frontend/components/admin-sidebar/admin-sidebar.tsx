@@ -125,7 +125,7 @@ const MENU: MenuSection[] = [
                     },
                     {
                         label: "Logs",
-                        href: "/admin/ai-monitoring/logs",
+                        href: "/admin/ai-monitoring/loggings",
                         icon: ScrollText,
                     },
                     {
