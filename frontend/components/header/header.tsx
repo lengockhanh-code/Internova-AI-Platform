@@ -528,9 +528,8 @@ setLatestNotifications(normalized);
                         <GraduationCap size={22} />
                     </span>
 
-                    <div className={styles.logoText}>
-                        <strong>Internova</strong>
-                        <span>Internship Assistant</span>
+                    <div className={`${styles.logoText} notranslate`} translate="no">
+                        <strong>AI Internova</strong>
                     </div>
                 </Link>
             </div>
@@ -738,14 +737,7 @@ setLatestNotifications(normalized);
                             </div>
                         )}
 
-                        <div
-                            className={`${styles.headerBadge} notranslate`}
-                            translate="no"
-                        >
-                            <span className={styles.roleDot} />
-                            {t(`role.${user.role.toLowerCase()}`)}
-                        </div>
-
+      
                         {/* USER DROPDOWN CONTAINER */}
                         <div
                             className={`${styles.userMenuContainer} notranslate`}

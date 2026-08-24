@@ -46,6 +46,7 @@ import type {
   InternshipStatus,
   LecturerStudentsResponse,
   ReportStatus,
+  ReportSubmissionStatus,
   StudentDetailResponse,
   StudentListItem,
   WarningSeverity,
@@ -75,6 +76,13 @@ const reportStatusLabels: Record<ReportStatus, string> = {
   APPROVED: "Đã chấm",
 };
 
+const submissionStatusLabels: Record<ReportSubmissionStatus, string> = {
+  UPCOMING: "Sắp đến hạn",
+  NOT_SUBMITTED: "Chưa nộp",
+  ON_TIME: "Nộp đúng hạn",
+  LATE: "Nộp muộn",
+};
+
 async function readJson<T>(response: Response): Promise<T> {
   const contentType = response.headers.get("content-type") ?? "";
 
@@ -85,12 +93,17 @@ async function readJson<T>(response: Response): Promise<T> {
     );
   }
 
-  const payload = (await response.json()) as T | ErrorPayload;
+  const payload = (await response.json()) as unknown;
 
   if (!response.ok) {
+    const errorPayload =
+      typeof payload === "object" && payload !== null
+        ? (payload as ErrorPayload)
+        : null;
+
     throw new Error(
-      "message" in payload && payload.message
-        ? payload.message
+      errorPayload?.message
+        ? errorPayload.message
         : "Yêu cầu không thành công.",
     );
   }
@@ -154,6 +167,18 @@ function reportClass(status: ReportStatus): string {
       return styles.badgeInfo;
     default:
       return styles.badgeMuted;
+  }
+}
+
+function submissionClass(status: ReportSubmissionStatus): string {
+  switch (status) {
+    case "ON_TIME":
+      return styles.badgeSuccess;
+    case "LATE":
+    case "NOT_SUBMITTED":
+      return styles.badgeDanger;
+    case "UPCOMING":
+      return styles.badgeInfo;
   }
 }
 
@@ -265,7 +290,7 @@ export default function LecturerStudentsPage() {
     "Em vui lòng kiểm tra và cập nhật tiến độ thực tập, báo cáo còn thiếu trên hệ thống.",
   );
 
-  const loadStudents = useCallback(async () => {
+  const loadStudents = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError("");
 
@@ -289,18 +314,24 @@ export default function LecturerStudentsPage() {
         `/api/lecturers/${encodeURIComponent(
           lecturerId,
         )}/students?${queryParams.toString()}`,
-        { cache: "no-store" },
+        { cache: "no-store", signal },
       );
 
       setData(await readJson<LecturerStudentsResponse>(response));
     } catch (loadError) {
+      if (loadError instanceof DOMException && loadError.name === "AbortError") {
+        return;
+      }
+
       setError(
         loadError instanceof Error
           ? loadError.message
           : "Không thể tải danh sách sinh viên.",
       );
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [
     companyId,
@@ -313,7 +344,15 @@ export default function LecturerStudentsPage() {
   ]);
 
   useEffect(() => {
-    void loadStudents();
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      void loadStudents(controller.signal);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [loadStudents]);
 
   const openDetail = useCallback(
@@ -1228,7 +1267,7 @@ export default function LecturerStudentsPage() {
                         detail.reports.map((report) => (
                           <article
                             className={styles.reportCard}
-                            key={report.id}
+                            key={report.scheduleId}
                           >
                             <div className={styles.cardHeader}>
                               <div>
@@ -1237,16 +1276,23 @@ export default function LecturerStudentsPage() {
                                     `Báo cáo tuần ${report.weekNumber}`}
                                 </strong>
                                 <span>
-                                  Nộp:{" "}
-                                  {formatDate(report.submittedAt)}
+                                  {report.submittedAt
+                                    ? `Nộp: ${formatDate(report.submittedAt)}`
+                                    : `Hạn: ${formatDate(report.dueAt)}`}
                                 </span>
                               </div>
                               <span
-                                className={`${styles.badge} ${reportClass(
-                                  report.status,
-                                )}`}
+                                className={`${styles.badge} ${
+                                  report.reviewStatus
+                                    ? reportClass(report.reviewStatus)
+                                    : submissionClass(report.submissionStatus)
+                                }`}
                               >
-                                {reportStatusLabels[report.status]}
+                                {report.reviewStatus
+                                  ? reportStatusLabels[report.reviewStatus]
+                                  : submissionStatusLabels[
+                                      report.submissionStatus
+                                    ]}
                               </span>
                             </div>
                             <p>{report.workCompleted}</p>

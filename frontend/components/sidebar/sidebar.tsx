@@ -171,8 +171,8 @@ export default function Sidebar() {
                                 loading="eager"
                             />
 
-                            <span>
-                                Internova
+                            <span className="notranslate" translate="no">
+                                AI Internova
                             </span>
                         </Link>
 
@@ -285,19 +285,10 @@ export default function Sidebar() {
                     />
 
                     <p
-                        className={
-                            styles.sidebarFooterTitle
-                        }
+                        className={`${styles.sidebarFooterTitle} notranslate`}
+                        translate="no"
                     >
-                        Internova
-                    </p>
-
-                    <p
-                        className={
-                            styles.sidebarFooterDesc
-                        }
-                    >
-                        {t("sidebar.footer_desc")}
+                        AI Internova
                     </p>
                 </div>
             </aside>

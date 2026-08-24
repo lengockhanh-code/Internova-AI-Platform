@@ -12,7 +12,7 @@
 // toàn đi qua Ô NHẬP CHÍNH của trang chat, không còn ô nhập ở đây.
 
 const API_BASE =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface FormAgentPanelProps {
     phase: "confirm" | "working";
@@ -23,6 +23,7 @@ interface FormAgentPanelProps {
     error?: string | null;
     docxReady?: boolean;
     sessionId?: string | null;
+    locale?: "vi" | "en";
     onConfirmYes?: () => void;
     onConfirmNo?: () => void;
     onApprove?: () => void;
@@ -38,6 +39,7 @@ export default function FormAgentPanel({
     error,
     docxReady,
     sessionId,
+    locale = "vi",
     onConfirmYes,
     onConfirmNo,
     onApprove,
@@ -49,16 +51,24 @@ export default function FormAgentPanel({
         return (
             <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4 space-y-3">
                 <h3 className="text-sm font-semibold text-blue-900">
-                    🤖 Agent điền đơn
+                    🤖 {locale === "en" ? "Form Agent" : "Agent điền đơn"}
                 </h3>
                 <p className="text-sm text-gray-800">
-                    Bạn có muốn mình giúp điền{" "}
-                    <strong>{detectedFormName ?? "biểu mẫu này"}</strong> ngay
-                    bây giờ không?
+                    {locale === "en" ? (
+                        <>
+                            Do you want me to help you fill out{" "}
+                            <strong>{detectedFormName ?? "this form"}</strong> right now?
+                        </>
+                    ) : (
+                        <>
+                            Bạn có muốn mình giúp điền{" "}
+                            <strong>{detectedFormName ?? "biểu mẫu này"}</strong> ngay
+                            bây giờ không?
+                        </>
+                    )}
                 </p>
                 <p className="text-xs text-gray-500 italic">
-                    Gõ &quot;có&quot; hoặc &quot;không&quot; ngay trong ô nhập
-                    tin nhắn bên dưới nhé 👇
+                    {locale === "en" ? "Type \"yes\" or \"no\" right in the chat input below 👇" : "Gõ \"có\" hoặc \"không\" ngay trong ô nhập tin nhắn bên dưới nhé 👇"}
                 </p>
             </div>
         );
@@ -74,7 +84,7 @@ export default function FormAgentPanel({
         <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4 space-y-3">
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-blue-900">
-                    🤖 Agent điền đơn
+                    🤖 {locale === "en" ? "Form Agent" : "Agent điền đơn"}
                     {status ? ` — ${status}` : ""}
                 </h3>
                 {sessionId && status !== "approved" && status !== "cancelled" && (
@@ -83,13 +93,13 @@ export default function FormAgentPanel({
                         disabled={loading}
                         className="text-xs text-red-500 hover:underline disabled:opacity-50"
                     >
-                        Hủy phiên
+                        {locale === "en" ? "Cancel session" : "Hủy phiên"}
                     </button>
                 )}
             </div>
 
             {loading && (
-                <p className="text-sm text-gray-500">Đang xử lý...</p>
+                <p className="text-sm text-gray-500">{locale === "en" ? "Processing..." : "Đang xử lý..."}</p>
             )}
 
             {error && (
@@ -107,21 +117,21 @@ export default function FormAgentPanel({
             {status === "approved" && (
                 <div className="space-y-2">
                     <p className="text-sm text-green-700 font-medium">
-                        ✅ Đã xác nhận xong!
+                        ✅ {locale === "en" ? "Confirmed successfully!" : "Đã xác nhận xong!"}
                     </p>
                     {downloadUrl && docxReady && (
                         <a
                             href={downloadUrl}
                             className="inline-block text-sm bg-green-600 text-white rounded-lg px-4 py-2 hover:bg-green-700"
                         >
-                            ⬇️ Tải file đã điền
+                            ⬇️ {locale === "en" ? "Download filled file" : "Tải file đã điền"}
                         </a>
                     )}
                 </div>
             )}
 
             {status === "cancelled" && (
-                <p className="text-sm text-gray-600">Đã hủy phiên điền đơn.</p>
+                <p className="text-sm text-gray-600">{locale === "en" ? "Form filling session cancelled." : "Đã hủy phiên điền đơn."}</p>
             )}
 
             {status === "awaiting_review" && (
@@ -130,13 +140,13 @@ export default function FormAgentPanel({
                     disabled={loading}
                     className="self-start bg-blue-600 text-white text-sm rounded-lg px-4 py-2 hover:bg-blue-700 disabled:opacity-50"
                 >
-                    ✅ Xác nhận, đúng rồi
+                    ✅ {locale === "en" ? "Confirm, looks good" : "Xác nhận, đúng rồi"}
                 </button>
             )}
 
             {status === "collecting_info" && !loading && (
                 <p className="text-xs text-gray-500 italic">
-                    Trả lời ngay trong ô nhập tin nhắn bên dưới nhé 👇
+                    {locale === "en" ? "Reply right in the chat input below 👇" : "Trả lời ngay trong ô nhập tin nhắn bên dưới nhé 👇"}
                 </p>
             )}
         </div>
