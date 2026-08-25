@@ -24,7 +24,10 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 import LecturerLanguageSwitcher from "@/components/lecturer/LecturerLanguageSwitcher";
-import { lecturerFetch as fetch } from "@/lib/lecturerAuth";
+import {
+  API_BASE_URL,
+  lecturerFetch as fetch,
+} from "@/lib/lecturerAuth";
 import {
   fetchLecturerUnreadCount,
   subscribeLecturerUnreadCount,
@@ -509,11 +512,8 @@ function EmptyState({
 export default function LecturerDashboardPage() {
   const router = useRouter();
 
-  const apiBaseUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL?.replace(
-      /\/$/,
-      "",
-    ) || "http://localhost:8000";
+  const dashboardEndpoint =
+    `${API_BASE_URL}/api/v1/lecturers/dashboard`;
 
   const [data, setData] =
     useState<LecturerDashboardData | null>(
@@ -547,7 +547,7 @@ export default function LecturerDashboardPage() {
 
       try {
         const response = await fetch(
-          `${apiBaseUrl}/api/v1/lecturers/dashboard`,
+          dashboardEndpoint,
           {
             method: "GET",
             cache: "no-store",
@@ -611,7 +611,7 @@ export default function LecturerDashboardPage() {
     return () => {
       controller.abort();
     };
-  }, [apiBaseUrl]);
+  }, [dashboardEndpoint]);
 
   useEffect(() => {
     let active = true;
@@ -942,7 +942,7 @@ export default function LecturerDashboardPage() {
         >
           Kiểm tra FastAPI tại
           {" "}
-          http://localhost:8000/api/v1/lecturers/dashboard
+          {dashboardEndpoint}
           {" "}
           và xem log terminal
           backend.
