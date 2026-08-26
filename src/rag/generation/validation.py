@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 # =============================================================================
 
 MIN_QUERY_LENGTH = 1
-MAX_QUERY_LENGTH = 2000
+MAX_QUERY_LENGTH = 30000
 
 _INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(

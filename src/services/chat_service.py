@@ -13,7 +13,6 @@ from src.rag.query_pipeline import (
     PipelineOptions,
     QueryPipeline,
     RouteDecision,
-    detect_query_language,
     route_query,
 )
 from src.rag.schemas import QueryResult
@@ -36,113 +35,12 @@ RAG_SCOPES = {
 }
 
 
-def _normalize_preference_text(message: str) -> str:
-    """Cheap normalization for explicit preference commands only."""
-    import unicodedata
-
-    lowered = " ".join((message or "").strip().lower().split())
-    ascii_text = "".join(
-        ch
-        for ch in unicodedata.normalize("NFD", lowered.replace("đ", "d"))
-        if unicodedata.category(ch) != "Mn"
-    )
-    return f"{lowered} {ascii_text}"
-
-
-def _detect_explicit_preference(message: str) -> str | None:
-    """Detect only clear, persistent response preferences without an LLM.
-
-    Ambiguous natural-language requests are intentionally left to the main chat
-    model, which already receives the current query and conversation history.
-    This removes a dedicated network round-trip without reducing the semantic
-    understanding of the actual answering model.
-    """
-    text = _normalize_preference_text(message)
-
-    language_en = (
-        "tra loi bang tieng anh",
-        "tra loi tieng anh",
-        "dung tieng anh",
-        "noi tieng anh",
-        "answer in english",
-        "respond in english",
-        "reply in english",
-        "use english",
-    )
-    language_vi = (
-        "tra loi bang tieng viet",
-        "tra loi tieng viet",
-        "dung tieng viet",
-        "noi tieng viet",
-        "answer in vietnamese",
-        "respond in vietnamese",
-        "reply in vietnamese",
-        "use vietnamese",
-    )
-    shorter = (
-        "tra loi ngan hon",
-        "tra loi ngan gon",
-        "noi ngan hon",
-        "viet ngan hon",
-        "ngan hon di",
-        "keep it shorter",
-        "make it shorter",
-        "be more concise",
-        "more concise",
-    )
-    simpler = (
-        "giai thich don gian hon",
-        "giai thich de hieu hon",
-        "noi de hieu hon",
-        "viet de hieu hon",
-        "don gian hon di",
-        "explain more simply",
-        "make it simpler",
-        "simpler explanation",
-        "easier to understand",
-    )
-
-    if any(phrase in text for phrase in language_en):
-        return "language_en"
-    if any(phrase in text for phrase in language_vi):
-        return "language_vi"
-    if any(phrase in text for phrase in shorter):
-        return "shorter"
-    if any(phrase in text for phrase in simpler):
-        return "simpler"
-    return None
-
-
 class ChatService:
     def __init__(self) -> None:
         self._pipeline: QueryPipeline | None = None
         self._lock = Lock()
         self._memories: dict[str, ConversationMemory] = {}
 
-    def _is_low_information_message(
-        self,
-        message: str,
-    ) -> bool:
-        normalized = " ".join(message.strip().split())
-        if not normalized:
-            return True
-
-        words = normalized.split()
-        if len(words) >= 5:
-            return False
-
-        letters_only = "".join(
-            ch
-            for ch in normalized
-            if ch.isalnum() or ch.isspace()
-        )
-        informative_chars = sum(
-            1
-            for ch in letters_only
-            if ch.isalnum()
-        )
-
-        return informative_chars <= 20
 
     def _get_memory(
         self,
@@ -159,6 +57,51 @@ class ChatService:
             )
             self._memories[session_id] = memory
 
+        return memory
+
+    def restore_memory(
+        self,
+        session_id: str,
+        turns: list,
+    ) -> ConversationMemory:
+        """Rebuild in-process conversation memory from persisted chat history.
+
+        This is deterministic and performs no LLM call. It lets the ONE semantic
+        router see follow-up context after refresh/restart while keeping user facts
+        separate from assistant responses.
+        """
+        memory = ConversationMemory(session_id=str(session_id))
+
+        pending_user: str | None = None
+        for turn in turns or []:
+            if isinstance(turn, dict):
+                role = str(turn.get("role") or "").upper()
+                content = str(turn.get("content") or "")
+                status = str(turn.get("answer_status") or "answered")
+            else:
+                mapping = getattr(turn, "_mapping", None)
+                if mapping is not None:
+                    role = str(mapping.get("role") or "").upper()
+                    content = str(mapping.get("content") or "")
+                    status = str(mapping.get("answer_status") or "answered")
+                else:
+                    role = str(getattr(turn, "role", "") or "").upper()
+                    content = str(getattr(turn, "content", "") or "")
+                    status = str(getattr(turn, "answer_status", "answered") or "answered")
+
+            if role == "USER":
+                pending_user = content.strip() or None
+                continue
+
+            if role == "ASSISTANT" and pending_user:
+                memory.add_turn(
+                    query=pending_user,
+                    answer=content,
+                    answer_status=status,
+                )
+                pending_user = None
+
+        self._memories[str(session_id)] = memory
         return memory
 
     def _get_pipeline(self) -> QueryPipeline:
@@ -208,11 +151,12 @@ class ChatService:
             "query": redis_cache.normalize_query(
                 message
             ),
-            "query_language": detect_query_language(
-                message
-            ),
             "index_version": pipeline.cache_version,
             "model": settings.openai_chat_model or settings.model_name,
+            # Invalidate old answer-cache entries whenever the semantic
+            # orchestrator contract changes. Otherwise a corrected route can still
+            # surface an answer cached under older intent/tool behavior.
+            "semantic_orchestrator_version": 45,
             "preferred_language": (
                 preferences.language
                 if preferences is not None
@@ -257,16 +201,9 @@ class ChatService:
             )
             return None
 
-        # Pipeline.run() was skipped, so preserve conversation continuity here.
+        # Pipeline.run() was skipped: preserve the turn only. Semantic pre-routing
+        # already owns session language; cache hits never create a preference.
         if memory is not None:
-            if result.answer_language in {
-                "vi",
-                "en",
-            }:
-                memory.update_preferences(
-                    language=result.answer_language
-                )
-
             memory.add_turn(
                 query=message,
                 answer=result.answer,
@@ -279,23 +216,34 @@ class ChatService:
         self,
         message: str,
         session_id: str | None = None,
+        runtime_context: str = "",
     ) -> RouteDecision:
-        """Run the existing semantic router exactly once for this request.
-
-        Uses the same conversation context/follow-up resolution that QueryPipeline
-        would use, so the returned RouteDecision can be safely passed downstream.
-        """
+        """Run exactly ONE semantic router call for this request."""
         message = message.strip()
         if not message:
             raise ValueError("Message không được để trống.")
 
         memory = self._get_memory(session_id)
         conversation_history = memory.get_context_window() if memory else ""
-        contextual_query = memory.resolve_followup_query(message) if memory else message
-        return route_query(
-            contextual_query,
+
+        if runtime_context.strip():
+            conversation_history = (
+                conversation_history
+                + "\n\n[Structured Runtime State]\n"
+                + runtime_context.strip()
+            ).strip()
+
+        # ORIGINAL current input remains untouched. The classifier sees history
+        # separately so corrections/topic switches are not rewritten by heuristics.
+        route = route_query(
+            message,
             conversation_context=conversation_history,
         )
+
+        if memory is not None:
+            memory.apply_semantic_route(route)
+
+        return route
 
     def classify_query(
         self,
@@ -319,77 +267,29 @@ class ChatService:
             "route_scope": route.scope,
         }
 
-    def _update_memory_preferences(
+    def _update_memory_preferences_from_route(
         self,
-        message: str,
+        route: RouteDecision | None,
         memory: ConversationMemory | None,
     ) -> None:
-        if memory is None:
+        """Persist only preferences explicitly marked persistent by the router."""
+        if memory is None or route is None:
             return
 
-        # No dedicated semantic-preference LLM call here. Clear persistent
-        # preferences are captured locally; nuanced/ambiguous wording is left
-        # to the main answer model, which already sees the query + history.
-        preference_intent = _detect_explicit_preference(message)
-
-        detected_language = detect_query_language(
-            message
-        )
-
-        current_language = (
-            memory.get_preferences().language
-        )
-
-        is_low_information_message = (
-            self._is_low_information_message(
-                message
-            )
-        )
-
-        if preference_intent == "language_vi":
-            memory.update_preferences(
-                language="vi"
-            )
-
-        elif preference_intent == "language_en":
-            memory.update_preferences(
-                language="en"
-            )
-
-        elif (
-            detected_language == "en"
-            and (
-                current_language is None
-                or (
-                    current_language != "en"
-                    and not is_low_information_message
-                )
-            )
+        if (
+            getattr(route, "persist_response_language", False)
+            and getattr(route, "response_language", None) in {"vi", "en"}
         ):
             memory.update_preferences(
-                language="en"
+                language=getattr(route, "response_language")
             )
 
-        elif (
-            detected_language == "vi"
-            and (
-                current_language is None
-                or (
-                    current_language != "vi"
-                    and not is_low_information_message
-                )
-            )
+        if (
+            getattr(route, "persist_response_style", False)
+            and getattr(route, "response_style", None) in {"shorter", "simpler"}
         ):
             memory.update_preferences(
-                language="vi"
-            )
-
-        if preference_intent in {
-            "shorter",
-            "simpler",
-        }:
-            memory.update_preferences(
-                style=preference_intent
+                style=getattr(route, "response_style")
             )
 
     def _ask_impl(
@@ -418,7 +318,10 @@ class ChatService:
 
         raise_if_cancelled()
         preference_started = time.perf_counter()
-        observed_call("rag.preference", self._update_memory_preferences, message, memory)
+        self._update_memory_preferences_from_route(
+            precomputed_route,
+            memory,
+        )
         preference_ms = round(
             (time.perf_counter() - preference_started) * 1000.0,
             1,

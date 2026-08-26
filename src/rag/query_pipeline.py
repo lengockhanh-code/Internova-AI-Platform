@@ -3,17 +3,19 @@ from __future__ import annotations
 import logging
 import re
 import time
-import unicodedata
-from functools import lru_cache
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
-from typing import Callable, Literal
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from typing import Literal
 
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 from src.config import get_settings
-from src.observability.instrumentation import observed_call, langfuse_callbacks
+from src.observability.instrumentation import langfuse_callbacks, observed_call
 from src.rag.evidence import (
     EvidenceCheckResult,
     check_evidence_legacy,
@@ -22,12 +24,12 @@ from src.rag.evidence import (
 )
 from src.rag.generation.answer_generator import (
     AnswerLanguage,
+    StreamingCancelled,
     build_context,
     generate_answer_from_evidence,
     generate_conversation_answer,
     generate_general_support_answer,
     get_selected_chunk_ids,
-    StreamingCancelled,
 )
 from src.rag.generation.validation import (
     apply_groundedness_gate,
@@ -51,11 +53,11 @@ from src.rag.retrieval.retriever import (
     RetrievalHit,
     RetrievalResult,
 )
+from src.rag.schemas import QueryResult
 from src.services.redis_cache_service import (
     fingerprint_paths,
     redis_cache,
 )
-from src.rag.schemas import QueryResult
 
 logger = logging.getLogger(__name__)
 
@@ -545,41 +547,136 @@ EvidenceMode = Literal[
 ]
 
 
-def _fallback_evidence_mode(
-    query: str,
-    intent: str,
-    scope: str,
-) -> EvidenceMode:
-    """Conservative no-LLM fallback for evidence orchestration.
+AssistantAction = Literal[
+    "none",
+    "eligibility_checker",
+    "internship_checklist",
+    "process_guide",
+    "form_assistant",
+    "deadline_timeline",
+    "internship_matching",
+    "cv_improvement",
+    "jd_analyzer",
+    "interview_preparation",
+    "internship_progress",
+    "weekly_reflection",
+    "evaluation_preparation",
+    "skill_gap_analysis",
+    "career_recommendation",
+    "grievance_assistant",
+    "policy_compliance",
+    "document_finder",
+    "smart_notifications",
+    "personalized_dashboard",
+    "human_escalation",
+]
 
-    The semantic router is authoritative during normal operation. This helper is
-    used only when the router cannot provide an evidence mode. It keeps
-    exception/case-adjudication/composite questions on semantic evidence while
-    allowing direct factual lookups to use the deterministic evidence checker.
+ActionMode = Literal[
+    "inform",
+    "preview",
+    "execute",
+    "cancel",
+]
+
+
+FollowUpRelation = Literal[
+    "new_request",
+    "continuation",
+    "reference",
+    "correction",
+    "revision",
+    "confirmation",
+    "cancellation",
+    "question_about_previous",
+    "topic_switch",
+]
+
+DataSourceChoice = Literal[
+    "conversation",
+    "rag",
+    "personal_db",
+    "write_action",
+    "none",
+]
+
+ResponseLanguageChoice = Literal[
+    "vi",
+    "en",
+]
+
+
+ResponseStyleChoice = Literal[
+    "shorter",
+    "simpler",
+]
+
+
+SpeechActChoice = Literal[
+    "social",
+    "ask_information",
+    "ask_capability",
+    "request_action",
+    "read_personal_data",
+    "rewrite_or_transform",
+    "other",
+]
+
+
+PendingTransition = Literal[
+    "none",
+    "new_write",
+    "confirm_pending",
+    "cancel_pending",
+    "revise_pending",
+    "question_pending",
+    "topic_switch",
+]
+
+
+class CopilotActionPayload(BaseModel):
+    """Write payload extracted by the EXISTING semantic-router call.
+
+    This object is behavioral data only. It never authorizes persistence by itself;
+    backend validation + preview + explicit confirmation are still required.
     """
-    if scope not in {"internship", "career", "capstone"}:
-        return "none"
 
-    normalized = normalize_for_routing(query)
-    complex_markers = (
-        "neu ", "nếu ", "nhung ", "nhưng ", "tuy nhien", "ngoai le",
-        "exception", "co duoc", "có được", "may i", "can i",
-        "du dieu kien", "đủ điều kiện", "eligible", "eligibility",
-        "withdraw", "rut ", "rút ", "grievance", "khieu nai", "khiếu nại",
-        "approval", "approve", "phe duyet", "phê duyệt",
-        "medical", "health", "benh", "bệnh", "late", "muon", "muộn",
-        "conflict", "vi pham", "vi phạm", "so sanh", "compare",
-        "tat ca dieu kien", "tất cả điều kiện", "toan bo", "toàn bộ",
-        "tong hop", "tổng hợp", "checklist",
-    )
-    risky_intents = {
-        "internship_withdrawal",
-        "internship_grievance",
-    }
-    if intent in risky_intents or any(marker in normalized for marker in complex_markers):
-        return "semantic"
-    return "fast"
+    # Progress
+    progress_work_summary: str | None = None
+    progress_hours: float | None = None
+    progress_week: int | None = None
 
+    # Weekly reflection
+    reflection_week: int | None = None
+
+    # Reminder / notification preference
+    reminder_kind: Literal["REMINDER", "PREFERENCE"] | None = None
+    reminder_content: str | None = None
+    reminder_time_expression: str | None = None
+    reminder_scheduled_at: str | None = None
+    reminder_days_before: int | None = None
+    reminder_deadline_reference: str | None = None
+    notification_preference_key: Literal[
+        "report_deadline",
+        "lecturer_feedback",
+        "internship_status",
+        "email_notifications",
+    ] | None = None
+    notification_preference_enabled: bool | None = None
+
+    # Human escalation / grievance
+    escalation_incident_description: str | None = None
+    escalation_subject: str | None = None
+    escalation_type: Literal[
+        "SAFETY",
+        "SUPERVISION",
+        "WORKLOAD",
+        "HARASSMENT",
+        "ROLE_MISMATCH",
+        "WITHDRAWAL",
+        "OTHER",
+    ] | None = None
+    escalation_severity: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"] | None = None
+    escalation_target: Literal["FACULTY_MENTOR", "CAID_QUEUE"] | None = None
 
 class SemanticRouteOutput(BaseModel):
     """Structured output returned by the semantic LLM router."""
@@ -587,6 +684,13 @@ class SemanticRouteOutput(BaseModel):
     intent: IntentName = Field(
         description=(
             "Semantic intent of the current user message."
+        )
+    )
+
+    scope: SourceScope = Field(
+        description=(
+            "Top-level scope chosen semantically from the REAL requested outcome. "
+            "Backend code must not infer scope from keywords."
         )
     )
 
@@ -608,6 +712,109 @@ class SemanticRouteOutput(BaseModel):
         description=(
             "Important entity explicitly mentioned or clearly "
             "resolved from context, if any."
+        ),
+    )
+
+
+    followup_relation: FollowUpRelation = Field(
+        default="new_request",
+        description=(
+            "Relationship of the CURRENT user message to recent conversation. "
+            "A correction means the user rejects/replaces something previously assumed; "
+            "rejected entities must not remain active merely because they are mentioned "
+            "inside the correction. A topic_switch means answer the new request normally."
+        ),
+    )
+
+    data_source: DataSourceChoice = Field(
+        default="none",
+        description=(
+            "What kind of information/operation is actually needed: conversation for "
+            "rewriting/translating/referring to text already in chat; rag for official "
+            "documents/policies/forms; personal_db only for explicit current/stored own-account "
+            "data; write_action for a persistent Copilot side effect; none otherwise."
+        ),
+    )
+
+    response_language: ResponseLanguageChoice = Field(
+        description=(
+            "EFFECTIVE language the assistant should use for THIS response. "
+            "Choose semantically from the explicit current request, persistent preference, "
+            "and ongoing conversation language. Short/social/code-like turns normally inherit "
+            "the established conversation language instead of switching on isolated tokens."
+        ),
+    )
+
+    session_language_update: bool = Field(
+        default=False,
+        description=(
+            "Whether this turn should establish/change the ongoing conversation language. "
+            "True for a substantive supported-language turn or explicit persistent preference; "
+            "false for short/social/code-like turns that inherit the session language and for "
+            "one-turn translation/rewrite requests."
+        ),
+    )
+
+    conversation_target: str | None = Field(
+        default=None,
+        description=(
+            "Short description of the prior conversational text/entity the user is referring "
+            "to, revising, translating, correcting, or asking about. Null for unrelated/new turns."
+        ),
+    )
+
+
+    user_goal: str = Field(
+        default="",
+        description=(
+            "One concise semantic paraphrase of what the CURRENT user actually wants. "
+            "Describe the requested outcome, not keywords and not a stale previous topic."
+        ),
+    )
+
+
+    speech_act: SpeechActChoice = Field(
+        default="other",
+        description=(
+            "The pragmatic speech act of the CURRENT message. This is semantic, not "
+            "grammatical. A question-shaped utterance such as 'Can you remind me to "
+            "submit the report this afternoon?' is request_action, while 'Do you have "
+            "a reminder feature?' is ask_capability."
+        ),
+    )
+
+
+    pending_transition: PendingTransition = Field(
+        default="none",
+        description=(
+            "Semantic relationship to structured pending write state. "
+            "confirm_pending authorizes the existing draft; cancel_pending rejects it; "
+            "revise_pending changes draft fields; question_pending asks about it; "
+            "topic_switch starts another request; new_write requests a new persistent "
+            "action; none otherwise. Never use exact phrase matching."
+        ),
+    )
+
+    response_style: ResponseStyleChoice | None = Field(
+        default=None,
+        description=(
+            "One-turn presentation preference when the user explicitly asks for a shorter "
+            "or simpler response. Null otherwise."
+        ),
+    )
+
+    persist_response_language: bool = Field(
+        default=False,
+        description=(
+            "True ONLY when the user explicitly asks to keep using response_language for "
+            "future turns. One-turn translation/rewrite requests must be false."
+        ),
+    )
+
+    persist_response_style: bool = Field(
+        default=False,
+        description=(
+            "True ONLY when the user explicitly asks to keep response_style for future turns."
         ),
     )
 
@@ -655,7 +862,50 @@ class SemanticRouteOutput(BaseModel):
         ),
     )
 
-    personal_sections: list[Literal["profile", "internship", "deadlines", "checklist", "reports"]] = Field(
+    assistant_action: AssistantAction = Field(
+        default="none",
+        description=(
+            "Fine-grained internship-copilot capability requested by the user. "
+            "This is behavioral metadata only and MUST NOT broaden the top-level scope, "
+            "authorize personal-data access, or replace official-document retrieval."
+        ),
+    )
+
+    action_mode: ActionMode = Field(
+        default="inform",
+        description=(
+            "Semantic state of the CURRENT message. A pending preview is context, not a forced menu. "
+            "Use 'preview' for a first supported write or a semantic revision of a pending write; use 'execute' "
+            "only when the current message semantically accepts carrying out the matching pending preview; use "
+            "'cancel' only when it semantically rejects that matching preview; otherwise use 'inform' and classify "
+            "the user's new question/topic normally. Never depend on exact confirmation/cancel phrases and never "
+            "execute a new write request in the same turn it is first proposed."
+        ),
+    )
+
+    action_payload: CopilotActionPayload = Field(
+        default_factory=CopilotActionPayload,
+        description=(
+            "Structured domain payload for confirmation-gated Copilot writes, extracted in THIS SAME semantic-router "
+            "call. Leave unrelated fields null. Operation words, language/style instructions, and confirmation wording "
+            "must never be copied into domain payload fields."
+        ),
+    )
+
+    missing_action_fields: list[str] = Field(
+        default_factory=list,
+        description=(
+            "For a persistent Copilot write only: required domain fields still missing after using the current message "
+            "plus genuine recent user context. For revision turns, unchanged values may be reconstructed from the "
+            "matching pending preview because it represents the already pending draft. Empty when complete or non-write."
+        ),
+    )
+
+    personal_sections: list[Literal[
+        "profile", "internship", "deadlines", "checklist", "reports",
+        "applications", "documents", "evaluations", "progress",
+        "opportunities", "reminders", "escalations",
+    ]] = Field(
         default_factory=list,
         description=(
             "For personal_data only: exact DB sections explicitly requested by the user. "
@@ -676,8 +926,11 @@ class SemanticRouteOutput(BaseModel):
     needs_clarification: bool = Field(
         default=False,
         description=(
-            "True only when a missing/unresolved detail materially changes the answer "
-            "and cannot be resolved from the current message plus conversation context."
+            "True when a missing/unresolved detail materially changes the answer or a supported write payload "
+            "and cannot be resolved from the current message plus conversation context. For ALL persistent Copilot "
+            "writes, operation/language/style/recipient instructions do not count as the domain payload. Progress needs "
+            "actual work details; reflection save needs a specific/resolvable week; reminders need content plus a time/"
+            "specific deadline (or a clear preference category plus enable/disable state); escalation needs the actual incident."
         ),
     )
 
@@ -732,6 +985,26 @@ class RouteDecision(BaseModel):
     referenced_form_number: str | None = None
     retrieval_query: str | None = None
     evidence_mode: EvidenceMode = "none"
+    assistant_action: AssistantAction = "none"
+    action_mode: ActionMode = "inform"
+    action_payload: CopilotActionPayload = Field(default_factory=CopilotActionPayload)
+    missing_action_fields: list[str] = Field(default_factory=list)
+
+    # Follow-up/data-source fields produced by the SAME semantic classifier.
+    # Defaults are important so old Redis route-cache entries and old persisted
+    # pending-action metadata still validate safely after deployment.
+    followup_relation: FollowUpRelation = "new_request"
+    data_source: DataSourceChoice = "none"
+    response_language: ResponseLanguageChoice | None = None
+    session_language_update: bool = False
+    conversation_target: str | None = None
+    user_goal: str = ""
+    speech_act: SpeechActChoice = "other"
+    pending_transition: PendingTransition = "none"
+    response_style: ResponseStyleChoice | None = None
+    persist_response_language: bool = False
+    persist_response_style: bool = False
+
     reason: str
 
     @property
@@ -743,42 +1016,46 @@ class RouteDecision(BaseModel):
         return self.blocked_document_types
 
 
-def route_query_rules(query: str) -> RouteDecision:
-    """Fallback router using deterministic rules with the same domain policy."""
-    normalized = normalize_for_routing(query)
 
-    intent, reason = classify_intent(normalized)
+_ROUTER_WRITE_ACTIONS = {
+    "internship_progress",
+    "weekly_reflection",
+    "smart_notifications",
+    "human_escalation",
+    "grievance_assistant",
+}
 
-    # Defense-in-depth for LLM/API outages: legacy broad writing/advice keywords
-    # must not turn unrelated requests into general_support. Preserve greetings
-    # and all document routes, but narrow general support to the product domains.
-    if intent == "general_support" and not is_allowed_general_support_query(normalized):
-        intent = "out_of_scope"
-        reason = "general support request is outside internship/CV/company scope"
+_ROUTER_RAG_SCOPES = {"internship", "career", "capstone"}
 
-    scope = scope_for_intent(intent)
-    allowed = allowed_document_types_for_scope(scope)
 
-    blocked = [
-        document_type
-        for document_type in ALL_ROUTED_DOCUMENT_TYPES
-        if document_type not in allowed
-    ]
+def normalize_route_contract(route: RouteDecision) -> RouteDecision:
+    """Safety-normalize metadata without re-interpreting user intent.
 
-    return RouteDecision(
-        intent=intent,
-        scope=scope,
-        language="unknown",
-        allowed_document_types=allowed,
-        blocked_document_types=blocked,
-        retrieval_query=(
-            normalize_query(query)
-            if scope in {"internship", "career", "capstone"}
-            else None
-        ),
-        evidence_mode=_fallback_evidence_mode(query, intent, scope),
-        reason=f"rule_fallback: {reason}",
-    )
+    The ONE semantic LLM owns intent, scope, data_source, assistant_action,
+    action_mode, and response language. This layer only removes unauthorized
+    payloads/DB selections; it never maps words or actions to another route.
+    """
+    update: dict[str, object] = {}
+
+    if not (
+        route.intent == "personal_data"
+        and route.scope == "personal"
+        and route.data_source == "personal_db"
+    ):
+        update.update(
+            {
+                "personal_sections": [],
+                "personal_profile_fields": [],
+                "personal_internship_fields": [],
+                "personal_reports_pending_only": False,
+            }
+        )
+
+    if route.data_source != "write_action":
+        update["missing_action_fields"] = []
+
+    return route.model_copy(update=update) if update else route
+
 
 _FORM_CONTEXT_ROUTING_INSTRUCTIONS = """
 FORM RESOURCE / CONTENT ROUTING (IMPORTANT)
@@ -797,9 +1074,22 @@ requested outcome, using both the CURRENT message and recent conversation.
 
 Resolve referenced_form_number from recent conversation when the current message
 uses a contextual reference such as "form đó", "mẫu đó", "cái đó", "nó".
-Never guess. If a resource/content request requires a specific form but neither
-the current message nor recent context identifies it, set needs_clarification=true
-and ask exactly one short question for the missing Form number/name.
+Never guess a Form number.
+
+A Form can also be identified by PURPOSE, problem, procedure, or intended use.
+When the purpose is clear enough for official-document retrieval to identify the
+matching form, DO NOT ask the user to already know the Form number. Instead:
+- intent=form_guidance
+- form_request_mode="resource" when the user wants the actual file/template
+- referenced_form_number=null
+- needs_clarification=false
+- retrieval_query = a concise semantic query describing the requested purpose.
+
+CORRECTION RULE:
+If the current user explicitly corrects/rejects a previous form/entity, the
+rejected item is NOT the target even if its name/number appears in the sentence.
+Use followup_relation="correction" and resolve the NEW target from the user's
+replacement description.
 
 Examples:
 History: user asked about Form 1; current: "mẫu form cơ mà"
@@ -809,9 +1099,16 @@ History: user asked about Form 1; current: "mẫu form cơ mà"
 Current: "Form 2 cần ai ký?"
 => form_request_mode=content, referenced_form_number="2".
 
-Current: "cho tôi mẫu form đó", with no resolvable form in recent context
+Current: "cho tôi mẫu form đó", with no resolvable form AND no described purpose
 => form_request_mode=resource, referenced_form_number=null,
    needs_clarification=true.
+
+History/assistant showed Form 1; current:
+"không phải Form 1, form để báo cáo tôi bị xâm hại"
+=> followup_relation="correction", intent=form_guidance,
+   form_request_mode="resource", referenced_form_number=null,
+   needs_clarification=false, retrieval_query describes the official form used
+   to report the stated grievance/harm concern. Do NOT keep Form 1 as the target.
 
 RETRIEVAL QUERY (IMPORTANT)
 For a document-backed RAG intent, produce exactly ONE concise English
@@ -837,6 +1134,34 @@ semantic merely because the topic is official policy.
 """.strip()
 
 
+def _semantic_router_failure_route(reason: str) -> RouteDecision:
+    """Fail closed instead of guessing intent/language with keyword rules."""
+    return RouteDecision(
+        intent="out_of_scope",
+        scope="out_of_scope",
+        language="unknown",
+        allowed_document_types=[],
+        blocked_document_types=list(ALL_ROUTED_DOCUMENT_TYPES),
+        data_source="none",
+        response_language=None,
+        assistant_action="none",
+        action_mode="inform",
+        reason=f"semantic_router_unavailable: {reason}",
+    )
+
+
+def _semantic_router_clock_context() -> tuple[str, str]:
+    """Supply current product-local time; never interpret user text here."""
+    settings = get_settings()
+    tz_name = getattr(settings, "copilot_timezone", "Asia/Ho_Chi_Minh")
+    try:
+        now = datetime.now(ZoneInfo(tz_name))
+    except Exception:
+        tz_name = "Asia/Ho_Chi_Minh"
+        now = datetime.now(ZoneInfo(tz_name))
+    return now.isoformat(timespec="seconds"), tz_name
+
+
 def _route_query_uncached(
     query: str,
     conversation_context: str = "",
@@ -846,15 +1171,15 @@ def _route_query_uncached(
     normalized = normalize_query(query)
 
     if not normalized:
-        return route_query_rules(query)
+        return _semantic_router_failure_route("empty_query")
 
     settings = get_settings()
 
     if not settings.openai_api_key:
-        logger.debug(
-            "OPENAI_API_KEY is unavailable; using rule router fallback."
+        logger.warning(
+            "OPENAI_API_KEY is unavailable; semantic routing cannot run."
         )
-        return route_query_rules(query)
+        return _semantic_router_failure_route("openai_api_key_unavailable")
 
     try:
         llm = _get_chat_llm(
@@ -866,12 +1191,15 @@ def _route_query_uncached(
             SemanticRouteOutput
         )
 
+        current_local_datetime, current_timezone = _semantic_router_clock_context()
         user_prompt = SEMANTIC_ROUTER_USER_TEMPLATE.format(
             query=query,
             conversation_context=(
                 conversation_context
                 or "No previous conversation."
             ),
+            current_local_datetime=current_local_datetime,
+            current_timezone=current_timezone,
         )
 
         semantic_result = structured_router.invoke(
@@ -901,6 +1229,11 @@ def _route_query_uncached(
                 language="unsupported",
                 allowed_document_types=[],
                 blocked_document_types=list(ALL_ROUTED_DOCUMENT_TYPES),
+                data_source="none",
+                response_language=semantic_result.response_language,
+                session_language_update=False,
+                assistant_action="none",
+                action_mode="inform",
                 reason=(
                     "semantic_language_gate: "
                     f"{semantic_result.reason}"
@@ -908,7 +1241,7 @@ def _route_query_uncached(
             )
 
         intent = semantic_result.intent
-        scope = scope_for_intent(intent)
+        scope = semantic_result.scope
 
         allowed = allowed_document_types_for_scope(
             scope
@@ -927,7 +1260,7 @@ def _route_query_uncached(
             semantic_result.entity,
         )
 
-        return RouteDecision(
+        route = RouteDecision(
             intent=intent,
             scope=scope,
             language=semantic_result.language,
@@ -959,7 +1292,15 @@ def _route_query_uncached(
                 and not semantic_result.needs_clarification
                 and not (
                     intent == "form_guidance"
-                    and semantic_result.form_request_mode in {"resource", "list"}
+                    and (
+                        semantic_result.form_request_mode == "list"
+                        or (
+                            semantic_result.form_request_mode == "resource"
+                            and _canonical_form_number(
+                                semantic_result.referenced_form_number
+                            ) is not None
+                        )
+                    )
                 )
                 else None
             ),
@@ -969,23 +1310,54 @@ def _route_query_uncached(
                 and not semantic_result.needs_clarification
                 and not (
                     intent == "form_guidance"
-                    and semantic_result.form_request_mode in {"resource", "list"}
+                    and (
+                        semantic_result.form_request_mode == "list"
+                        or (
+                            semantic_result.form_request_mode == "resource"
+                            and _canonical_form_number(
+                                semantic_result.referenced_form_number
+                            ) is not None
+                        )
+                    )
                 )
                 else "none"
+            ),
+            assistant_action=semantic_result.assistant_action,
+            action_mode=semantic_result.action_mode,
+            action_payload=semantic_result.action_payload,
+            missing_action_fields=list(semantic_result.missing_action_fields or []),
+            followup_relation=semantic_result.followup_relation,
+            data_source=semantic_result.data_source,
+            response_language=semantic_result.response_language,
+            session_language_update=bool(
+                semantic_result.session_language_update
+            ),
+            conversation_target=(
+                (semantic_result.conversation_target or "").strip() or None
+            ),
+            user_goal=(semantic_result.user_goal or "").strip(),
+            speech_act=semantic_result.speech_act,
+            pending_transition=semantic_result.pending_transition,
+            response_style=semantic_result.response_style,
+            persist_response_language=bool(
+                semantic_result.persist_response_language
+            ),
+            persist_response_style=bool(
+                semantic_result.persist_response_style
             ),
             reason=(
                 "semantic_router: "
                 f"{semantic_result.reason}"
             ),
         )
+        return normalize_route_contract(route)
 
     except Exception as exc:
         logger.warning(
-            "Semantic router failed; using rule fallback: %s",
+            "Semantic router failed; failing closed without keyword routing: %s",
             exc,
         )
-
-        return route_query_rules(query)
+        return _semantic_router_failure_route(type(exc).__name__)
 
 
 
@@ -1002,7 +1374,7 @@ def route_query(
         "model": settings.openai_chat_model or settings.model_name,
         # Bump when routing/domain policy changes so stale Redis decisions cannot
         # bypass a newly tightened scope policy.
-        "routing_policy_version": 6,
+        "routing_policy_version": 44,
     }
 
     cached = redis_cache.get_json(
@@ -1012,7 +1384,9 @@ def route_query(
 
     if cached is not None:
         try:
-            result = RouteDecision.model_validate(cached)
+            result = normalize_route_contract(
+                RouteDecision.model_validate(cached)
+            )
             logger.debug("Redis route cache HIT")
             return result
         except Exception as exc:
@@ -1021,14 +1395,15 @@ def route_query(
                 exc,
             )
 
-    result = _route_query_uncached(
-        query=query,
-        conversation_context=conversation_context,
+    result = normalize_route_contract(
+        _route_query_uncached(
+            query=query,
+            conversation_context=conversation_context,
+        )
     )
 
-    # A rule_fallback may be caused by a temporary LLM/API failure.
-    # Do not cache that degraded result for 30 minutes.
-    if not result.reason.startswith("rule_fallback:"):
+    # Never cache a transient semantic-router failure.
+    if not result.reason.startswith("semantic_router_unavailable:"):
         redis_cache.set_json(
             "route",
             cache_payload,
@@ -1037,171 +1412,6 @@ def route_query(
         )
 
     return result
-
-
-def _should_speculate_rag_preprocessing(
-    query: str,
-) -> bool:
-    """
-    Conservative latency-only hint.
-
-    This NEVER decides the final route. It only decides whether the existing
-    semantic planner may start in parallel with the existing semantic router.
-    Final routing still comes from route_query(), so answer behavior is
-    unchanged even when this hint is wrong.
-    """
-    try:
-        hint = route_query_rules(query)
-    except Exception:
-        return False
-
-    return hint.scope in {
-        "internship",
-        "career",
-        "capstone",
-    }
-
-
-def classify_intent(
-    normalized_query: str,
-) -> tuple[IntentName, str]:
-    """Classify a normalized query using deterministic keyword rules."""
-    if not normalized_query:
-        return "out_of_scope", "empty query"
-
-    if contains_any(normalized_query, CAPSTONE_PATTERNS):
-        return "capstone", "matched capstone keywords"
-
-    if contains_any(normalized_query, CAREER_PATTERNS):
-        return (
-            "career_opportunity",
-            "matched career or opportunity keywords",
-        )
-
-    if contains_any(normalized_query, GRIEVANCE_PATTERNS):
-        return (
-            "internship_grievance",
-            "matched grievance keywords",
-        )
-
-    if contains_any(normalized_query, EVALUATION_PATTERNS):
-        return (
-            "internship_evaluation",
-            "matched evaluation keywords",
-        )
-
-    if contains_any(normalized_query, WITHDRAWAL_PATTERNS):
-        return (
-            "internship_withdrawal",
-            "matched withdrawal keywords",
-        )
-
-    if contains_any(normalized_query, DISMISSAL_PATTERNS):
-        return (
-            "internship_dismissal",
-            "matched dismissal keywords",
-        )
-
-    if contains_any(normalized_query, HEALTH_PATTERNS):
-        return (
-            "health_requirement",
-            "matched health requirement keywords",
-        )
-
-    if contains_any(normalized_query, DURATION_PATTERNS):
-        return (
-            "internship_duration",
-            "matched duration keywords",
-        )
-
-    if contains_any(normalized_query, CREDIT_PATTERNS):
-        return (
-            "internship_credit",
-            "matched credit or grading keywords",
-        )
-
-    if contains_any(normalized_query, ELIGIBILITY_PATTERNS):
-        return (
-            "internship_eligibility",
-            "matched eligibility keywords",
-        )
-
-    if contains_any(normalized_query, REGISTRATION_PATTERNS):
-        return (
-            "internship_registration",
-            "matched registration keywords",
-        )
-
-    if contains_any(normalized_query, RESPONSIBILITY_PATTERNS):
-        return (
-            "student_responsibility",
-            "matched student responsibility keywords",
-        )
-
-    if contains_any(normalized_query, FORM_PATTERNS):
-        return (
-            "form_guidance",
-            "matched form keywords",
-        )
-
-# Conversation — chỉ kiểm tra sau các intent tài liệu cụ thể.
-# Nhờ vậy câu "Chào bạn, cần bao nhiêu giờ thực tập?"
-# vẫn được route thành internship_duration.
-    if (
-        normalized_query in CONVERSATION_EXACT
-        or contains_any(normalized_query, CONVERSATION_PATTERNS)
-    ):
-        return (
-            "conversation",
-            "matched conversational message",
-            )
-        
-
-
-# General support — lời khuyên, viết email/CV, giải thích,
-# hỗ trợ thực tế không cần tra tài liệu chính thức.
-    if contains_any(normalized_query, GENERAL_SUPPORT_PATTERNS):
-        return (
-            "general_support",
-            "matched general support request",
-        )
-
-
-# Generic internship để sau general_support.
-# Ví dụ "Tôi sắp đi thực tập và hơi lo, nên chuẩn bị gì?"
-# không nên bị ép vào RAG chỉ vì có chữ "thực tập".
-    if contains_any(normalized_query, INTERNSHIP_PATTERNS):
-        return (
-            "internship_registration",
-            "matched generic internship keywords",
-        )
-
-    return (
-        "out_of_scope",
-        "no supported routing keywords matched",
-    )
-
-
-def scope_for_intent(intent: IntentName) -> SourceScope:
-    if intent == "personal_data":
-        return "personal"
-
-    if intent == "conversation":
-        return "conversation"
-
-    if intent == "general_support":
-        return "general_support"
-
-    if intent == "career_opportunity":
-        return "career"
-
-    if intent == "capstone":
-        return "capstone"
-
-    if intent == "out_of_scope":
-        return "out_of_scope"   
-
-    return "internship"
 
 
 def allowed_document_types_for_scope(
@@ -1222,360 +1432,6 @@ def allowed_document_types_for_scope(
         return []
 
     return []
-
-
-def normalize_for_routing(query: str) -> str:
-    """Normalize text for deterministic routing."""
-    without_accents = strip_accents(query or "")
-    lowered = without_accents.lower()
-
-    return " ".join(
-        re.findall(r"[a-z0-9.]+", lowered)
-    )
-
-
-def strip_accents(value: str) -> str:
-    """Remove Vietnamese accents and normalize đ/Đ."""
-    value = value.replace("đ", "d").replace("Đ", "D")
-
-    normalized = unicodedata.normalize("NFKD", value)
-
-    return "".join(
-        char
-        for char in normalized
-        if not unicodedata.combining(char)
-    )
-
-def contains_any(
-    text: str,
-    patterns: tuple[str, ...],
-) -> bool:
-    return any(pattern in text for pattern in patterns)
-
-
-## pattern
-CAPSTONE_PATTERNS = (
-    "capstone",
-    "final project",
-    "graduation project",
-)
-
-CAREER_PATTERNS = (
-    "career",
-    "talent handbook",
-    "opportunity",
-    "job",
-    "recruitment",
-    "employer event",
-    "networking",
-)
-
-GRIEVANCE_PATTERNS = (
-    "grievance",
-    "complaint",
-    "incident",
-    "form 3",
-    "khieu nai",
-    "su co",
-    # Tiếng Việt mô tả form theo chức năng
-    "khieu nai thuc tap",
-    "phan anh su co",
-    "bao cao su co",
-    "to cao",
-    "report incident",
-    "unsafe",
-    "khong an toan",
-)
-
-EVALUATION_PATTERNS = (
-    "evaluation",
-    "evaluate",
-    "form 4",
-    "danh gia",
-    # Tiếng Việt
-    "nhan xet cuoi ky",
-    "employer evaluation",
-    "danh gia sinh vien",
-    "danh gia nha tuyen dung",
-    "danh gia giang vien",
-)
-
-WITHDRAWAL_PATTERNS = (
-    "withdrawal",
-    "withdraw",
-    "rut thuc tap",
-    "rut khoi thuc tap",
-    # Tiếng Việt bổ sung
-    "nghi thuc tap",
-    "nghi giua chung",
-    "huy thuc tap",
-    "xin rut",
-)
-
-DISMISSAL_PATTERNS = (
-    "dismissal",
-    "dismiss",
-    "terminate",
-    "termination",
-    "cham dut",
-    # Bổ sung
-    "bi duoi",
-    "bi cho nghi",
-    "cho nghi viec",
-    "cty cho nghi",
-)
-
-HEALTH_PATTERNS = (
-    "health",
-    "medical",
-    "illness",
-    "suc khoe",
-    "benh",
-    # Bổ sung
-    "tiem chung",
-    "vaccination",
-    "kiem tra suc khoe",
-    "health screening",
-    "bao hiem",
-    "insurance",
-)
-
-DURATION_PATTERNS = (
-    "duration",
-    "hour",
-    "hours",
-    "week",
-    "weeks",
-    "full time",
-    "part time",
-    "bao nhieu gio",
-    "thoi luong",
-    "thoi gian thuc tap",
-    # Bổ sung
-    "so gio",
-    "gio thuc tap",
-    "tuan thuc tap",
-    "thoi gian lam viec",
-    "full-time",
-    "part-time",
-    "ban thoi gian",
-    "toan thoi gian",
-)
-
-CREDIT_PATTERNS = (
-    "credit",
-    "credits",
-    "grading",
-    "pass fail",
-    "tin chi",
-    "diem",
-    # Bổ sung
-    "credit-bearing",
-    "bang diem",
-    "ket qua hoc tap",
-    "xet tin chi",
-)
-
-ELIGIBILITY_PATTERNS = (
-    "eligibility",
-    "eligible",
-    "requirement",
-    "requirements",
-    "prerequisite",
-    "gpa",
-    "qualify",
-    "dieu kien",
-    # Bổ sung
-    "dieu kien tham gia",
-    "dieu kien dang ky",
-    "tieu chuan",
-    "du dieu kien",
-    "foundation course",
-    "orientation",
-)
-
-REGISTRATION_PATTERNS = (
-    "registration",
-    "register",
-    "request form",
-    "irf",
-    "form 1",
-    "approval",
-    "application",
-    "dang ky",
-    # Bổ sung
-    "dang ky thuc tap",
-    "nop don",
-    "xin phep thuc tap",
-    "internship request",
-)
-
-RESPONSIBILITY_PATTERNS = (
-    "responsibility",
-    "responsibilities",
-    "duty",
-    "duties",
-    "faculty mentor",
-    "supervisor",
-    "academic supervisor",
-    "industry supervisor",
-    "student must",
-    "student should",
-    "trach nhiem",
-    # Bổ sung
-    "nhiem vu sinh vien",
-    "giang vien huong dan",
-    "nguoi giam sat",
-)
-
-FORM_PATTERNS = (
-    "form",
-    "agreement",
-    "liability",
-    "hold harmless",
-    "form 2",
-    "bieu mau",
-    # Bổ sung: câu hỏi về form theo chức năng/mô tả
-    "mau don",
-    "to khai",
-    "don tu",
-    "ho so",
-    "nop form",
-    "dien form",
-    "bieu mau nao",
-    "form nao",
-    "su dung form",
-    "release of liability",
-    "hold harmless agreement",
-)
-
-INTERNSHIP_PATTERNS = (
-    "internship",
-    "intern",
-    "thuc tap",
-)
-CONVERSATION_PATTERNS = (
-    "xin chao",
-    "chao ban",
-    "chao chatbot",
-    "chao bot",
-    "hello",
-    "hello there",
-    "hey there",
-    "good morning",
-    "good afternoon",
-    "good evening",
-    "cam on",
-    "thank you",
-    "thanks",
-    "tam biet",
-    "goodbye",
-    "see you",
-
-    # Hỏi về chatbot / khả năng hỗ trợ
-    "ban la ai",
-    "ban lam duoc gi",
-    "ban co the lam gi",
-    "ban ho tro gi",
-    "ban co the ho tro gi",
-    "toi co the hoi gi",
-    "what can you do",
-    "what can you help with",
-    "how can you help",
-)
-
-CONVERSATION_EXACT = {
-    "hi",
-    "hey",
-    "hello",
-    "chao",
-    "alo",
-    "bye",
-    "thanks",
-}
-ALLOWED_GENERAL_SUPPORT_DOMAIN_PATTERNS = (
-    # Internship / internship workplace support
-    "thuc tap", "internship", "intern", "noi thuc tap", "ky thuc tap",
-    "supervisor", "mentor", "workplace", "noi lam viec",
-
-    # CV / resume and matching
-    "cv", "resume", "curriculum vitae", "matching cv", "match cv",
-    "cv matching", "cv match", "job description", "jd",
-
-    # Company/employer matching and internship/job-seeking communication
-    "cong ty", "doanh nghiep", "company", "employer", "recruiter",
-    "nha tuyen dung", "ung tuyen", "apply", "application", "job",
-    "viec lam", "vi tri", "position", "role", "phong van", "interview",
-)
-
-
-def is_allowed_general_support_query(normalized_query: str) -> bool:
-    """Return True only for the intentionally supported general-help domains.
-
-    This helper is used only by the deterministic fallback. The semantic router
-    remains authoritative when available and is instructed to judge the real
-    requested outcome rather than keyword presence.
-    """
-    return contains_any(normalized_query, ALLOWED_GENERAL_SUPPORT_DOMAIN_PATTERNS)
-
-
-GENERAL_SUPPORT_PATTERNS = (
-    "giup toi viet",
-    "giup minh viet",
-    "viet email",
-    "viet mail",
-    "soan email",
-    "soan tin nhan",
-    "viet cv",
-    "sua cv",
-    "review cv",
-    "chuan bi cv",
-    "toi nen lam gi",
-    "minh nen lam gi",
-    "nen lam gi",
-    "toi nen chuan bi",
-    "minh nen chuan bi",
-    "nen chuan bi gi",
-    "toi dang lo",
-    "toi hoi lo",
-    "minh dang lo",
-    "lo lang",
-    "cho toi loi khuyen",
-    "cho minh loi khuyen",
-    "giai thich giup",
-    "giai thich cho toi",
-    "giup toi hieu",
-    "help me write",
-    "write an email",
-    "write a message",
-    "help with my cv",
-    "review my cv",
-    "what should i do",
-    "what should i prepare",
-    "i am worried",
-    "advice",
-    # Câu hỏi tổng quan / giới thiệu — sinh viên mới
-    "sinh vien moi",
-    "lan dau di thuc tap",
-    "chua di thuc tap",
-    "chuan bi tim noi thuc tap",
-    "nen biet gi ve thuc tap",
-    "thuc tap o vin nhu nao",
-    "moi truong lam viec",
-    "van hoa cong ty",
-    "kinh nghiem thuc tap",
-    "loi khuyen thuc tap",
-    "cho minh biet ve thuc tap",
-    "gioi thieu ve thuc tap",
-    "tong quan thuc tap",
-    "hay cho toi biet",
-    "hay cho minh biet",
-    "tell me about",
-    "give me an overview",
-    "introduce internship",
-    "what is internship like",
-)
-
 
 
 def _serialize_retrieval_result(
@@ -1718,12 +1574,23 @@ class QueryPipeline:
         """Execute the full online RAG query pipeline."""
         opts = options_override or self.options
         t0 = time.perf_counter()
+        runtime_settings = get_settings()
 
         def raise_if_cancelled() -> None:
             if should_cancel is not None and should_cancel():
                 raise StreamingCancelled("Streaming client disconnected")
 
-        def emit_status(phase: str, route_decision=None) -> None:
+        def emit_status(
+            phase: str,
+            route_decision=None,
+            *,
+            step_id: str | None = None,
+            step_status: str = "running",
+            engine: str | None = None,
+            model: str | None = None,
+            detail: str | None = None,
+            metrics: dict | None = None,
+        ) -> None:
             if on_status is None:
                 return
             metadata = {
@@ -1734,19 +1601,30 @@ class QueryPipeline:
                     in {"internship", "career", "capstone"}
                 ),
             }
+            if step_id is not None:
+                metadata["step"] = {
+                    "id": step_id,
+                    "status": step_status,
+                    "engine": engine,
+                    "model": model,
+                    "detail": detail,
+                    "metrics": metrics or {},
+                }
             on_status(phase, metadata)
 
         raise_if_cancelled()
-        query_language = detect_query_language(query)
 
+        session_language = (
+            memory.get_response_language_hint()
+            if memory is not None
+            else None
+        )
         answer_language: AnswerLanguage = (
             opts.answer_language
             if opts.answer_language is not None
-            else (
-                "en"
-                if query_language == "en"
-                else "vi"
-            )
+            else session_language
+            if session_language in {"vi", "en"}
+            else "vi"
         )
 
         # ------------------------------------------------------------------
@@ -1765,8 +1643,16 @@ class QueryPipeline:
                 reason="guardrail_blocked",
                 language=answer_language,
                 guardrail_reason=guardrail.reason,
-                latency_ms=_elapsed_ms(t0), 
+                latency_ms=_elapsed_ms(t0),
             )
+
+        emit_status(
+            "thinking",
+            step_id="safety",
+            step_status="completed",
+            engine="Internova Guardrails",
+            detail="input_safe",
+        )
 
         # ------------------------------------------------------------------
         # Conversation history
@@ -1776,71 +1662,15 @@ class QueryPipeline:
             if memory
             else ""
         )
-        # Resolve conversational references for routing/retrieval only.
-        # The original `query` is still used when generating the answer.
-        contextual_query = (
-            memory.resolve_followup_query(query)
-            if memory
-            else query
-        )
-
-        explicit_form_match = re.search(
-            r"\bform\s*[-_#:]?\s*(\d+(?:\.\d+)?)\b",
-            contextual_query or "",
-            flags=re.IGNORECASE,
-        )
-        explicit_form_request = explicit_form_match is not None
-        normalized_form_query = unicodedata.normalize(
-            "NFKD",
-            (contextual_query or "").lower(),
-        )
-        normalized_form_query = "".join(
-            char
-            for char in normalized_form_query
-            if not unicodedata.combining(char)
-        )
-        normalized_form_query = (
-            normalized_form_query
-            .replace("đ", "d")
-        )
-        normalized_form_query = " ".join(
-            normalized_form_query.split()
-        )
-
-        generic_form_listing_request = (
-            "form" in normalized_form_query
-            and any(
-                phrase in normalized_form_query
-                for phrase in (
-                    "tat ca form",
-                    "tat ca cac form",
-                    "toan bo form",
-                    "toan bo cac form",
-                    "cac form",
-                    "danh sach form",
-                    "liet ke form",
-                    "nhung form nao",
-                    "nhung form gi",
-                    "co nhung form gi",
-                    "cac form nao",
-                    "form gi",
-                    "bao nhieu form",
-                    "all forms",
-                    "all the forms",
-                    "list forms",
-                    "which forms",
-                    "what forms",
-                )
-            )
-        )
+        # Semantic routing owns follow-up/reference resolution.
+        contextual_query = query
 
         # ------------------------------------------------------------------
         # Step 2: Semantic brain (one classifier call)
         # ------------------------------------------------------------------
-        # The semantic router now owns intent/scope/language/clarification, Form
-        # resource intent, ONE retrieval query, and evidence complexity. The old
-        # separate semantic query-planner LLM is intentionally removed from the
-        # normal request path.
+        # The semantic router owns intent, scope, language, follow-up relation,
+        # Form identity/purpose, datasource, Copilot action, retrieval query,
+        # clarification, and write payload. No regex/entity rule rewrites it.
         route_started = time.perf_counter()
 
         route = (
@@ -1854,92 +1684,27 @@ class QueryPipeline:
             )
         )
 
-        # API pre-routing may not have the full session window. Refresh only when
-        # the result is missing context-critical information. Ordinary requests do
-        # not pay for a second classifier call.
-        if (
-            precomputed_route is not None
-            and conversation_history
-            and (
-                route.needs_clarification
-                or (
-                    route.intent == "form_guidance"
-                    and route.form_request_mode in {"content", "resource"}
-                    and not _canonical_form_number(route.referenced_form_number)
-                )
-                or (
-                    route.scope in {"internship", "career", "capstone"}
-                    and route.form_request_mode not in {"resource", "list"}
-                    and not normalize_query(route.retrieval_query or "")
-                )
-            )
-        ):
-            route = observed_call(
-                "rag.route_context_refresh",
-                route_query,
-                query=query,
-                conversation_context=conversation_history,
-            )
-
         route_ms = _stage_ms(route_started)
         planner_wait_ms = 0.0
 
-        # Form requests are a deterministic internship-domain operation.
-        # Do not allow a vague follow-up or inventory request to be routed to
-        # conversation/general_support/out_of_scope before retrieval can run.
-        if explicit_form_request or generic_form_listing_request:
-            explicit_number = (
-                explicit_form_match.group(1)
-                if explicit_form_match is not None
-                else None
-            )
-            route = route.model_copy(
-                update={
-                    "intent": "form_guidance",
-                    "scope": "internship",
-                    "language": (
-                        route.language
-                        if route.language in {"vi", "en"}
-                        else detect_query_language(query)
-                    ),
-                    "allowed_document_types": list(
-                        INTERNSHIP_DOCUMENT_TYPES
-                    ),
-                    "blocked_document_types": [
-                        document_type
-                        for document_type in ALL_ROUTED_DOCUMENT_TYPES
-                        if document_type not in INTERNSHIP_DOCUMENT_TYPES
-                    ],
-                    # Keep semantic distinction between asking ABOUT a form and
-                    # asking for the actual file. Only fill missing form number
-                    # deterministically when "Form N" is explicit.
-                    "referenced_form_number": (
-                        _canonical_form_number(
-                            route.referenced_form_number
-                        )
-                        or explicit_number
-                    ),
-                    "form_request_mode": (
-                        "list"
-                        if generic_form_listing_request
-                        else route.form_request_mode
-                    ),
-                    "evidence_mode": (
-                        "none"
-                        if generic_form_listing_request
-                        else route.evidence_mode
-                    ),
-                    "retrieval_query": (
-                        None
-                        if generic_form_listing_request
-                        else route.retrieval_query
-                    ),
-                    "reason": (
-                        "deterministic_form_context: "
-                        + route.reason
-                    ),
-                }
-            )
+        semantic_form_number = (
+            _canonical_form_number(route.referenced_form_number)
+            if route.intent == "form_guidance"
+            else None
+        )
+        semantic_explicit_form_request = bool(
+            route.intent == "form_guidance"
+            and route.form_request_mode in {"content", "resource"}
+            and semantic_form_number
+        )
+        semantic_form_listing_request = bool(
+            route.intent == "form_guidance"
+            and route.form_request_mode == "list"
+        )
+        isolated_form_request = (
+            semantic_explicit_form_request
+            or semantic_form_listing_request
+        )
 
         logger.debug(
             "Route: intent=%s scope=%s",
@@ -1949,10 +1714,46 @@ class QueryPipeline:
 
         raise_if_cancelled()
         emit_status(
+            "thinking",
+            route,
+            step_id="routing",
+            step_status="completed",
+            engine="Semantic Router",
+            model=(
+                runtime_settings.openai_chat_model
+                or runtime_settings.model_name
+            ),
+            detail="route_selected",
+            metrics={
+                "intent": route.intent,
+                "scope": route.scope,
+            },
+        )
+        emit_status(
             "retrieving"
             if route.scope in {"internship", "career", "capstone"}
             else "thinking",
             route,
+            step_id=(
+                "query_planning"
+                if route.scope in {"internship", "career", "capstone"}
+                else "generation"
+            ),
+            step_status="running",
+            engine=(
+                "RAG Query Planner"
+                if route.scope in {"internship", "career", "capstone"}
+                else "Answer Generator"
+            ),
+            model=(
+                runtime_settings.openai_chat_model
+                or runtime_settings.model_name
+            ),
+            detail=(
+                "planning_search"
+                if route.scope in {"internship", "career", "capstone"}
+                else "generating_direct_answer"
+            ),
         )
 
 # ------------------------------------------------------------------
@@ -1988,19 +1789,53 @@ class QueryPipeline:
             )
 
         # ------------------------------------------------------------------
-# Semantic language gate
+# Semantic language/session gate
 # ------------------------------------------------------------------
+        if (
+            opts.answer_language is None
+            and getattr(route, "response_language", None) in {"vi", "en"}
+        ):
+            answer_language = getattr(route, "response_language")
+
+        if memory is not None:
+            memory.apply_semantic_route(route)
+
+        if route.reason.startswith("semantic_router_unavailable:"):
+            answer = (
+                "Mình chưa thể hiểu yêu cầu này vì bộ phân loại ngữ nghĩa đang tạm thời không khả dụng. "
+                "Hệ thống đã dừng an toàn và không tự đoán ý định bằng từ khóa."
+                if answer_language == "vi"
+                else
+                "I can't understand this request right now because semantic routing is temporarily unavailable. "
+                "The system stopped safely instead of guessing intent from keywords."
+            )
+            return QueryResult(
+                query=query,
+                answer=answer,
+                answer_status="out_of_scope",
+                answer_language=answer_language,
+                confidence=0.0,
+                sources=[],
+                route_intent=route.intent,
+                route_scope=route.scope,
+                guardrail_passed=True,
+                guardrail_reason="semantic_router_unavailable",
+                cache_hit=False,
+                groundedness_status="skip",
+                groundedness_reason="semantic_router_unavailable",
+                latency_ms=_elapsed_ms(t0),
+            )
+
         if route.language == "unsupported":
             return QueryResult(
                 query=query,
                 answer=(
-                    "Hiện tại tôi chỉ hỗ trợ tiếng Việt hoặc tiếng Anh. "
-                    "Vui lòng đặt lại câu hỏi bằng một trong hai ngôn ngữ này.\n\n"
-                    "Internova AI currently supports Vietnamese and English only. "
-                    "Please ask your question again in one of these languages."
+                    "Hiện tại mình hỗ trợ hội thoại bằng tiếng Việt và tiếng Anh."
+                    if answer_language == "vi"
+                    else "I currently support conversations in Vietnamese and English."
                 ),
                 answer_status="out_of_scope",
-                answer_language="vi",
+                answer_language=answer_language,
                 confidence=0.0,
                 sources=[],
                 route_intent="out_of_scope",
@@ -2016,13 +1851,6 @@ class QueryPipeline:
         latency_ms=_elapsed_ms(t0),
     )
 
-        if route.language == "unknown":
-            route.language = "vi"
-        if (
-            opts.answer_language is None
-            and route.language in {"vi", "en"}
-        ):
-            answer_language = route.language
 
         # ------------------------------------------------------------------
         # Semantic Form resource routing
@@ -2033,23 +1861,9 @@ class QueryPipeline:
             route.referenced_form_number
         )
 
-        # Fail closed if the user wants one actual form file but the semantic
-        # router could not resolve WHICH form. Do not guess from retrieval ranks.
-        if (
-            route.intent == "form_guidance"
-            and route.form_request_mode == "resource"
-            and not semantic_form_number
-        ):
-            route = route.model_copy(
-                update={
-                    "needs_clarification": True,
-                    "clarification_question": (
-                        "Bạn muốn lấy mẫu Form nào?"
-                        if answer_language == "vi"
-                        else "Which Form would you like me to provide?"
-                    ),
-                }
-            )
+        # Resource requests may identify a Form by purpose instead of number.
+        # Clarification is controlled by the semantic router; do not force the
+        # student to know a Form number when official documents can identify it.
 
         # ------------------------------------------------------------------
         # Clarification gate: if the semantic router cannot safely resolve a
@@ -2105,7 +1919,13 @@ class QueryPipeline:
         # semantic router has already established that the user wants the file.
         if (
             route.intent == "form_guidance"
-            and route.form_request_mode in {"resource", "list"}
+            and (
+                route.form_request_mode == "list"
+                or (
+                    route.form_request_mode == "resource"
+                    and semantic_form_number is not None
+                )
+            )
         ):
             raise_if_cancelled()
             emit_status("answering", route)
@@ -2243,7 +2063,18 @@ class QueryPipeline:
                 latency_ms=_elapsed_ms(t0),
             )
 
-        if route.scope == "conversation":
+        route_data_source = getattr(route, "data_source", "none")
+
+        if (
+            (
+                route.scope == "conversation"
+                and route_data_source in {"none", "conversation"}
+            )
+            or (
+                route.scope == "general_support"
+                and route_data_source == "conversation"
+            )
+        ):
             raise_if_cancelled()
             emit_status("answering", route)
             conversational = generate_conversation_answer(
@@ -2252,6 +2083,8 @@ class QueryPipeline:
                 conversation_history=conversation_history,
                 on_token=on_token,
                 should_cancel=should_cancel,
+                user_goal=getattr(route, "user_goal", ""),
+                response_style=getattr(route, "response_style", None),
             )
 
             if memory:
@@ -2280,15 +2113,21 @@ class QueryPipeline:
 # ------------------------------------------------------------------
 # General support: trả lời trực tiếp, không chạy RAG
 # ------------------------------------------------------------------
-        if route.scope == "general_support":
+        if (
+            route.scope == "general_support"
+            and route_data_source == "none"
+        ):
             raise_if_cancelled()
             emit_status("answering", route)
             support_answer = generate_general_support_answer(
                 query=query,
                 answer_language=answer_language,
                 conversation_history=conversation_history,
+                assistant_action=route.assistant_action,
                 on_token=on_token,
                 should_cancel=should_cancel,
+                user_goal=getattr(route, "user_goal", ""),
+                response_style=getattr(route, "response_style", None),
             )
 
             if memory:
@@ -2360,30 +2199,105 @@ class QueryPipeline:
                 groundedness_reason="out_of_scope",
                 latency_ms=_elapsed_ms(t0),
             )
-        
+
 # ------------------------------------------------------------------
 # Step 3: Build ONE retrieval query from the semantic brain
 # ------------------------------------------------------------------
+        if not (
+            getattr(route, "data_source", "none") == "rag"
+            and route.scope in {"internship", "career", "capstone"}
+        ):
+            answer = (
+                "Mình chưa thể hoàn tất yêu cầu này ở lượt hiện tại. "
+                "Chưa có thao tác hoặc thay đổi dữ liệu nào được thực hiện."
+                if answer_language == "vi"
+                else
+                "I couldn't complete this request on the current turn. "
+                "No action or data change was performed."
+            )
+            return QueryResult(
+                query=query,
+                answer=answer,
+                answer_status="out_of_scope",
+                answer_language=answer_language,
+                confidence=0.0,
+                sources=[],
+                route_intent=route.intent,
+                route_scope=route.scope,
+                guardrail_passed=True,
+                guardrail_reason="semantic_route_inconsistent",
+                cache_hit=False,
+                groundedness_status="skip",
+                groundedness_reason="semantic_route_inconsistent",
+                latency_ms=_elapsed_ms(t0),
+            )
+
         raise_if_cancelled()
-        expanded = _build_route_retrieval_expansion(
+        planner_started = time.perf_counter()
+        expanded = observed_call(
+            "rag.query_plan",
+            _build_route_retrieval_expansion,
             query=query,
             contextual_query=contextual_query,
             route=route,
-            conversation_context=conversation_history,
+            conversation_context=(
+                ""
+                if isolated_form_request
+                else conversation_history
+            ),
+            use_semantic_planner=opts.use_semantic_query_planner,
             use_openai_translation=opts.use_openai_translation,
         )
 
+        planner_wait_ms = _stage_ms(planner_started)
+
+        emit_status(
+            "retrieving",
+            route,
+            step_id="query_planning",
+            step_status="completed",
+            engine="RAG Query Planner",
+            model=(
+                runtime_settings.openai_chat_model
+                or runtime_settings.model_name
+                if expanded.used_openai
+                else None
+            ),
+            detail="search_plan_ready",
+            metrics={
+                "query_count": len(expanded.search_queries),
+                "duration_ms": round(planner_wait_ms, 1),
+            },
+        )
+
+        logger.debug(
+            "Search queries: %s",
+            expanded.search_queries,
+        )
+
         retrieval_query = (
-            expanded.query_en
-            or expanded.normalized_query
-            or contextual_query
-            or query
+            (
+                expanded.normalized_query
+                or contextual_query
+                or query
+            )
+            if isolated_form_request
+            else (
+                expanded.query_en
+                or expanded.normalized_query
+                or contextual_query
+                or query
+            )
         )
 
         logger.debug(
             "Retrieval query mode=%s query=%s",
             "semantic_brain" if route.retrieval_query else "fallback",
             retrieval_query,
+        )
+        logger.debug(
+            "Query processing mode=%s",
+            "semantic" if expanded.used_openai else "legacy_fallback",
         )
 
         # ------------------------------------------------------------------
@@ -2407,6 +2321,15 @@ class QueryPipeline:
         }
 
         retrieval_started = time.perf_counter()
+        emit_status(
+            "retrieving",
+            route,
+            step_id="retrieval",
+            step_status="running",
+            engine="Hybrid Search (Vector + BM25)",
+            model=runtime_settings.openai_embedding_model,
+            detail="searching_knowledge_base",
+        )
         cached_retrieval = redis_cache.get_json(
             "retrieval",
             retrieval_cache_payload,
@@ -2456,9 +2379,42 @@ class QueryPipeline:
 
         retrieval_ms = _stage_ms(retrieval_started)
 
+        emit_status(
+            "retrieving",
+            route,
+            step_id="retrieval",
+            step_status="completed",
+            engine="Hybrid Search (Vector + BM25)",
+            model=runtime_settings.openai_embedding_model,
+            detail=(
+                "retrieval_cache_hit"
+                if cached_retrieval is not None
+                else "knowledge_matches_found"
+            ),
+            metrics={
+                "vector_hits": len(retrieval_result.vector_hits),
+                "bm25_hits": len(retrieval_result.bm25_hits),
+                "combined_hits": len(fused_hits),
+                "duration_ms": round(retrieval_ms, 1),
+            },
+        )
+
         # ------------------------------------------------------------------
         # Step 5: Rerank
         # ------------------------------------------------------------------
+        emit_status(
+            "retrieving",
+            route,
+            step_id="reranking",
+            step_status="running",
+            engine=(
+                "Semantic Reranker"
+                if opts.use_reranker
+                else "Local Relevance Ranker"
+            ),
+            model=(runtime_settings.rerank_model if opts.use_reranker else None),
+            detail="ranking_relevant_passages",
+        )
         rerank_result = observed_call(
             "rag.rerank",
             rerank_hits,
@@ -2467,7 +2423,7 @@ class QueryPipeline:
             # entities from previous turns.
             query=(
                 contextual_query
-                if explicit_form_request or generic_form_listing_request
+                if semantic_explicit_form_request or semantic_form_listing_request
                 else retrieval_query
             ),
             hits=fused_hits,
@@ -2484,8 +2440,8 @@ class QueryPipeline:
         # For an explicit "Form N" request, never allow another form to survive
         # into evidence/generation. For an "all forms" request, keep one
         # representative chunk per form so the UI can show one source per file.
-        if explicit_form_request and explicit_form_match is not None:
-            requested_form_number = explicit_form_match.group(1)
+        if semantic_explicit_form_request and semantic_form_number is not None:
+            requested_form_number = semantic_form_number
             exact_form_hits = _filter_hits_for_form_number(
                 final_hits,
                 requested_form_number,
@@ -2502,13 +2458,56 @@ class QueryPipeline:
             if exact_form_hits:
                 final_hits = exact_form_hits[:opts.top_k_rerank]
 
-        elif generic_form_listing_request:
+        elif semantic_form_listing_request:
             form_listing_hits = _one_hit_per_form(
                 fused_hits,
                 max_hits=opts.top_k_rerank,
             )
             if form_listing_hits:
                 final_hits = form_listing_hits
+
+        emit_status(
+            "retrieving",
+            route,
+            step_id="reranking",
+            step_status="completed",
+            engine=(
+                "Semantic Reranker"
+                if opts.use_reranker
+                else "Local Relevance Ranker"
+            ),
+            model=(runtime_settings.rerank_model if opts.use_reranker else None),
+            detail="relevant_passages_selected",
+            metrics={"selected_passages": len(final_hits)},
+        )
+
+        if on_status is not None:
+            on_status(
+                "retrieving",
+                {
+                    "route_intent": route.intent,
+                    "route_scope": route.scope,
+                    "needs_retrieval": True,
+                    "step": {
+                        "id": "references",
+                        "status": "completed",
+                        "engine": "Reference Selector",
+                        "model": None,
+                        "detail": "candidate_references_selected",
+                        "metrics": {"references": len(final_hits)},
+                        "references": [
+                            {
+                                "document_name": hit.chunk.document_name,
+                                "document_type": hit.chunk.document_type,
+                                "page": hit.chunk.page,
+                                "section": hit.chunk.section,
+                                "chunk_id": hit.chunk_id,
+                            }
+                            for hit in final_hits[:5]
+                        ],
+                    },
+                },
+            )
 
         raise_if_cancelled()
 
@@ -2535,10 +2534,28 @@ class QueryPipeline:
         # ------------------------------------------------------------------
         raise_if_cancelled()
         evidence_started = time.perf_counter()
+        emit_status(
+            "thinking",
+            route,
+            step_id="evidence",
+            step_status="running",
+            engine="Evidence Validator",
+            model=(
+                runtime_settings.openai_chat_model
+                or runtime_settings.model_name
+            ),
+            detail="checking_source_support",
+        )
         requested_evidence_mode = (
             route.evidence_mode
             if route.evidence_mode in {"fast", "semantic"}
-            else _fallback_evidence_mode(query, route.intent, route.scope)
+            else "semantic"
+        )
+
+        evidence_conversation_context = (
+            ""
+            if isolated_form_request
+            else conversation_history
         )
 
         if requested_evidence_mode == "fast":
@@ -2565,7 +2582,7 @@ class QueryPipeline:
                     query=query,
                     hits=final_hits,
                     route=route,
-                    conversation_context=conversation_history,
+                    conversation_context=evidence_conversation_context,
                 )
         else:
             # Complex RAG keeps exactly ONE semantic evidence call. If that call
@@ -2577,10 +2594,27 @@ class QueryPipeline:
                 query=query,
                 hits=final_hits,
                 route=route,
-                conversation_context=conversation_history,
+                conversation_context=evidence_conversation_context,
             )
 
         evidence_ms = _stage_ms(evidence_started)
+        emit_status(
+            "thinking",
+            route,
+            step_id="evidence",
+            step_status="completed",
+            engine="Evidence Validator",
+            model=(
+                runtime_settings.openai_chat_model
+                or runtime_settings.model_name
+            ),
+            detail="source_support_checked",
+            metrics={
+                "evidence_status": evidence.evidence_status,
+                "supported_passages": len(evidence.used_chunk_ids),
+                "duration_ms": round(evidence_ms, 1),
+            },
+        )
         evidence_chunk_ids = set(evidence.used_chunk_ids)
 
         evidence_hits = [
@@ -2598,7 +2632,18 @@ class QueryPipeline:
         # Step 8: Generate answer
         # ------------------------------------------------------------------
         raise_if_cancelled()
-        emit_status("answering", route)
+        emit_status(
+            "answering",
+            route,
+            step_id="generation",
+            step_status="running",
+            engine="Answer Generator",
+            model=(
+                runtime_settings.openai_chat_model
+                or runtime_settings.model_name
+            ),
+            detail="generating_grounded_answer",
+        )
         # Production safety: stream document-backed RAG text only after the
         # existing pre-generation evidence gate reports sufficient support.
         # Partial-evidence answers keep the exact same final behavior but are
@@ -2622,15 +2667,43 @@ class QueryPipeline:
             conversation_history=conversation_history,
             on_token=rag_on_token,
             should_cancel=should_cancel,
+            user_goal=getattr(route, "user_goal", ""),
+            response_style=getattr(route, "response_style", None),
         )
 
         generation_ms = _stage_ms(generation_started)
         raise_if_cancelled()
 
+        emit_status(
+            "thinking",
+            route,
+            step_id="generation",
+            step_status="completed",
+            engine="Answer Generator",
+            model=(
+                runtime_settings.openai_chat_model
+                or runtime_settings.model_name
+            ),
+            detail="draft_answer_ready",
+            metrics={"duration_ms": round(generation_ms, 1)},
+        )
+
         # ------------------------------------------------------------------
         # Step 9: Groundedness
         # ------------------------------------------------------------------
         groundedness_started = time.perf_counter()
+        emit_status(
+            "thinking",
+            route,
+            step_id="verification",
+            step_status="running",
+            engine="Groundedness Checker",
+            model=(
+                runtime_settings.openai_chat_model
+                or runtime_settings.model_name
+            ),
+            detail="verifying_answer_against_sources",
+        )
         groundedness = observed_call(
             "rag.groundedness",
             check_groundedness,
@@ -2645,6 +2718,22 @@ class QueryPipeline:
             groundedness,
         )
         groundedness_ms = _stage_ms(groundedness_started)
+        emit_status(
+            "answering",
+            route,
+            step_id="verification",
+            step_status="completed",
+            engine="Groundedness Checker",
+            model=(
+                runtime_settings.openai_chat_model
+                or runtime_settings.model_name
+            ),
+            detail="answer_verification_complete",
+            metrics={
+                "groundedness_status": groundedness.status,
+                "duration_ms": round(groundedness_ms, 1),
+            },
+        )
 
         # Nếu groundedness fail thì trả fallback luôn.
         if final_answer.answer_status != "answered":
@@ -2688,6 +2777,37 @@ class QueryPipeline:
             for source in final_answer.sources
         ]
 
+        # If the user requested an actual Form by PURPOSE (not by known number),
+        # normal RAG identifies the matching official Form. Expose preview/download
+        # only for Form sources actually selected by the grounded answer.
+        if (
+            route.intent == "form_guidance"
+            and route.form_request_mode == "resource"
+            and semantic_form_number is None
+        ):
+            enriched_sources: list[dict] = []
+            seen_form_files: set[str] = set()
+            for source in sources_dicts:
+                item = dict(source)
+                form_number = _document_form_number(
+                    str(item.get("document_name") or "")
+                )
+                if form_number:
+                    file_key = str(item.get("document_name") or "").lower()
+                    if file_key in seen_form_files:
+                        continue
+                    seen_form_files.add(file_key)
+                    form_id = f"form-{form_number}"
+                    item["file_name"] = item.get("document_name")
+                    item["preview_url"] = (
+                        f"/api/v1/documents/forms/{form_id}/preview"
+                    )
+                    item["download_url"] = (
+                        f"/api/v1/documents/forms/{form_id}/download"
+                    )
+                enriched_sources.append(item)
+            sources_dicts = enriched_sources
+
         # Internally, groundedness may need multiple chunks from one file.
         # The user-facing source list should represent files, not chunks.
         # Therefore:
@@ -2695,13 +2815,13 @@ class QueryPipeline:
         # - "all forms" => one source card per Form 1/2/3/4 file
         # This runs only after groundedness has passed, so validation quality is
         # not weakened by the UI deduplication.
-        if explicit_form_request and explicit_form_match is not None:
+        if semantic_explicit_form_request and semantic_form_number is not None:
             sources_dicts = _collapse_form_sources_for_ui(
                 sources_dicts,
-                requested_form_number=explicit_form_match.group(1),
+                requested_form_number=semantic_form_number,
                 all_forms=False,
             )
-        elif generic_form_listing_request:
+        elif semantic_form_listing_request:
             sources_dicts = _collapse_form_sources_for_ui(
                 sources_dicts,
                 requested_form_number=None,
@@ -2825,49 +2945,36 @@ def _build_route_retrieval_expansion(
     contextual_query: str,
     route: RouteDecision,
     conversation_context: str,
+    use_semantic_planner: bool,
     use_openai_translation: bool,
 ) -> QueryExpansionResult:
-    """Build a single retrieval query without a second semantic-planner LLM.
-
-    Normal path: use `route.retrieval_query`, which was produced by the same
-    semantic brain that classified the request. Fallback path: use the existing
-    bilingual translator only when the semantic router did not provide a query.
-    """
+    """Use retrieval intent produced by the SAME semantic-router call."""
     normalized_current = normalize_query(query)
     normalized_contextual = normalize_query(contextual_query) or normalized_current
-    language = detect_query_language(normalized_current)
     semantic_query = normalize_query(route.retrieval_query or "")
+    fallback_query = normalize_query(route.user_goal or "") or normalized_contextual
+    search_query = semantic_query or fallback_query
 
-    if semantic_query:
-        return QueryExpansionResult(
-            original_query=query,
-            normalized_query=normalized_contextual,
-            query_language=language,
-            query_vi=(normalized_current if language == "vi" else None),
-            query_en=semantic_query,
-            search_queries=[semantic_query],
-            used_openai=True,
-            warnings=[],
-        )
-
-    # Safe degraded mode when routing fell back or a transient model response did
-    # not contain retrieval_query. This is not the normal production path.
-    fallback = build_bilingual_queries(
-        normalized_contextual,
-        use_openai=use_openai_translation,
-        conversation_context=conversation_context,
-    )
-    fallback_query = (
-        normalize_query(fallback.query_en or "")
-        or normalize_query(fallback.normalized_query)
-        or normalized_contextual
-    )
-    return fallback.model_copy(
-        update={
-            "search_queries": [fallback_query] if fallback_query else [],
-        }
+    route_language: QueryLanguage = (
+        route.language
+        if route.language in {"vi", "en", "unsupported", "unknown"}
+        else "unknown"
     )
 
+    return QueryExpansionResult(
+        original_query=query,
+        normalized_query=normalized_contextual,
+        query_language=route_language,
+        query_vi=(normalized_current if route_language == "vi" else None),
+        query_en=(semantic_query if semantic_query else None),
+        search_queries=([search_query] if search_query else []),
+        used_openai=bool(semantic_query),
+        warnings=(
+            []
+            if semantic_query
+            else ["Semantic router omitted retrieval_query; used user_goal/current query."]
+        ),
+    )
 
 def _list_form_resources_from_index(
     retriever: HybridRetriever,

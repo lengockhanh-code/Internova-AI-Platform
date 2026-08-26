@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from datetime import (
     datetime,
+    timedelta,
     timezone,
 )
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+from src.config import get_settings
 
 
 def to_iso(value) -> str | None:
@@ -706,3 +710,361 @@ def delete_calendar_event(
     db.commit()
 
     return True
+
+# ============================================================
+# INTERNSHIP COPILOT REMINDERS
+# Reuse existing calendar_events + notifications.
+# No separate copilot_reminders table is required.
+# ============================================================
+
+COPILOT_REMINDER_EVENT_TYPE = "COPILOT_REMINDER"
+COPILOT_REMINDER_NOTIFICATION_TYPE = "COPILOT_REMINDER"
+
+
+def _copilot_local_naive(value: datetime) -> datetime:
+    """Store reminder times consistently in calendar_events TIMESTAMP columns."""
+    if value.tzinfo is None:
+        return value
+
+    settings = get_settings()
+    try:
+        local_tz = ZoneInfo(settings.copilot_timezone)
+    except Exception:
+        local_tz = ZoneInfo("Asia/Ho_Chi_Minh")
+
+    return value.astimezone(local_tz).replace(tzinfo=None)
+
+
+def schedule_reminder(
+    db: Session,
+    student_id: int,
+    title: str,
+    message: str | None,
+    scheduled_at: datetime,
+) -> int:
+    """Create a persistent Copilot reminder using the existing calendar table."""
+    scheduled_at = _copilot_local_naive(scheduled_at)
+
+    if scheduled_at <= datetime.now():
+        raise ValueError("Thời điểm nhắc phải ở tương lai.")
+
+    normalized_title = (title or "Internship reminder").strip()[:255]
+    normalized_message = (message or "").strip()[:4000] or None
+
+    existing = db.execute(
+        text(
+            """
+            SELECT id
+            FROM calendar_events
+            WHERE user_id = :user_id
+              AND event_type = :event_type
+              AND title = :title
+              AND start_time = :start_time
+            LIMIT 1
+            """
+        ),
+        {
+            "user_id": student_id,
+            "event_type": COPILOT_REMINDER_EVENT_TYPE,
+            "title": normalized_title,
+            "start_time": scheduled_at,
+        },
+    ).scalar_one_or_none()
+
+    if existing is not None:
+        return int(existing)
+
+    return int(
+        create_calendar_event(
+            db=db,
+            student_id=student_id,
+            title=normalized_title,
+            description=normalized_message,
+            event_type=COPILOT_REMINDER_EVENT_TYPE,
+            start_time=scheduled_at,
+            end_time=None,
+            location=None,
+        )
+    )
+
+
+def get_pending_reminders(
+    db: Session,
+    student_id: int,
+    limit: int = 100,
+):
+    return db.execute(
+        text(
+            """
+            SELECT
+                id,
+                title,
+                description AS message,
+                start_time AS scheduled_at,
+                created_at
+            FROM calendar_events
+            WHERE user_id = :user_id
+              AND event_type = :event_type
+              AND start_time > NOW()
+            ORDER BY start_time ASC
+            LIMIT :limit
+            """
+        ),
+        {
+            "user_id": student_id,
+            "event_type": COPILOT_REMINDER_EVENT_TYPE,
+            "limit": limit,
+        },
+    ).mappings().all()
+
+
+def cancel_reminder(
+    db: Session,
+    student_id: int,
+    reminder_id: int,
+) -> bool:
+    row = db.execute(
+        text(
+            """
+            DELETE FROM calendar_events
+            WHERE id = :reminder_id
+              AND user_id = :user_id
+              AND event_type = :event_type
+              AND start_time > NOW()
+            RETURNING id
+            """
+        ),
+        {
+            "reminder_id": reminder_id,
+            "user_id": student_id,
+            "event_type": COPILOT_REMINDER_EVENT_TYPE,
+        },
+    ).first()
+
+    if row is None:
+        return False
+
+    db.commit()
+    return True
+
+
+def deliver_due_calendar_reminders(
+    db: Session,
+    limit: int = 100,
+) -> int:
+    """Turn due calendar reminders into existing notifications exactly once."""
+    rows = db.execute(
+        text(
+            """
+            SELECT
+                ce.id,
+                ce.user_id,
+                ce.title,
+                ce.description
+            FROM calendar_events AS ce
+            WHERE ce.event_type = :event_type
+              AND ce.start_time <= NOW()
+              AND NOT EXISTS (
+                    SELECT 1
+                    FROM notifications AS n
+                    WHERE n.user_id = ce.user_id
+                      AND n.notification_type = :notification_type
+                      AND n.related_type = 'CALENDAR_EVENT'
+                      AND n.related_id = ce.id
+              )
+            ORDER BY ce.start_time ASC
+            FOR UPDATE SKIP LOCKED
+            LIMIT :limit
+            """
+        ),
+        {
+            "event_type": COPILOT_REMINDER_EVENT_TYPE,
+            "notification_type": COPILOT_REMINDER_NOTIFICATION_TYPE,
+            "limit": limit,
+        },
+    ).mappings().all()
+
+    delivered = 0
+
+    for row in rows:
+        db.execute(
+            text(
+                """
+                INSERT INTO notifications (
+                    user_id,
+                    title,
+                    message,
+                    notification_type,
+                    severity,
+                    related_type,
+                    related_id
+                )
+                VALUES (
+                    :user_id,
+                    :title,
+                    :message,
+                    :notification_type,
+                    'INFO',
+                    'CALENDAR_EVENT',
+                    :related_id
+                )
+                """
+            ),
+            {
+                "user_id": row["user_id"],
+                "title": row["title"],
+                "message": row["description"] or row["title"],
+                "notification_type": COPILOT_REMINDER_NOTIFICATION_TYPE,
+                "related_id": row["id"],
+            },
+        )
+        delivered += 1
+
+    db.commit()
+    return delivered
+
+
+def generate_smart_deadline_notifications(
+    db: Session,
+    days_before: int | None = None,
+    limit: int = 200,
+) -> int:
+    """Create deduplicated notifications for upcoming internship obligations."""
+    if days_before is None:
+        days_before = get_settings().copilot_smart_deadline_days_before
+
+    horizon = datetime.now() + timedelta(days=days_before)
+
+    rows = db.execute(
+        text(
+            """
+            WITH targets AS (
+                SELECT
+                    i.student_id AS user_id,
+                    'WEEKLY_REPORT'::text AS related_type,
+                    wr.id AS related_id,
+                    COALESCE(wr.title, wr.report_type || ' report') AS title,
+                    wr.due_at
+                FROM weekly_reports AS wr
+                JOIN internships AS i
+                  ON i.id = wr.internship_id
+                WHERE wr.due_at > NOW()
+                  AND wr.due_at <= :horizon
+                  AND wr.status IN ('DRAFT', 'REVISION_REQUIRED')
+
+                UNION ALL
+
+                SELECT
+                    i.student_id,
+                    'CHECKLIST_ITEM',
+                    ci.id,
+                    ci.title,
+                    ci.due_at
+                FROM checklist_items AS ci
+                JOIN internships AS i
+                  ON i.id = ci.internship_id
+                WHERE ci.due_at > NOW()
+                  AND ci.due_at <= :horizon
+                  AND ci.status <> 'COMPLETED'
+
+                UNION ALL
+
+                SELECT
+                    i.student_id,
+                    'DEADLINE',
+                    d.id,
+                    d.title,
+                    d.due_at
+                FROM internships AS i
+                JOIN deadlines AS d
+                  ON d.semester_id = i.semester_id
+                WHERE i.status IN ('NOT_STARTED', 'IN_PROGRESS', 'PAUSED')
+                  AND d.is_active = TRUE
+                  AND d.due_at > NOW()
+                  AND d.due_at <= :horizon
+                  AND (
+                        d.target_role IS NULL
+                        OR d.target_role IN ('STUDENT', 'ALL')
+                  )
+            )
+            SELECT DISTINCT
+                t.user_id,
+                t.related_type,
+                t.related_id,
+                t.title,
+                t.due_at
+            FROM targets AS t
+            LEFT JOIN notification_preferences AS np
+              ON np.user_id = t.user_id
+            WHERE COALESCE(np.report_deadline, TRUE) = TRUE
+            ORDER BY t.due_at ASC
+            LIMIT :limit
+            """
+        ),
+        {
+            "horizon": horizon,
+            "limit": limit,
+        },
+    ).mappings().all()
+
+    created = 0
+
+    for row in rows:
+        exists = db.execute(
+            text(
+                """
+                SELECT 1
+                FROM notifications
+                WHERE user_id = :user_id
+                  AND notification_type = 'SMART_DEADLINE'
+                  AND related_type = :related_type
+                  AND related_id = :related_id
+                  AND created_at >= NOW() - INTERVAL '7 days'
+                LIMIT 1
+                """
+            ),
+            {
+                "user_id": row["user_id"],
+                "related_type": row["related_type"],
+                "related_id": row["related_id"],
+            },
+        ).first()
+
+        if exists:
+            continue
+
+        db.execute(
+            text(
+                """
+                INSERT INTO notifications (
+                    user_id,
+                    title,
+                    message,
+                    notification_type,
+                    severity,
+                    related_type,
+                    related_id
+                )
+                VALUES (
+                    :user_id,
+                    :title,
+                    :message,
+                    'SMART_DEADLINE',
+                    'WARNING',
+                    :related_type,
+                    :related_id
+                )
+                """
+            ),
+            {
+                "user_id": row["user_id"],
+                "title": f"Upcoming: {row['title']}",
+                "message": f"Due at {row['due_at']}",
+                "related_type": row["related_type"],
+                "related_id": row["related_id"],
+            },
+        )
+        created += 1
+
+    db.commit()
+    return created

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from typing import Any, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field
-
 
 AnswerStatus = Literal[
     "answered",
@@ -22,13 +22,17 @@ class ChatRequest(BaseModel):
     message: str = Field(
         ...,
         min_length=1,
-        max_length=5000,
+        max_length=30000,
     )
 
     session_id: str | None = Field(
         default=None,
         max_length=200,
     )
+
+    client_message_id: UUID | None = None
+
+    assistant_message_id: UUID | None = None
 
 
 class ChatSource(BaseModel):

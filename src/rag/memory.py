@@ -7,8 +7,6 @@ can be resolved without an extra LLM call.
 
 from __future__ import annotations
 
-import re
-import unicodedata
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 
@@ -21,6 +19,7 @@ class ResponsePreferences:
 
 @dataclass
 class ConversationState:
+    conversation_language: str | None = None
     active_domain: str | None = None
     active_subject: str | None = None
     active_form_number: str | None = None
@@ -46,44 +45,6 @@ class ConversationMemory:
     as documentary evidence.
     """
 
-    _FORM_RE = re.compile(
-        r"\bform\s*[-_#:]?\s*(\d+(?:\.\d+)?)\b",
-        flags=re.IGNORECASE,
-    )
-
-    _FOLLOWUP_PREFIXES = (
-        "con ",
-        "còn ",
-        "vay ",
-        "vậy ",
-        "the ",
-        "thế ",
-        "neu vay",
-        "nếu vậy",
-        "what about",
-        "how about",
-        "and ",
-    )
-
-    _REFERENCE_PHRASES = (
-        "no ",
-        "nó ",
-        "cai nay",
-        "cái này",
-        "cai do",
-        "cái đó",
-        "mau do",
-        "mẫu đó",
-        "form do",
-        "form đó",
-        "truong hop do",
-        "trường hợp đó",
-        "viec do",
-        "việc đó",
-        "it ",
-        "that ",
-        "this ",
-    )
 
     def __init__(
         self,
@@ -114,7 +75,8 @@ class ConversationMemory:
         if len(self._turns) > self.max_turns:
             self._turns = self._turns[-self.max_turns :]
 
-        self._update_state_from_query(query)
+        # Raw text is stored; semantic state is updated only by apply_semantic_route().
+        self.state.last_user_query = query
 
     def get_context_window(
         self,
@@ -144,6 +106,11 @@ class ConversationMemory:
         lines: list[str] = [
             "[Conversation State]",
             (
+                f"Conversation language: {self.state.conversation_language}"
+                if self.state.conversation_language
+                else "Conversation language: infer semantically from recent turns"
+            ),
+            (
                 f"Active domain: {self.state.active_domain}"
                 if self.state.active_domain
                 else "Active domain: unknown"
@@ -164,17 +131,17 @@ class ConversationMemory:
                 else "Active entity: none"
             ),
             (
-                "Important: history is only for resolving references and user "
-                "constraints. A previous failed assistant answer does NOT erase "
-                "or invalidate the user's earlier facts/topic, and history is "
-                "never documentary evidence."
+                "Important: history/state is only a hint for resolving references. "
+                "The CURRENT user message is authoritative and may correct/reject "
+                "an active entity. A previous assistant answer is not a user fact, "
+                "and history is never documentary evidence."
             ),
             "",
             "[Response Preferences]",
             (
                 f"Preferred language: {self.preferences.language}"
                 if self.preferences.language
-                else "Preferred language: follow the current user message"
+                else "Preferred language: none (use semantic session-language policy)"
             ),
             (
                 f"Preferred style: {self.preferences.style}"
@@ -207,98 +174,71 @@ class ConversationMemory:
 
         return "\n".join(lines)
 
-    def resolve_followup_query(self, query: str) -> str:
-        """Resolve short/vague follow-ups using deterministic session state.
 
-        This returns a retrieval/routing helper query only. The original user
-        message should still be used for the final answer.
-        """
-        cleaned = " ".join((query or "").strip().split())
-        if not cleaned:
-            return cleaned
-
-        if self._FORM_RE.search(cleaned):
-            return cleaned
-
-        normalized = self._normalize(cleaned)
-
-        # Generic inventory questions should stay in the internship-form domain
-        # when the conversation is already about internships/forms.
-        if self.state.active_domain == "internship":
-            if (
-                "form" in normalized
-                and any(
-                    phrase in normalized
-                    for phrase in (
-                        "nhung form gi",
-                        "co nhung form gi",
-                        "cac form nao",
-                        "nhung form nao",
-                        "form gi",
-                        "danh sach form",
-                        "liet ke form",
-                        "all forms",
-                        "which forms",
-                        "what forms",
-                    )
-                )
-            ):
-                return f"VinUniversity internship forms — {cleaned}"
-
-        is_followup = (
-            any(
-                normalized.startswith(prefix.strip())
-                for prefix in self._FOLLOWUP_PREFIXES
-            )
-            or any(
-                phrase.strip() in normalized
-                for phrase in self._REFERENCE_PHRASES
-            )
-            or (
-                len(cleaned) <= 80
-                and any(
-                    token in normalized.split()
-                    for token in (
-                        "no",
-                        "nay",
-                        "do",
-                        "vay",
-                        "the",
-                        "con",
-                        "it",
-                        "this",
-                        "that",
-                    )
-                )
-            )
-        )
-
-        if not is_followup:
-            return cleaned
-
-        # Only bind a pronoun directly to Form-N when the active subject is
-        # actually that form. A long internship case may merely MENTION Form 1;
-        # in that case a follow-up like "vậy em thiếu bước gì?" refers to the
-        # whole case, not only Form 1.
+    def apply_semantic_route(self, route: object) -> None:
+        """Update topic + language state only from the semantic-router decision."""
+        response_language = getattr(route, "response_language", None)
         if (
-            self.state.active_subject == "form"
-            and self.state.active_form_number
+            getattr(route, "session_language_update", False)
+            and response_language in {"vi", "en"}
         ):
-            return (
-                f"Regarding VinUniversity Form {self.state.active_form_number}: "
-                f"{cleaned}"
-            )
+            self.state.conversation_language = response_language
 
-        if self.state.active_subject == "internship_case":
-            return (
-                "Regarding the student's current VinUniversity internship "
-                f"case and previously stated constraints: {cleaned}"
-            )
+        if (
+            getattr(route, "persist_response_language", False)
+            and response_language in {"vi", "en"}
+        ):
+            self.preferences.language = response_language
+            self.state.conversation_language = response_language
 
-        return cleaned
+        response_style = getattr(route, "response_style", None)
+        if (
+            getattr(route, "persist_response_style", False)
+            and response_style in {"shorter", "simpler"}
+        ):
+            self.preferences.style = response_style
+
+        intent = str(getattr(route, "intent", "") or "")
+        relation = str(
+            getattr(route, "followup_relation", "new_request") or "new_request"
+        )
+        form_number = getattr(route, "referenced_form_number", None)
+        target = getattr(route, "conversation_target", None)
+
+        if relation == "correction" and intent == "form_guidance" and not form_number:
+            self.state.active_form_number = None
+            self.state.active_entity = None
+
+        if intent == "form_guidance":
+            self.state.active_domain = "internship"
+            self.state.active_subject = "form"
+            if form_number:
+                self.state.active_form_number = str(form_number)
+                self.state.active_entity = f"Form {form_number}"
+            elif relation in {"new_request", "correction", "topic_switch"}:
+                self.state.active_form_number = None
+                self.state.active_entity = str(target) if target else None
+        elif intent.startswith("internship_"):
+            self.state.active_domain = "internship"
+            self.state.active_subject = "internship_case"
+        elif intent == "career_opportunity":
+            self.state.active_domain = "career"
+            self.state.active_subject = "career"
+            self.state.active_form_number = None
+        elif intent == "capstone":
+            self.state.active_domain = "capstone"
+            self.state.active_subject = "capstone"
+            self.state.active_form_number = None
 
     def get_active_form_number(self) -> str | None:
         return self.state.active_form_number
+
+    def get_response_language_hint(self) -> str | None:
+        if self.preferences.language in {"vi", "en"}:
+            return self.preferences.language
+        if self.state.conversation_language in {"vi", "en"}:
+            return self.state.conversation_language
+        return None
 
     def update_preferences(
         self,
@@ -318,6 +258,7 @@ class ConversationMemory:
 
     def clear(self) -> None:
         self._turns.clear()
+        self.preferences = ResponsePreferences()
         self.state = ConversationState()
 
     @property
@@ -346,91 +287,6 @@ class ConversationMemory:
             ],
         }
 
-    def _update_state_from_query(self, query: str) -> None:
-        self.state.last_user_query = query
-
-        normalized = self._normalize(query)
-        match = self._FORM_RE.search(query or "")
-
-        internship_case_signals = sum(
-            1
-            for token in (
-                "gpa",
-                "foundation",
-                "orientation",
-                "company",
-                "cty",
-                "job",
-                "major",
-                "approval",
-                "approve",
-                "internship",
-                "thuc tap",
-            )
-            if token in normalized
-        )
-
-        if match:
-            self.state.active_form_number = match.group(1)
-            self.state.active_entity = f"Form {match.group(1)}"
-            self.state.active_domain = "internship"
-
-            # A form mentioned inside a complex case is not automatically the
-            # subject of the conversation.
-            if internship_case_signals >= 3 and len(query) > 140:
-                self.state.active_subject = "internship_case"
-            else:
-                self.state.active_subject = "form"
-
-        if any(
-            token in normalized
-            for token in (
-                "internship",
-                "thuc tap",
-                "irf",
-                "foundation course",
-                "orientation",
-                "gpa",
-                "form",
-            )
-        ):
-            self.state.active_domain = "internship"
-
-            if (
-                not match
-                and internship_case_signals >= 2
-            ):
-                self.state.active_subject = "internship_case"
-
-        if any(
-            token in normalized
-            for token in (
-                "career",
-                "talent handbook",
-                "cv",
-                "job search",
-            )
-        ):
-            self.state.active_domain = "career"
-            self.state.active_subject = "career"
-            if "form" not in normalized:
-                self.state.active_form_number = None
-
-        if "capstone" in normalized:
-            self.state.active_domain = "capstone"
-            self.state.active_subject = "capstone"
-            self.state.active_form_number = None
-
-    @staticmethod
-    def _normalize(value: str) -> str:
-        text = (value or "").replace("đ", "d").replace("Đ", "D")
-        text = unicodedata.normalize("NFKD", text)
-        text = "".join(
-            char
-            for char in text
-            if not unicodedata.combining(char)
-        )
-        return " ".join(text.lower().split())
 
     @staticmethod
     def _compact_text(value: str, max_chars: int) -> str:

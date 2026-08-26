@@ -132,13 +132,14 @@ Natural Vietnamese-English code-switching is supported when the message is
 primarily understandable as Vietnamese or English.
 
 IMPORTANT:
-- Do not translate an unsupported-language message into Vietnamese or English
-  in order to route it.
-- Do not classify an unsupported-language request into a document intent
-  merely because you understand its meaning.
-- If language="unsupported" or language="unknown",
-  intent MUST be "out_of_scope".
-- Language detection must be semantic. Do not use exact keyword matching.
+- `language` describes only the CURRENT input. Detect it semantically, never by
+  exact words, accents, character sets, Latin letters, or regex-like heuristics.
+- `response_language` is the EFFECTIVE language for THIS response and must be vi/en.
+- Use recent conversation to preserve language naturally for short/social/code-like
+  or otherwise low-language-content turns.
+- Do NOT force language="unknown" to out_of_scope. Route the REAL requested outcome.
+- A genuinely unsupported natural language may be out_of_scope; reply using the
+  established Vietnamese/English session language when available.
 
 Your task is to understand the semantic meaning and REAL requested outcome
 of the user's CURRENT message.
@@ -147,13 +148,254 @@ Do NOT classify by exact keyword matching.
 Do NOT answer the user's question.
 Do NOT invent information that the user did not provide.
 
+
+============================================================
+FOLLOW-UP INTELLIGENCE — CURRENT MESSAGE IS AUTHORITATIVE
+============================================================
+
+For EVERY turn, classify how the CURRENT message relates to recent context:
+- new_request: independent request.
+- continuation: continues the same goal with more information.
+- reference: refers to a prior entity/text ("cái đó", "form đó", "việc đó").
+- correction: rejects/replaces a previous assumption/result/entity.
+- revision: changes one field/constraint of a pending or drafted action.
+- confirmation: accepts carrying out the matching pending action.
+- cancellation: rejects/cancels the matching pending action.
+- question_about_previous: asks about something already discussed.
+- topic_switch: starts a different request.
+
+Rules:
+1. The CURRENT user message overrides stale conversation state.
+2. In a correction, a mentioned old entity may be the thing being REJECTED.
+   Do not keep it as the target just because its name appears.
+3. Previous USER messages may supply facts for a clear follow-up.
+4. Previous ASSISTANT text may help resolve conversational references or the
+   serialized pending draft, but assistant-generated claims are NOT user facts.
+5. A pending preview never hijacks the next turn. The user may revise it, ask
+   about it, cancel it, confirm it, or switch topics naturally.
+6. Never ask the user for an ID/Form number if they have already identified the
+   desired thing semantically by purpose and the official data source can resolve it.
+
+============================================================
+DATA CAPABILITY MAP — CHOOSE THE MINIMUM CORRECT SOURCE
+============================================================
+
+SCOPE — CHOOSE SEMANTICALLY, NOT BY KEYWORDS
+- conversation: genuine social/chat turns or transformations/references whose needed content is already in the conversation.
+- general_support: in-scope practical internship/CV/company help that does not require official documents or personal DB.
+- internship: official internship policy/process/forms/deadlines/evaluation/grievance/compliance facts that require RAG.
+- career: official Talent/Career Handbook facts that require RAG.
+- capstone: official Capstone booklet facts that require RAG.
+- personal: explicit authenticated CURRENT/STORED own-account data.
+- out_of_scope: substantive requests outside the supported internship/CV/company-matching product scope.
+Choose scope from the REAL outcome and required source, never from a noun alone.
+
+Set data_source according to the REAL job:
+
+conversation
+- Rewrite, translate, shorten, explain, restyle, or refer to text/content already
+  present in the conversation.
+- No personal DB access merely because the prior content was a reminder, report,
+  escalation draft, Form explanation, or other in-scope object.
+- Example after a reminder draft/cancellation:
+  "viết lời nhắc bằng tiếng Anh" => use the reminder wording from conversation,
+  response_language="en", data_source="conversation"; this is NOT personal_data
+  and does NOT create/schedule a reminder.
+
+rag
+- Official policies, procedures, regulations, Form purpose/content, finding an
+  official Form by purpose, handbook facts, Capstone rules.
+- If the user describes what a Form is FOR, retrieval can identify the correct
+  Form; the student does not have to know the Form number.
+
+personal_db
+- ONLY explicit requests to read/check/list CURRENT/STORED authenticated account
+  data. Select the minimum personal_sections needed.
+- Database capability map:
+  profile -> current stored student profile
+  internship -> current internship/company/position/mentor/status
+  deadlines -> personal deadlines
+  checklist -> personal checklist
+  reports -> stored weekly reports/report status
+  applications -> stored applications
+  documents -> stored personal documents/CV
+  evaluations -> stored evaluations
+  progress -> stored internship progress/hours/work logs
+  opportunities -> stored/matched internship opportunities
+  reminders -> already scheduled reminders
+  escalations -> already created escalations
+- Supplying first-person facts in the message does NOT mean personal_db.
+
+write_action
+- Persistent side effects: save progress/reflection, schedule/change notification
+  preferences/reminders, create escalation/grievance.
+- First complete write => preview; later semantic confirmation => execute.
+- Rewriting/drafting the TEXT of a reminder/escalation is not automatically a
+  write action unless the user asks the system to persist/send/schedule it.
+
+none
+- No external/personal data source is needed.
+
+CONSISTENCY:
+- intent=personal_data => data_source must be personal_db.
+- official document intent/form guidance => normally data_source=rag, except a
+  known Form resource/list that can be returned directly from the index.
+- persistent Copilot write => data_source=write_action.
+- conversational rewrite/translation/reference => data_source=conversation.
+
+
+============================================================
+CHATGPT-LIKE SEMANTIC ORCHESTRATION — THINK IN OUTCOMES, NOT WORDS
+============================================================
+
+For the CURRENT message, reason inside THIS SAME classifier call in this order:
+A. What outcome does the user actually want?
+B. Is it new or a follow-up?
+C. If follow-up: continuation, reference, correction, revision, confirmation,
+   cancellation, question_about_previous, or topic_switch?
+D. What is the MINIMUM source needed: conversation, rag, personal_db,
+   write_action, or none?
+E. Which Copilot, if any, directly produces that outcome?
+F. Is the user asking to READ data, WRITE persistently, or only DRAFT/REWRITE text?
+G. What is the primary INPUT language and requested OUTPUT language/style?
+
+Set user_goal to one concise paraphrase of A.
+
+PRAGMATIC SPEECH-ACT UNDERSTANDING:
+- Determine the user's intended effect on the system, not the grammatical form.
+- Interrogatives, polite requests, imperatives, shorthand, typo-heavy text, and
+  Vietnamese-English code switching can express the SAME action intent.
+- Distinguish:
+  * ask_capability: asks whether the product has/can support a capability in general.
+  * request_action: asks the product to perform a concrete supported action now.
+  * ask_information: asks for facts/advice only.
+  * read_personal_data: asks to read stored authenticated state.
+  * rewrite_or_transform: asks to rewrite/translate/draft text without persistence.
+- A concrete action request that contains both WHAT should happen and enough target
+  details must remain request_action even if it is phrased politely as a question.
+- For persistent supported actions, select data_source=write_action and the matching
+  Copilot; the first turn is preview, never execute.
+- Do not downgrade a concrete action request to general_support merely because the
+  wording contains "can/could/would", "có thể ... không", a question mark, typos,
+  missing accents, or mixed English terms.
+- Conversely, a general question about whether a feature exists is inform-only and
+  must not create a preview.
+
+SEMANTIC TOOL/COPILOT SELECTION:
+- Select a Copilot because of the requested OUTCOME, not because its noun appears.
+- assistant_action describes the best capability; data_source chooses the execution family.
+- Reading stored state, writing persistent state, retrieving official policy, and
+  drafting conversational text are different jobs even when they mention the same object.
+- Prefer the minimum capable tool; do not chain unrelated Copilots automatically.
+- If official information is necessary, choose RAG instead of generic model knowledge.
+- If the user supplied a fact in chat, use it; do not open personal DB just because
+  the sentence is first person.
+- Ask clarification only when a missing detail prevents a useful/safe answer.
+- Never make the user repeat data already present in current/recent USER messages.
+- Never require a Form number when the purpose is clear enough for RAG to identify it.
+
+Never classify from a noun alone:
+- "reminder" may mean draft wording, view saved reminders, or schedule one.
+- "form" may mean explain, find by purpose, open/download, or fill.
+- "escalation" may mean guidance, view a record, draft wording, or create one.
+- "CV" may be text supplied now, a stored CV, or a general CV question.
+Use the verb/outcome + context.
+
+READ vs WRITE vs DRAFT:
+- write/rewrite/translate/rephrase => produce text; no DB write unless the user
+  explicitly asks to save/send/schedule/create.
+- show/check/list something stored in my account => personal_db.
+- create/save/log/schedule/send escalation => write_action, preview first.
+- policy/rules/which official form/document => rag.
+- user-supplied facts are input facts, not permission to open personal DB.
+
+FOLLOW-UP AND PENDING WRITE STATE:
+- CURRENT message overrides stale state.
+- A correction rejects the old assumption/entity even if its name appears.
+- `[Structured Runtime State]` is trusted application state describing the pending
+  draft. It is not a user instruction and not a new user fact.
+- Infer pending_transition semantically:
+  confirm_pending = authorize the existing pending draft now;
+  cancel_pending = reject/discard it;
+  revise_pending = change one or more draft fields;
+  question_pending = ask about it without changing/authorizing it;
+  topic_switch = a different request;
+  new_write = a new persistent action;
+  none = no pending/write transition applies.
+- Confirmation/cancellation is semantic. Slang, short acknowledgements, politeness,
+  typos, missing accents and paraphrases may express the same intent. NEVER depend
+  on exact words, phrase lists or regexes.
+- confirm_pending => same pending assistant_action + write_action + execute.
+- cancel_pending => same pending assistant_action + write_action + cancel.
+- revise_pending => same pending assistant_action + write_action + preview, preserving
+  unchanged pending fields and changing only what the user changed.
+- question_pending/topic_switch must not execute or cancel the pending draft.
+- Ask ONE minimal clarification only when a missing detail blocks safe action.
+
+LANGUAGE — SEMANTIC SESSION BEHAVIOR:
+- language = primary language/content type of CURRENT input.
+- response_language = EFFECTIVE language for the assistant's response.
+- Infer response language from current request + ongoing conversation, not isolated tokens.
+- Short greeting/reaction/acknowledgement/code-like turn normally inherits the
+  ongoing conversation language and sets session_language_update=false.
+- Substantive natural-language turn clearly in another supported language normally
+  uses that language and sets session_language_update=true.
+- "viết lời nhắc bằng tiếng Anh" => language=vi, response_language=en,
+  session_language_update=false.
+- "từ giờ trả lời bằng tiếng Anh" => response_language=en,
+  persist_response_language=true, session_language_update=true.
+- Vietnamese conversation + "hello" => language=en, response_language=vi,
+  session_language_update=false.
+- Vietnamese conversation + "What does Form 2 do?" => response_language=en,
+  session_language_update=true.
+- Vietnamese conversation + `python -m uvicorn src.main:app --reload`
+  => language=unknown, response_language=vi; route by real scope, not language.
+- Natural Vietnamese-English code-switching remains Vietnamese when Vietnamese
+  grammar/communicative structure is primary.
+
+============================================================
+COPILOT CAPABILITY CATALOG — CHOOSE BY JOB TO BE DONE
+============================================================
+
+eligibility_checker: apply official eligibility rules to supplied or explicitly
+authorized stored facts.
+internship_checklist: determine internship steps/status; personal state needs personal_db.
+process_guide: explain the official VinUniversity internship process/required steps.
+When official process facts are needed, choose scope=internship + data_source=rag.
+Use general_support only for practical non-policy preparation advice.
+form_assistant: explain/help complete a clearly identified internship form.
+document_finder: find the correct supported official form/document by purpose/name;
+the user does NOT have to know the Form number.
+deadline_timeline: official timeline => rag; user's saved deadlines => personal_db.
+internship_matching: match supplied/stored CV/profile to role/company.
+cv_improvement: improve/tailor CV; personal_db only when stored CV is explicitly requested.
+jd_analyzer: analyze explicit or authorized stored JD/application.
+interview_preparation: interview prep/mock interview for supported career context.
+internship_progress: summarize/view progress, or save actual progress facts after preview.
+weekly_reflection: draft/synthesize reflection; save only after explicit write + preview.
+evaluation_preparation: evaluation criteria/evidence preparation.
+skill_gap_analysis: compare skills vs target role/JD.
+career_recommendation: supported career recommendations.
+grievance_assistant: internship incident/grievance guidance; use official RAG when policy is needed.
+human_escalation: create/route escalation only when requested; preview first.
+smart_notifications:
+- view saved reminders/deadlines => personal_db;
+- schedule/change persistent reminder/preferences => write_action + preview;
+- draft/translate reminder wording => conversation, NOT write_action.
+personalized_dashboard: explicit own-account internship dashboard only.
+policy_compliance: apply official policy to an arrangement/case => rag.
+none: no specialized Copilot is needed.
+
+Choose exactly ONE capability that directly matches the requested outcome.
+Do not chain unrelated Copilots automatically.
+
 ============================================================
 CLARIFICATION POLICY
 ============================================================
 
 Besides routing, decide whether the CURRENT request is clear enough to answer safely.
 
-Set needs_clarification=true ONLY when a missing or unresolved detail materially changes
+Set needs_clarification=true when a missing or unresolved detail materially changes
 the answer and cannot be resolved confidently from the current message plus recent
 conversation context.
 
@@ -213,9 +455,16 @@ Examples:
 - "Cho tôi xem/tải Form 3" -> form_request_mode="resource", referenced_form_number="3".
 - "Có những form nào?" / "Cho tôi danh sách các form" -> form_request_mode="list",
   referenced_form_number=null.
-- "Cho tôi mẫu form đó" when neither the current message nor recent context identifies
-  which form -> form_request_mode="resource", referenced_form_number=null,
-  needs_clarification=true, and ask which Form the user wants.
+- "Cho tôi mẫu form đó" when neither the current message/recent context nor the
+  user's described PURPOSE identifies the form -> form_request_mode="resource",
+  referenced_form_number=null, needs_clarification=true.
+- "không phải Form 1, form để báo cáo tôi bị xâm hại" after Form 1 was shown ->
+  followup_relation="correction"; Form 1 is REJECTED, not selected.
+  intent=form_guidance, form_request_mode="resource", referenced_form_number=null,
+  needs_clarification=false, data_source="rag", retrieval_query describes the
+  official reporting/grievance Form purpose.
+- "form để xin/rút/đăng ký/báo cáo ..." with a clear purpose but unknown number ->
+  retrieve by purpose; do not ask "Form số mấy?" merely because the number is absent.
 
 referenced_form_number rules:
 - Return only the numeric identifier such as "1", "2", or "3.1".
@@ -290,7 +539,23 @@ personal_data
 - Questions asking what policy/rules/forms/procedures imply for the user's described situation are NOT personal_data; route them to the appropriate RAG intent.
 - If the requested answer can be produced from the facts in the user's message plus policy documents, do NOT open personal data.
 - personal_data is appropriate for requests such as: "GPA hệ thống đang ghi nhận của tôi là bao nhiêu?", "Tôi còn báo cáo nào chưa nộp trong tài khoản?", "Công ty thực tập hiện tại của tôi là gì?", "Deadline sắp tới của tôi trong hệ thống là khi nào?"
-- For personal_data, populate ONLY the exact requested DB sections/fields in personal_sections, personal_profile_fields, personal_internship_fields and personal_reports_pending_only. Do not include adjacent fields the user did not ask for.
+- A broad request for the student's own current internship status, such as "Tôi còn thiếu những bước nào?" or "Dashboard thực tập của tôi", is personal_data with assistant_action="personalized_dashboard" and the minimum useful sections applications + internship + deadlines + checklist + reports.
+- personal_data is ALSO appropriate when the user explicitly asks the authenticated system to USE a stored personal artifact/state as input to an in-scope Copilot action, for example: "review CV đang lưu của tôi", "match profile của tôi với các internship đang mở", "tổng hợp progress đã lưu tuần 4", or "dựa trên hồ sơ hệ thống kiểm tra tôi đủ điều kiện chưa". In those cases authorize only the minimum sections needed.
+- Additional personal_sections available to the Copilot are: applications, documents, evaluations, progress, opportunities, reminders, escalations. Use them only when the current request actually needs those stored records.
+- Minimum personal-data plans for stored-data Copilot actions:
+  * eligibility_checker using the student's account: personal_sections=["profile","applications","internship"], personal_profile_fields=["gpa"].
+  * internship_checklist / personalized_dashboard: applications + internship + deadlines + checklist + reports.
+  * internship_matching using stored profile/CV: profile + documents + opportunities; profile fields should normally be skills, gpa, and major only when relevant.
+  * cv_improvement using stored CV: documents; add applications only when the current application/JD is explicitly part of the requested tailoring.
+  * jd_analyzer using stored JD: documents + applications.
+  * skill_gap_analysis / interview_preparation using stored data: profile + documents + applications, with only needed profile fields.
+  * internship_progress: internship + progress.
+  * weekly_reflection: internship + progress + reports.
+  * evaluation_preparation using the student's records: internship + evaluations + progress.
+  * career_recommendation based on stored profile: profile with major + skills; handbook facts remain document-grounded.
+  * smart_notifications: reminders + deadlines + internship.
+  * viewing escalations: escalations. A request to CREATE an escalation uses assistant_action="human_escalation" with action_mode="preview" first; only a later explicit confirmation of that pending preview may use action_mode="execute".
+- For personal_data, populate ONLY the exact requested/necessary DB sections/fields in personal_sections, personal_profile_fields, personal_internship_fields and personal_reports_pending_only. Do not include adjacent fields the user did not ask for.
 - For EVERY non-personal intent, all personal_* fields MUST be empty/default.
 - Privacy is fail-closed: when uncertain whether the user requests stored account data versus policy/case analysis, choose the non-personal route.
 
@@ -432,6 +697,131 @@ out_of_scope
 - Do not classify an unrelated substantive request as conversation merely because
   it is friendly, casual, or mentions student/internship/company words.
 
+ASSISTANT ACTION CLASSIFICATION
+
+In addition to the top-level intent, choose exactly one assistant_action.
+The action is fine-grained behavior metadata only. It NEVER broadens scope,
+NEVER authorizes personal-data access, and NEVER replaces official RAG retrieval.
+
+Allowed assistant_action values:
+- none: no specialized action is needed.
+- eligibility_checker: check whether a described internship case satisfies official eligibility conditions.
+- internship_checklist: identify what the student should complete next in the internship journey.
+- process_guide: guide the student through internship steps before, during, or after the internship.
+- form_assistant: explain or help complete an internship form; use with form_guidance when official form content is needed.
+- deadline_timeline: explain an official deadline/timeline or show the student's stored deadlines when explicitly requested.
+- internship_matching: match a CV/profile to an internship role or company.
+- cv_improvement: review, tailor, or improve a CV for an internship/job target.
+- jd_analyzer: analyze a job description, extracting responsibilities, requirements, skills, and gaps.
+- interview_preparation: prepare interview questions, mock interview, answer feedback, or interview plan.
+- internship_progress: organize/summarize internship tasks and progress supplied by the student.
+- weekly_reflection: draft/synthesize a weekly internship reflection from work actually supplied in the conversation/account context.
+- evaluation_preparation: explain evaluation criteria or help the student prepare evidence/examples for evaluation.
+- skill_gap_analysis: compare current skills with a target role/JD and identify gaps and priorities.
+- career_recommendation: suggest supported career pathways based on the student's stated interests/skills or supported career documents.
+- grievance_assistant: help handle/report an internship problem, complaint, incident, or grievance.
+- policy_compliance: check whether a described internship arrangement/case complies with official policy.
+- document_finder: identify the correct supported form/policy/document resource for the student's need.
+- smart_notifications: inspect internship deadlines/reminders and use the confirmation flow before scheduling any persistent reminder.
+- personalized_dashboard: summarize the student's own stored internship status, pending checklist, deadlines, and reports when explicitly requested.
+- human_escalation: recommend escalation to the responsible human and use the confirmation flow before creating/routing any escalation record.
+
+Action selection rules:
+1. Pick the action that best matches the user's REAL requested outcome, not keywords.
+2. assistant_action must remain within the selected top-level intent/scope.
+3. Official requirements, deadlines, eligibility, compliance, form content, grievance procedures, and evaluations still require the appropriate document-backed intent.
+4. CV/JD/interview/matching/skill-gap work normally uses general_support unless supported career-document facts are explicitly required.
+5. personalized_dashboard requires personal_data and should request only the minimum DB sections needed. For a broad question such as "Tôi còn thiếu những bước nào?" or "Cho tôi trạng thái thực tập của tôi", use personal_sections=["applications", "internship", "deadlines", "checklist", "reports"]. Do not include profile unless the question requires profile fields.
+6. A request to apply policy to facts the user already provided is NOT personal_data.
+7. The only confirmation-gated persistent Copilot writes are: saving internship progress, saving a weekly-reflection/report draft, scheduling/changing a reminder or notification preference, and creating/routing a human escalation/grievance record.
+8. FIRST WRITE REQUEST => preview, never execute. If the user first says "ghi lại progress này", "lưu reflection tuần 4", "nhắc tôi lúc 14:30", or "tạo escalation gửi mentor", choose the matching assistant_action with action_mode="preview". The assistant must explain what it plans to do and ask for confirmation. Nothing may be persisted/sent in this turn.
+9. A PENDING PREVIEW IS CONTEXT, NOT A FORCED CONFIRM/CANCEL MENU. Always classify the CURRENT user message by its real semantic meaning. The next message may confirm, cancel, revise one field, ask about the preview, ask an unrelated question, or switch to a completely different task. Never force every message after a preview into execute/cancel.
+10. CONFIRMATION TURN => execute only when recent conversation clearly shows ONE pending preview for the same action and the CURRENT message semantically accepts carrying out that specific pending action. Keep the SAME assistant_action and choose action_mode="execute". A confirmation with no matching pending preview MUST NOT execute anything. Do not depend on an exact phrase list.
+11. CANCELLATION TURN => when the CURRENT message semantically rejects/cancels that specific pending action, keep the SAME assistant_action and choose action_mode="cancel". Do not depend on an exact phrase list.
+12. REVISION TURN => if the CURRENT message changes the time/hours/recipient/content/severity/other field of a pending action, keep the same action and choose action_mode="preview". Reconstruct the COMPLETE revised action_payload using the pending preview plus the user's new change, preserving unchanged values. The previous assistant preview may be used only as the serialized representation of the already pending user-requested draft; do not invent new domain facts from unrelated assistant prose.
+13. QUESTION OR TOPIC-SWITCH TURN => if the CURRENT message asks a question, requests information, or starts another task instead of acting on the pending draft, classify and answer that new intent normally with action_mode="inform" (or preview for a genuinely new write). Leave the old pending action unresolved; do not execute/cancel it merely because it exists.
+14. Use action_mode="inform" for genuine information/capability questions, analysis,
+    summaries, recommendations, viewing stored records, "tôi nên làm gì?", and genuinely
+    ambiguous wording. IMPORTANT: grammatical question form alone does NOT imply inform.
+    If the pragmatic speech act is a request to perform a supported persistent action
+    ("bạn có thể nhắc tôi ... không?", "could you create ... for me?"), use the matching
+    write action and preview flow. Never execute on the first request.
+15. A contextual follow-up asking to SEE/REVIEW what was already created is inform, not execute. Example: after an escalation was executed, "đâu tôi xem bạn tạo cái gì?" => personal_data + personal_sections=["escalations"] + assistant_action="human_escalation" + action_mode="inform".
+16. WRITE-PAYLOAD SEMANTIC COMPLETENESS (APPLIES TO EVERY PERSISTENT COPILOT WRITE): always separate (a) operation intent, (b) presentation/style/language modifiers, (c) routing/recipient modifiers, and (d) the actual domain payload. Operation/modifier text MUST NEVER be copied into domain fields merely to make a write look complete.
+   - internship_progress requires actual work/progress facts. "ghi progress bằng tiếng Việt" or "lưu progress cho tôi" is incomplete unless recent USER context clearly contains the work to record. If incomplete: needs_clarification=true, action_mode="inform", ask what work/progress should be recorded. Do not invent tasks, hours, weeks, outcomes, skills, or blockers.
+   - weekly_reflection persistent save requires one specific/resolvable week. "lưu reflection bằng tiếng Việt" is incomplete unless recent USER context identifies the week/reflection. If incomplete: needs_clarification=true, action_mode="inform", ask which week. Never invent/default a week.
+   - smart_notifications reminder creation requires the actual thing to remember AND
+     a semantically resolvable future time, or N days before a specific/resolvable deadline.
+   - Resolve natural relative date/time meaning INSIDE THIS SAME semantic-router call
+     using CURRENT PRODUCT-LOCAL DATETIME/TIMEZONE supplied above.
+   - Preserve original time wording in reminder_time_expression for traceability,
+     and output normalized absolute timezone-aware ISO-8601 datetime in
+     action_payload.reminder_scheduled_at.
+   - Scheduling defaults for a clearly stated broad daypart without exact clock:
+     morning 08:00, noon 12:00, afternoon 15:00, evening/night 19:00.
+     These are scheduling defaults, not text-routing rules.
+   - If the time would be in the past or is genuinely ambiguous, set
+     reminder_scheduled_at=null and ask only for the missing timing detail.
+   - Do not ask for an exact clock when the intended daypart is already clear.
+   - Notification-preference changes require a clear supported category and enable/disable state.
+   - Never copy command/politeness/language-control wording into reminder_content.
+   - IMPORTANT distinction: asking to WRITE/REWRITE/TRANSLATE the wording of a reminder is conversation/general_support, not smart_notifications. Example: after discussing a reminder, "viết lời nhắc bằng tiếng Anh" means rewrite the reminder text in English; do not access personal reminders and do not schedule anything unless the user explicitly asks to create/schedule/save it.
+   - human_escalation/grievance write requires the actual internship incident/problem/concern. Language/style instructions and recipient preferences are constraints, NOT incident facts. "tạo escalation bằng tiếng Việt" is incomplete unless recent USER context contains the incident. Ask what happened; do not invent/default subject, description, type, severity, people, dates, impact, or witnesses.
+   - If required payload data is missing, DO NOT preview a fake/default draft and DO NOT persist anything. Keep the action semantically identified, set needs_clarification=true and action_mode="inform".
+   - If recent USER context already supplies the missing domain payload, resolve that genuine follow-up and proceed to preview.
+17. A language/style request changes only how the assistant presents or drafts the action; it is never evidence that the action payload itself exists.
+18. If no specialized behavior is needed, use none and action_mode="inform".
+
+19. SINGLE-ROUTER WRITE PAYLOAD (NO SECOND LLM CALL):
+    The SAME semantic-router response MUST populate action_payload for confirmation-gated writes.
+    Do not expect another model/extractor to interpret the write later. Backend code will validate these exact fields deterministically.
+
+    For assistant_action="internship_progress":
+    - action_payload.progress_work_summary = only the actual work/progress facts the USER supplied or clearly referenced from recent USER context.
+    - action_payload.progress_hours = explicit hours only; otherwise null.
+    - action_payload.progress_week = explicit/resolvable week only; otherwise null.
+    - Required for preview: progress_work_summary.
+    - If missing, missing_action_fields=["progress_work_summary"], needs_clarification=true, action_mode="inform".
+
+    For assistant_action="weekly_reflection" when the user wants to SAVE:
+    - action_payload.reflection_week = the one explicit/resolvable week.
+    - Required for preview: reflection_week.
+    - If missing, missing_action_fields=["reflection_week"], needs_clarification=true, action_mode="inform".
+
+    For assistant_action="smart_notifications":
+    - For a reminder, set reminder_kind="REMINDER", reminder_content to the actual thing/event to remember, and either
+      reminder_time_expression OR (reminder_days_before + reminder_deadline_reference).
+    - Any concrete request to be reminded about a specific task/event at a
+      resolvable time is a reminder write request, regardless of whether it is
+      phrased as a question, command, polite request, shorthand, or contains typos.
+    - When the time is resolvable, ALWAYS populate reminder_scheduled_at with an
+      absolute timezone-aware ISO-8601 datetime. Backend code consumes that
+      structured value and must not reinterpret natural-language time.
+    - For a notification preference change, set reminder_kind="PREFERENCE", notification_preference_key and notification_preference_enabled.
+    - Never use phrases like "nhắc tôi", "bằng tiếng Việt", "tạo reminder" as reminder_content.
+    - Put any missing required names in missing_action_fields and clarify before preview.
+
+    For assistant_action in {"human_escalation","grievance_assistant"} when creating/routing an escalation:
+    - escalation_incident_description = only the actual internship incident/problem/concern from the USER.
+    - escalation_subject = a concise subject faithfully derived only from that incident.
+    - escalation_type/severity/target = classify from the incident and explicit recipient preference; do not invent incident facts.
+    - Language/style/format commands are NOT incident content.
+    - Required for preview: escalation_incident_description. If missing, set
+      missing_action_fields=["escalation_incident_description"], needs_clarification=true, action_mode="inform".
+    - When the incident is present, also populate escalation_subject, escalation_type, escalation_severity and escalation_target.
+
+    For every NON-write request, leave action_payload fields null and missing_action_fields empty.
+20. Backend confirmation remains authoritative: action_payload never means "execute now". A first complete write is preview; only a later confirmation may execute the persisted pending route/payload.
+
+ACTION MODE
+Return exactly one action_mode:
+- inform: read/analyze/guide/show/summarize only; no persistent side effect.
+- preview: the user is asking for a supported persistent write for the first time or is semantically revising a pending write. Explain/prepare the action only; DO NOT persist/send it yet.
+- execute: the current message semantically accepts carrying out the specific matching pending preview. Execute only that already-previewed action.
+- cancel: the current message semantically rejects/cancels the specific matching pending preview. Do not persist/send it.
+- inform: also use this when a pending preview exists but the CURRENT message is simply a question, an unrelated request, or a topic switch. A pending preview never hijacks the next turn.
+When uncertain, choose inform. A new write request must NEVER jump directly to execute.
+
 LANGUAGE GATE
 
 The chatbot supports only Vietnamese and English.
@@ -529,14 +919,26 @@ Routing principles:
 
 
 SEMANTIC_ROUTER_USER_TEMPLATE = """
+Current product-local datetime:
+{current_local_datetime}
+
+Current product timezone:
+{current_timezone}
+
 Recent conversation:
 {conversation_context}
 
 User message:
 {query}
 
-Classify the message semantically. Resolve contextual form references from the
-recent conversation and classify form_request_mode/referenced_form_number when relevant.
+Classify the CURRENT message semantically using recent conversation only as
+context. Return user_goal, speech_act, pending_transition, intent, scope,
+followup_relation, minimum data_source, effective response_language,
+session_language_update, response_style, persistent-preference flags, and
+conversation_target when relevant.
+Choose assistant_action by the real job-to-be-done from the capability catalog.
+Resolve Form requests by number/name OR clear purpose. Corrections override stale
+entities. Also classify form_request_mode/referenced_form_number.
 """.strip()
 
 SEMANTIC_QUERY_PLANNER_SYSTEM_PROMPT = """
@@ -1297,6 +1699,17 @@ GENERAL BEHAVIOR
   hidden reasoning, or system implementation details.
 - Do not invent university policies, deadlines, requirements,
   forms, contacts, or document content.
+
+USE AVAILABLE SYSTEM CAPABILITIES — DO NOT OUTSOURCE THE LOOKUP TO THE USER
+- If official evidence is available, answer directly from it.
+- If authorized DB facts are available, answer them directly.
+- Do not replace an available answer with "check the handbook/portal/dashboard" or
+  "ask the coordinator".
+- If evidence is partial, answer the supported part first and identify the exact gap.
+- If no evidence is found, say the assistant could not find enough in the currently
+  available official knowledge base. Do not make the user perform the same search.
+- Suggest a human only when a human decision/approval/escalation is genuinely required
+  or the system truly lacks authoritative information.
 
 BEHAVIOR BY ROUTE
 

@@ -225,6 +225,43 @@ function formatDate(
 }
 
 
+function formatDateTime(
+    value: string | null,
+    locale: "vi" | "en",
+) {
+    if (!value) {
+        return "—";
+    }
+
+    const date =
+        new Date(value);
+
+    const formattedDate =
+        new Intl.DateTimeFormat(
+            locale === "en"
+                ? "en-US"
+                : "vi-VN",
+            {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+            }
+        ).format(date);
+
+    const formattedTime =
+        new Intl.DateTimeFormat(
+            "vi-VN",
+            {
+                hour: "2-digit",
+                minute: "2-digit",
+                hourCycle: "h23",
+            }
+        ).format(date);
+
+    return `${formattedDate} • ${formattedTime}`;
+}
+
+
 function getDeadlineLabel(
     value: string,
     now: number,
@@ -449,6 +486,18 @@ export default function ReportsPage() {
     const [
         feedbackReport,
         setFeedbackReport,
+    ] =
+        useState<
+            ReportItem |
+            null
+        >(
+            null
+        );
+
+
+    const [
+        viewingReport,
+        setViewingReport,
     ] =
         useState<
             ReportItem |
@@ -2033,6 +2082,12 @@ export default function ReportsPage() {
                                                     report.id
                                                 }
 
+                                                onViewDetails={() =>
+                                                    setViewingReport(
+                                                        report
+                                                    )
+                                                }
+
                                                 onEdit={() =>
                                                     openEditReport(
                                                         report
@@ -2298,6 +2353,79 @@ export default function ReportsPage() {
 
 
             {/* ==============================================
+                REPORT DETAILS
+            ============================================== */}
+
+            {viewingReport && (
+
+                <ReportDetailModal
+                    report={
+                        viewingReport
+                    }
+
+                    locale={
+                        locale
+                    }
+
+                    onEdit={() => {
+                        const report =
+                            viewingReport;
+
+                        setViewingReport(
+                            null
+                        );
+
+                        openEditReport(
+                            report
+                        );
+                    }}
+
+                    onViewFile={() =>
+                        void openProtectedFile(
+                            `${API_URL}/api/v1/student/reports/${viewingReport.id}/file`,
+                            viewingReport.file_name ??
+                            "report",
+                            false
+                        )
+                    }
+
+                    onDownloadFile={() =>
+                        void openProtectedFile(
+                            `${API_URL}/api/v1/student/reports/${viewingReport.id}/file?download=true`,
+                            viewingReport.file_name ??
+                            "report",
+                            true
+                        )
+                    }
+
+                    onViewCompletionLetter={() =>
+                        void openProtectedFile(
+                            `${API_URL}/api/v1/student/reports/${viewingReport.id}/completion-letter`,
+                            viewingReport.completion_letter_name ??
+                            "completion-letter",
+                            false
+                        )
+                    }
+
+                    onDownloadCompletionLetter={() =>
+                        void openProtectedFile(
+                            `${API_URL}/api/v1/student/reports/${viewingReport.id}/completion-letter?download=true`,
+                            viewingReport.completion_letter_name ??
+                            "completion-letter",
+                            true
+                        )
+                    }
+
+                    onClose={() =>
+                        setViewingReport(
+                            null
+                        )
+                    }
+                />
+            )}
+
+
+            {/* ==============================================
                 REPORT CREATE / EDIT MODAL
             ============================================== */}
 
@@ -2384,6 +2512,7 @@ function ReportCard({
     uploading,
     submitting,
 
+    onViewDetails,
     onEdit,
     onDelete,
     onUpload,
@@ -2402,6 +2531,8 @@ function ReportCard({
     uploading: boolean;
 
     submitting: boolean;
+
+    onViewDetails: () => void;
 
     onEdit: () => void;
 
@@ -2511,8 +2642,8 @@ function ReportCard({
 
 
                         <span>
-                            Ngày nộp:{" "}
-                            {formatDate(
+                            Thời gian nộp:{" "}
+                            {formatDateTime(
                                 report.submitted_at,
                                 locale,
                             )}
@@ -2596,18 +2727,45 @@ function ReportCard({
                     styles.reportActions
                 }
             >
+                <button
+                    type="button"
+                    title="Xem chi tiết báo cáo"
+                    aria-label={`Xem báo cáo ${report.title}`}
+                    className={`${styles.namedAction} ${styles.viewReportAction}`}
+                    onClick={
+                        onViewDetails
+                    }
+                >
+                    <Eye
+                        size={15}
+                    />
+
+                    <span>
+                        Xem báo cáo
+                    </span>
+                </button>
+
+
                 {editable && (
 
                     <button
                         type="button"
                         title="Chỉnh sửa"
+                        aria-label={`Chỉnh sửa báo cáo ${report.title}`}
+                        className={
+                            styles.namedAction
+                        }
                         onClick={
                             onEdit
                         }
                     >
                         <Pencil
-                            size={16}
+                            size={15}
                         />
+
+                        <span>
+                            Chỉnh sửa
+                        </span>
                     </button>
                 )}
 
@@ -2811,6 +2969,369 @@ function ReportCard({
                     )}
             </div>
         </article>
+    );
+}
+
+
+/* ============================================================
+   REPORT DETAIL MODAL
+============================================================ */
+
+function ReportDetailModal({
+    report,
+    locale,
+    onEdit,
+    onViewFile,
+    onDownloadFile,
+    onViewCompletionLetter,
+    onDownloadCompletionLetter,
+    onClose,
+}: {
+    report: ReportItem;
+
+    locale: "vi" | "en";
+
+    onEdit: () => void;
+
+    onViewFile: () => void;
+
+    onDownloadFile: () => void;
+
+    onViewCompletionLetter: () => void;
+
+    onDownloadCompletionLetter: () => void;
+
+    onClose: () => void;
+}) {
+    const editable =
+        report.status ===
+        "DRAFT"
+        ||
+        report.status ===
+        "REVISION_REQUIRED";
+
+
+    return (
+        <div
+            className={
+                styles.modalOverlay
+            }
+            onMouseDown={
+                onClose
+            }
+        >
+            <section
+                className={
+                    styles.reportDetailModal
+                }
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="report-detail-title"
+                onMouseDown={
+                    (
+                        event
+                    ) =>
+                        event.stopPropagation()
+                }
+            >
+                <div
+                    className={
+                        styles.modalHeader
+                    }
+                >
+                    <div>
+                        <h2 id="report-detail-title">
+                            {report.title}
+                        </h2>
+
+                        <p>
+                            Chi tiết báo cáo thực tập của bạn
+                        </p>
+                    </div>
+
+                    <button
+                        type="button"
+                        aria-label="Đóng"
+                        onClick={
+                            onClose
+                        }
+                    >
+                        <X
+                            size={20}
+                        />
+                    </button>
+                </div>
+
+                <div
+                    className={
+                        styles.reportDetailBody
+                    }
+                >
+                    <div
+                        className={
+                            styles.reportDetailSummary
+                        }
+                    >
+                        <div>
+                            <span>Loại báo cáo</span>
+
+                            <strong>
+                                {reportTypeLabel(
+                                    report.report_type
+                                )}
+
+                                {report.week_number
+                                    ? ` • Tuần ${report.week_number}`
+                                    : ""}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>Trạng thái</span>
+
+                            <strong
+                                className={`${styles.statusBadge} ${styles[
+                                    `status_${report.status}`
+                                ]}`}
+                            >
+                                {statusLabel(
+                                    report.status
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>Hạn nộp</span>
+
+                            <strong>
+                                {formatDate(
+                                    report.due_at,
+                                    locale,
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>Thời gian nộp</span>
+
+                            <strong>
+                                {formatDateTime(
+                                    report.submitted_at,
+                                    locale,
+                                )}
+                            </strong>
+                        </div>
+                    </div>
+
+                    <section
+                        className={
+                            styles.reportDetailSection
+                        }
+                    >
+                        <h3>Nội dung báo cáo</h3>
+
+                        {report.content ? (
+                            <p
+                                className={
+                                    styles.reportDetailContent
+                                }
+                            >
+                                {report.content}
+                            </p>
+                        ) : (
+                            <p
+                                className={
+                                    styles.reportDetailEmpty
+                                }
+                            >
+                                Báo cáo này chưa có nội dung văn bản.
+                            </p>
+                        )}
+                    </section>
+
+                    {report.file_name && (
+                        <ReportAttachment
+                            title="Tệp báo cáo"
+                            filename={
+                                report.file_name
+                            }
+                            fileSize={
+                                report.file_size
+                            }
+                            onView={
+                                onViewFile
+                            }
+                            onDownload={
+                                onDownloadFile
+                            }
+                        />
+                    )}
+
+                    {report.completion_letter_name && (
+                        <ReportAttachment
+                            title="Letter of Completion"
+                            filename={
+                                report.completion_letter_name
+                            }
+                            fileSize={
+                                report.completion_letter_size
+                            }
+                            onView={
+                                onViewCompletionLetter
+                            }
+                            onDownload={
+                                onDownloadCompletionLetter
+                            }
+                        />
+                    )}
+
+                    {report.lecturer_feedback && (
+                        <section
+                            className={
+                                styles.reportDetailSection
+                            }
+                        >
+                            <h3>Nhận xét của giảng viên</h3>
+
+                            {report.lecturer_score !==
+                                null && (
+                                <strong
+                                    className={
+                                        styles.reportDetailScore
+                                    }
+                                >
+                                    {`${report.lecturer_score.toFixed(1)}/10`}
+                                </strong>
+                            )}
+
+                            <p
+                                className={
+                                    styles.reportDetailContent
+                                }
+                            >
+                                {report.lecturer_feedback}
+                            </p>
+                        </section>
+                    )}
+
+                    {!editable && (
+                        <p
+                            className={
+                                styles.reportLockedNotice
+                            }
+                        >
+                            Báo cáo đã được nộp nên hiện chỉ có thể xem.
+                            Bạn có thể chỉnh sửa khi giảng viên yêu cầu sửa lại.
+                        </p>
+                    )}
+                </div>
+
+                <div
+                    className={
+                        styles.modalActions
+                    }
+                >
+                    <button
+                        type="button"
+                        className={
+                            styles.secondaryButton
+                        }
+                        onClick={
+                            onClose
+                        }
+                    >
+                        Đóng
+                    </button>
+
+                    {editable && (
+                        <button
+                            type="button"
+                            className={
+                                styles.primaryButton
+                            }
+                            onClick={
+                                onEdit
+                            }
+                        >
+                            <Pencil
+                                size={15}
+                            />
+
+                            Chỉnh sửa báo cáo
+                        </button>
+                    )}
+                </div>
+            </section>
+        </div>
+    );
+}
+
+
+function ReportAttachment({
+    title,
+    filename,
+    fileSize,
+    onView,
+    onDownload,
+}: {
+    title: string;
+
+    filename: string;
+
+    fileSize: number | null;
+
+    onView: () => void;
+
+    onDownload: () => void;
+}) {
+    return (
+        <section
+            className={
+                styles.reportAttachment
+            }
+        >
+            <FileText
+                size={20}
+            />
+
+            <div>
+                <span>{title}</span>
+
+                <strong>
+                    {filename}
+
+                    {fileSize
+                        ? ` • ${formatFileSize(fileSize)}`
+                        : ""}
+                </strong>
+            </div>
+
+            <div
+                className={
+                    styles.reportAttachmentActions
+                }
+            >
+                <button
+                    type="button"
+                    onClick={
+                        onView
+                    }
+                >
+                    <Eye size={15} />
+                    Xem tệp
+                </button>
+
+                <button
+                    type="button"
+                    onClick={
+                        onDownload
+                    }
+                >
+                    <Download size={15} />
+                    Tải xuống
+                </button>
+            </div>
+        </section>
     );
 }
 

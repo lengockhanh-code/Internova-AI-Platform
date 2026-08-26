@@ -4,14 +4,27 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.admin_knowledge_base_routes import (
+    router as admin_knowledge_base_router,
+)
+
+# Admin
+from src.api.admin_observability_routes import (
+    router as admin_observability_router,
+)
+
 # Auth
 from src.api.auth_routes import router as auth_router
+from src.api.chat_history_routes import (
+    router as chat_history_router,
+)
 from src.api.checklist_routes import (
     router as checklist_router,
 )
 from src.api.document_routes import (
     router as document_router,
 )
+from src.api.form_agent_routes import router as form_agent_router
 from src.api.internship_profile_routes import (
     router as internship_profile_router,
 )
@@ -50,21 +63,13 @@ from src.api.notification_routes import (
 from src.api.notification_websocket_routes import (
     router as notification_websocket_router,
 )
-# Admin
-
-from src.api.admin_observability_routes import (
-    router as admin_observability_router,
-)
-from src.api.admin_knowledge_base_routes import (
-    router as admin_knowledge_base_router,
-)
 
 # ============================================================
 # API ROUTERS
 # ============================================================
 # Chatbot / RAG
 from src.api.routes import router as chat_router
-from src.api.form_agent_routes import router as form_agent_router
+
 # Student
 from src.api.student_dashboard_routes import (
     router as student_dashboard_router,
@@ -186,6 +191,11 @@ app.include_router(
 # Chatbot / RAG
 app.include_router(
     chat_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    chat_history_router,
     prefix="/api/v1",
 )
 
