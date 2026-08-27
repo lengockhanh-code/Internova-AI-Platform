@@ -66,7 +66,7 @@ RUN mkdir -p \
 
 USER appuser
 
-EXPOSE 10000
+EXPOSE 8000
 
 # ============================================================
 # Health Check
@@ -76,7 +76,7 @@ HEALTHCHECK \
     --timeout=10s \
     --start-period=60s \
     --retries=3 \
-    CMD curl -f http://localhost:${PORT:-10000}/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
 # ============================================================
 # Production Server
@@ -84,7 +84,7 @@ HEALTHCHECK \
 CMD ["sh", "-c", "python scripts/download_private_data.py && exec gunicorn src.main:app \
     --worker-class uvicorn.workers.UvicornWorker \
     --workers ${WEB_CONCURRENCY:-1} \
-    --bind 0.0.0.0:${PORT:-10000} \
+    --bind 0.0.0.0:${PORT:-8000} \
     --timeout 120 \
     --keep-alive 5 \
     --access-logfile - \

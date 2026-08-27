@@ -11,6 +11,8 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      PORT: "8000"
     volumes:
       # Mount thư mục Data để index ChromaDB và file PDF được persist
       - ./Data:/app/Data
