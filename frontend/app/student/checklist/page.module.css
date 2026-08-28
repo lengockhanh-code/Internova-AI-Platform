@@ -272,7 +272,6 @@
     gap: 18px;
 }
 
-.groupCard,
 .overviewCard,
 .deadlineCard {
     border: 1px solid #e2e8f0;
@@ -282,7 +281,12 @@
 }
 
 .groupCard {
+    min-width: 0;
     padding: 22px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
 }
 
 .groupHeader {
@@ -290,6 +294,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 20px;
+    padding: 0 2px;
 }
 
 .groupHeader h2 {
@@ -308,6 +313,79 @@
 .groupProgressInfo {
     flex-shrink: 0;
     text-align: right;
+}
+
+.groupCompletionSummary {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 10px;
+}
+
+.groupHeaderRight {
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.groupActions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.groupActions button,
+.taskActions button {
+    display: flex;
+    width: 30px;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid #dbe2ea;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.groupActions button:hover,
+.taskActions button:hover {
+    border-color: #93c5fd;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.groupActions button:last-child:hover,
+.taskActions button:last-child:hover {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.groupActions button:disabled,
+.taskActions button:disabled {
+    opacity: 0.55;
+    cursor: wait;
+}
+
+.groupCompletionCheck {
+    display: flex;
+    width: 26px;
+    height: 26px;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #cbd5e1;
+    border-radius: 7px;
+    background: #ffffff;
+    color: #ffffff;
+}
+
+.groupCompletionCheckDone {
+    border-color: #10b981;
+    background: #10b981;
 }
 
 .groupProgressInfo strong {
@@ -348,32 +426,33 @@
 .taskList {
     display: flex;
     flex-direction: column;
-    margin-top: 12px;
+    gap: 12px;
+    margin-top: 16px;
 }
 
 .taskItem {
     display: grid;
-    grid-template-columns: 28px minmax(0, 1fr) 34px;
+    grid-template-columns: 26px minmax(0, 1fr) 34px;
     align-items: flex-start;
-    gap: 12px;
-    padding: 17px 4px;
-    border-bottom: 1px solid #edf2f7;
+    gap: 14px;
+    padding: 18px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #f8fafc;
     transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
         background 0.2s ease,
         transform 0.2s ease;
 }
 
-.taskItem:last-child {
-    border-bottom: none;
-}
-
 .taskItem:hover {
-    background: #f8fafc;
-    transform: translateX(3px);
+    border-color: #bfdbfe;
+    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.08);
+    transform: translateY(-1px);
 }
 
-.checkButton,
-.moreButton {
+.checkButton {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -384,20 +463,39 @@
 }
 
 .checkButton {
-    margin-top: 2px;
+    width: 24px;
+    height: 24px;
+    margin-top: 1px;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #2563eb;
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.checkButton:hover {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.checkButton:focus-visible {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.checkButtonChecked {
+    border-color: #10b981;
+    background: #10b981;
+    color: #ffffff;
 }
 
 .checkButton:disabled {
     cursor: wait;
     opacity: 0.7;
-}
-
-.completedIcon {
-    color: #10b981;
-}
-
-.pendingIcon {
-    color: #cbd5e1;
 }
 
 .taskContent {
@@ -488,16 +586,10 @@
     text-decoration: line-through;
 }
 
-.moreButton {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    color: #94a3b8;
-}
-
-.moreButton:hover {
-    background: #f1f5f9;
-    color: #2563eb;
+.taskActions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 
@@ -856,6 +948,126 @@
     padding: 22px;
 }
 
+.taskDraftSection {
+    margin-bottom: 18px;
+}
+
+.taskDraftHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 9px;
+}
+
+.taskDraftHeader label {
+    color: #334155;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.taskDraftHeader span {
+    color: #64748b;
+    font-size: 11px;
+}
+
+.taskDraftList {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.taskDraftRow {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) 34px;
+    align-items: center;
+    gap: 9px;
+}
+
+.taskDraftNumber {
+    display: flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.taskDraftRow input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 12px;
+    border: 1px solid #dbe2ea;
+    border-radius: 10px;
+    outline: none;
+    background: #ffffff;
+    color: #0f172a;
+    font-family: inherit;
+    font-size: 13px;
+}
+
+.taskDraftRow input:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.12);
+}
+
+.removeTaskDraftButton {
+    display: flex;
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid #fecaca;
+    border-radius: 9px;
+    background: #fff7f7;
+    color: #dc2626;
+    cursor: pointer;
+}
+
+.removeTaskDraftButton:hover:not(:disabled) {
+    background: #fef2f2;
+}
+
+.removeTaskDraftButton:disabled {
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    color: #cbd5e1;
+    cursor: not-allowed;
+}
+
+.addTaskDraftButton {
+    display: flex;
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    margin-top: 10px;
+    border: 1px dashed #93c5fd;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.addTaskDraftButton:hover:not(:disabled) {
+    border-style: solid;
+    background: #dbeafe;
+}
+
+.addTaskDraftButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .formGroup {
     display: flex;
     flex: 1;
@@ -1003,6 +1215,13 @@
         flex-direction: column;
     }
 
+    .groupHeaderRight {
+        width: 100%;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
     .groupProgressInfo {
         text-align: left;
     }
@@ -1031,8 +1250,10 @@
         grid-template-columns: 26px minmax(0, 1fr);
     }
 
-    .moreButton {
-        display: none;
+    .taskActions {
+        grid-column: 2;
+        flex-direction: row;
+        justify-content: flex-end;
     }
 
     .toolbarLeft {
@@ -1071,6 +1292,7 @@
 :global(.dark) .pageHeader h1,
 :global(.dark) .statCard strong,
 :global(.dark) .groupHeader h2,
+:global(.dark) .taskTitleRow h3,
 :global(.dark) .taskTitle,
 :global(.dark) .sideHeader h2,
 :global(.dark) .deadlineMain strong,
@@ -1083,18 +1305,22 @@
 :global(.dark) .statCard div > span,
 :global(.dark) .filterLabel,
 :global(.dark) .groupHeader p,
+:global(.dark) .taskContent > p,
 :global(.dark) .taskDescription,
 :global(.dark) .taskMeta,
 :global(.dark) .overviewStats p,
 :global(.dark) .deadlineMain p,
 :global(.dark) .deadlineMain small,
 :global(.dark) .modalHeader p,
+:global(.dark) .taskDraftHeader label,
+:global(.dark) .taskDraftHeader span,
 :global(.dark) .formGroup label {
     color: #cbd5e1;
 }
 
 :global(.dark) .statCard,
 :global(.dark) .toolbar,
+:global(.dark) .groupCard,
 :global(.dark) .taskGroup,
 :global(.dark) .taskItem,
 :global(.dark) .overviewCard,
@@ -1137,6 +1363,62 @@
     background: #334155;
 }
 
+:global(.dark) .checkButton {
+    border-color: #64748b;
+    background: #111827;
+}
+
+:global(.dark) .checkButtonChecked {
+    border-color: #10b981;
+    background: #10b981;
+}
+
+:global(.dark) .groupActions button,
+:global(.dark) .taskActions button {
+    border-color: #475569;
+    background: #111827;
+    color: #cbd5e1;
+}
+
+:global(.dark) .groupCompletionCheck {
+    border-color: #64748b;
+    background: #111827;
+}
+
+:global(.dark) .groupCompletionCheckDone {
+    border-color: #10b981;
+    background: #10b981;
+}
+
+:global(.dark) .taskDraftNumber {
+    background: #0f2f5f;
+    color: #bfdbfe;
+}
+
+:global(.dark) .taskDraftRow input {
+    border-color: #475569;
+    background: #111827;
+    color: #f8fafc;
+}
+
+:global(.dark) .removeTaskDraftButton {
+    border-color: #7f1d1d;
+    background: #2b1720;
+    color: #fca5a5;
+}
+
+:global(.dark) .removeTaskDraftButton:disabled {
+    border-color: #334155;
+    background: #111827;
+    color: #475569;
+}
+
+:global(.dark) .addTaskDraftButton {
+    border-color: #1d4ed8;
+    background: #0f2f5f;
+    color: #bfdbfe;
+}
+
 :global(.dark) .formGroup input,
 :global(.dark) .formGroup select,
 :global(.dark) .formGroup textarea {
@@ -1148,3 +1430,623 @@
 :global(.dark) .noDeadline {
     color: #cbd5e1;
 }
+
+/* ============================================================
+   FINAL PRODUCTION THEME — VINUNI NAVY + ACADEMIC SLATE
+============================================================ */
+
+.layout,
+.main,
+.checklistPage {
+    background: #f6f8fb;
+}
+
+.checklistPage {
+    color: #10233f;
+    font-family:
+        "Segoe UI Variable",
+        "Segoe UI",
+        -apple-system,
+        BlinkMacSystemFont,
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+}
+
+.pageHeader h1 {
+    color: #0b2346;
+    font-size: 29px;
+    font-weight: 760;
+    letter-spacing: -0.025em;
+}
+
+.pageHeader p {
+    color: #66758a;
+}
+
+.titleIcon {
+    width: 50px;
+    height: 50px;
+    border: 1px solid #d7e1eb;
+    border-radius: 9px;
+    background: #f3f6f9;
+    color: #0b2f5b;
+    box-shadow: none;
+}
+
+.addButton {
+    border-radius: 8px;
+    background: #0b2f5b;
+    box-shadow: none;
+}
+
+.addButton:hover {
+    background: #082747;
+    box-shadow: 0 7px 16px rgba(11, 47, 91, 0.12);
+    transform: translateY(-1px);
+}
+
+.statGrid {
+    gap: 12px;
+}
+
+.statCard,
+.toolbar,
+.groupCard,
+.overviewCard,
+.deadlineCard {
+    border-color: #dce4ed;
+    border-radius: 9px;
+    box-shadow: 0 3px 14px rgba(20, 43, 72, 0.028);
+}
+
+.statCard {
+    padding: 17px 18px;
+}
+
+.statCard:hover {
+    border-color: #c7d2df;
+    box-shadow: 0 5px 16px rgba(20, 43, 72, 0.045);
+    transform: none;
+}
+
+.statCard p,
+.statCard div > span,
+.filterLabel,
+.taskContent > p,
+.taskMeta,
+.overviewStats p {
+    color: #6e7c90;
+}
+
+.statCard strong,
+.groupHeader h2,
+.taskTitleRow h3,
+.sideHeader h2,
+.overviewStats strong {
+    color: #122945;
+}
+
+.statIcon {
+    width: 44px;
+    height: 44px;
+    border: 1px solid #d9e3ed;
+    border-radius: 8px;
+    background: #f4f7fa;
+    color: #174c84;
+}
+
+.statCard:nth-child(2) .statIcon {
+    border-color: #bfd4e8;
+    background: #eef5fb;
+    color: #1d5f91;
+}
+
+.statCard:nth-child(3) .statIcon {
+    border-color: #d3e0ec;
+    background: #f2f6fa;
+    color: #315f8f;
+}
+
+.statCard:nth-child(4) .statIcon {
+    border-color: #bfd4e8;
+    background: #eef5fb;
+    color: #1d5f91;
+}
+
+.toolbar {
+    padding: 12px 14px;
+}
+
+.filterButton,
+.filterButtonActive,
+.sortButton,
+.sortButtonActive {
+    min-height: 35px;
+    border-radius: 7px;
+    font-weight: 650;
+}
+
+.filterButton,
+.sortButton {
+    border-color: #d8e1ea;
+    background: #ffffff;
+    color: #5e6e83;
+}
+
+.filterButton:hover,
+.sortButton:hover {
+    border-color: #b7c7d8;
+    color: #0b2f5b;
+}
+
+.filterButtonActive,
+.sortButtonActive {
+    border-color: #0b2f5b;
+    background: #0b2f5b;
+    color: #ffffff;
+}
+
+.groupProgressBar,
+.progressBar {
+    background: #e2e7ed;
+}
+
+.groupProgressFill {
+    background: #2f6f9f;
+}
+
+.completed {
+    background: #eaf7f2;
+    color: #25605f;
+}
+
+.inProgress {
+    background: #eef3f8;
+    color: #174c84;
+}
+
+.pending {
+    background: #f1f4f7;
+    color: #718096;
+}
+
+.completedIcon {
+    color: #20845e;
+}
+
+.pendingIcon {
+    color: #9aa7b7;
+}
+
+.checkButton,
+.moreButton,
+.deadlineButton {
+    border-radius: 7px;
+}
+
+.checkButton:hover,
+.moreButton:hover,
+.deadlineButton:hover {
+    border-color: #b7c7d8;
+    background: #f8fafc;
+    color: #0b2f5b;
+}
+
+.progressCircle > div {
+    background: #ffffff;
+}
+
+.progressCircle strong {
+    color: #0b2346;
+}
+
+.overviewDotDone {
+    background: #2f6f9f;
+}
+
+.overviewDotProgress {
+    background: #174c84;
+}
+
+.overviewDotPending {
+    background: #cbd5e1;
+}
+
+.deadlineMain {
+    border-color: #d5e0ea;
+    border-radius: 8px;
+    background: #f6f9fc;
+}
+
+.deadlineMain > span {
+    color: #174c84;
+}
+
+.modal {
+    border-radius: 10px;
+}
+
+/* Dark */
+:global(.dark) .layout,
+:global(.dark) .main,
+:global(.dark) .checklistPage {
+    background: #071524;
+}
+
+:global(.dark) .pageHeader h1,
+:global(.dark) .statCard strong,
+:global(.dark) .groupHeader h2,
+:global(.dark) .taskTitleRow h3,
+:global(.dark) .sideHeader h2,
+:global(.dark) .overviewStats strong {
+    color: #f1f5f9;
+}
+
+:global(.dark) .statCard,
+:global(.dark) .toolbar,
+:global(.dark) .groupCard,
+:global(.dark) .overviewCard,
+:global(.dark) .deadlineCard {
+    border-color: #294057;
+    background: #0f2135;
+    box-shadow: none;
+}
+
+:global(.dark) .titleIcon,
+:global(.dark) .statIcon {
+    border-color: #304b67;
+    background: #112b46;
+    color: #a6c4e2;
+}
+
+:global(.dark) .statCard:nth-child(2) .statIcon,
+:global(.dark) .statCard:nth-child(4) .statIcon {
+    border-color: #304b67;
+    background: #15372d;
+    color: #9ce0c2;
+}
+
+:global(.dark) .filterButton,
+:global(.dark) .sortButton {
+    border-color: #35506b;
+    background: #10263c;
+    color: #aebdce;
+}
+
+:global(.dark) .filterButtonActive,
+:global(.dark) .sortButtonActive {
+    border-color: #547ca3;
+    background: #173f69;
+    color: #ffffff;
+}
+
+:global(.dark) .progressCircle > div {
+    background: #0f2135;
+}
+
+:global(.dark) .completed {
+    background: #15372d;
+    color: #9ce0c2;
+}
+
+:global(.dark) .inProgress {
+    background: #132d48;
+    color: #b5d1eb;
+}
+
+:global(.dark) .pending {
+    background: #192b3e;
+    color: #93a4b7;
+}
+
+/* ============================================================
+   DARK MODE CONTRAST FIX — PRODUCTION
+   Added to prevent light surfaces / low-contrast text in dark UI.
+============================================================ */
+
+:global(.dark) .layout,
+:global(.dark) .main,
+:global(.dark) .checklistPage {
+    background: #071524;
+    color: #eaf0f7;
+}
+
+:global(.dark) .pageHeader h1,
+:global(.dark) .statCard strong,
+:global(.dark) .groupHeader h2,
+:global(.dark) .taskTitleRow h3,
+:global(.dark) .taskTitle,
+:global(.dark) .sideHeader h2,
+:global(.dark) .overviewStats strong,
+:global(.dark) .deadlineMain strong,
+:global(.dark) .modalHeader h2,
+:global(.dark) .emptyState h3 {
+    color: #f4f7fb;
+}
+
+:global(.dark) .pageHeader p,
+:global(.dark) .statCard p,
+:global(.dark) .statCard div > span,
+:global(.dark) .filterLabel,
+:global(.dark) .groupHeader p,
+:global(.dark) .taskContent > p,
+:global(.dark) .taskDescription,
+:global(.dark) .taskMeta,
+:global(.dark) .overviewStats p,
+:global(.dark) .progressCircle span,
+:global(.dark) .deadlineMain p,
+:global(.dark) .deadlineMain small,
+:global(.dark) .modalHeader p,
+:global(.dark) .taskDraftHeader label,
+:global(.dark) .taskDraftHeader span,
+:global(.dark) .formGroup label,
+:global(.dark) .emptyState p,
+:global(.dark) .statePage {
+    color: #aebdce;
+}
+
+:global(.dark) .statCard,
+:global(.dark) .toolbar,
+:global(.dark) .groupCard,
+:global(.dark) .taskGroup,
+:global(.dark) .overviewCard,
+:global(.dark) .deadlineCard {
+    border-color: #294057;
+    background: #0f2135;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+}
+
+:global(.dark) .statCard:hover {
+    border-color: #3d5e7d;
+    background: #11263d;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+}
+
+:global(.dark) .taskItem {
+    border-color: #294057;
+    background: #10253a;
+    color: #eaf0f7;
+}
+
+:global(.dark) .taskItem:hover {
+    border-color: #426789;
+    background: #132b43;
+    box-shadow: 0 9px 24px rgba(0, 0, 0, 0.16);
+}
+
+:global(.dark) .emptyState {
+    border-color: #3a5875;
+    background: #0d1d2f;
+    color: #8fa4b9;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+:global(.dark) .emptyState svg {
+    color: #7f96ad;
+}
+
+:global(.dark) .titleIcon,
+:global(.dark) .statIcon {
+    border-color: #304b67;
+    background: #112b46;
+    color: #b8d0e8;
+}
+
+:global(.dark) .statCard:nth-child(2) .statIcon,
+:global(.dark) .statCard:nth-child(4) .statIcon {
+    border-color: #304b67;
+    background: #112b46;
+    color: #b8d0e8;
+}
+
+:global(.dark) .filterButton,
+:global(.dark) .sortButton,
+:global(.dark) .cancelButton {
+    border-color: #35506b;
+    background: #10263c;
+    color: #c2cedb;
+}
+
+:global(.dark) .filterButton:hover,
+:global(.dark) .sortButton:hover,
+:global(.dark) .cancelButton:hover {
+    border-color: #53799e;
+    background: #15314d;
+    color: #ffffff;
+}
+
+:global(.dark) .filterButtonActive,
+:global(.dark) .sortButtonActive {
+    border-color: #6a8fb3;
+    background: #1b4c78;
+    color: #ffffff;
+}
+
+:global(.dark) .addButton,
+:global(.dark) .submitButton,
+:global(.dark) .deadlineButton {
+    border-color: transparent;
+    background: #1b568a;
+    color: #ffffff;
+    box-shadow: 0 7px 18px rgba(0, 0, 0, 0.2);
+}
+
+:global(.dark) .addButton:hover,
+:global(.dark) .submitButton:hover,
+:global(.dark) .deadlineButton:hover {
+    background: #2369a5;
+    color: #ffffff;
+}
+
+:global(.dark) .groupProgressBar,
+:global(.dark) .groupProgressTrack,
+:global(.dark) .progressBar {
+    background: #263d53;
+}
+
+:global(.dark) .groupProgressFill {
+    background: linear-gradient(90deg, #2f6f9f, #5d8bb7);
+}
+
+:global(.dark) .progressCircle > div {
+    background: #0a1a2b;
+    box-shadow:
+        inset 0 0 0 1px #294057,
+        0 8px 20px rgba(0, 0, 0, 0.18);
+}
+
+:global(.dark) .progressCircle strong {
+    color: #f8fafc;
+    text-shadow: 0 1px 10px rgba(255, 255, 255, 0.04);
+}
+
+:global(.dark) .overviewDotDone {
+    background: #2aa876;
+}
+
+:global(.dark) .overviewDotProgress {
+    background: #4f93cf;
+}
+
+:global(.dark) .overviewDotPending {
+    background: #71859a;
+}
+
+:global(.dark) .completed {
+    background: #15372d;
+    color: #9ce0c2;
+}
+
+:global(.dark) .inProgress {
+    background: #143654;
+    color: #c6def3;
+}
+
+:global(.dark) .pending {
+    background: #1a2d40;
+    color: #b4c2d0;
+}
+
+:global(.dark) .checkButton,
+:global(.dark) .groupCompletionCheck,
+:global(.dark) .groupActions button,
+:global(.dark) .taskActions button {
+    border-color: #405a73;
+    background: #0c1c2d;
+    color: #c5d2df;
+}
+
+:global(.dark) .checkButton:hover,
+:global(.dark) .groupActions button:hover,
+:global(.dark) .taskActions button:hover {
+    border-color: #5c84aa;
+    background: #15314d;
+    color: #ffffff;
+}
+
+:global(.dark) .checkButtonChecked,
+:global(.dark) .groupCompletionCheckDone {
+    border-color: #2aa876;
+    background: #20845e;
+    color: #ffffff;
+}
+
+:global(.dark) .deadlineMain {
+    border-color: #36516b;
+    background: #0b1d30;
+}
+
+:global(.dark) .deadlineMain > span {
+    border: 1px solid #36516b;
+    background: #132a42;
+    color: #b8d0e8;
+}
+
+:global(.dark) .modalOverlay {
+    background: rgba(2, 8, 18, 0.72);
+    backdrop-filter: blur(6px);
+}
+
+:global(.dark) .modal {
+    border-color: #314b65;
+    background: #0f2135;
+    color: #eaf0f7;
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.52);
+}
+
+:global(.dark) .modalHeader {
+    border-bottom-color: #294057;
+    background: #10243a;
+}
+
+:global(.dark) .modalHeader > button {
+    color: #aebdce;
+}
+
+:global(.dark) .modalHeader > button:hover {
+    background: #193149;
+    color: #ffffff;
+}
+
+:global(.dark) .taskDraftNumber {
+    border: 1px solid #355674;
+    background: #15314d;
+    color: #c4dcef;
+}
+
+:global(.dark) .taskDraftRow input,
+:global(.dark) .formGroup input,
+:global(.dark) .formGroup select,
+:global(.dark) .formGroup textarea {
+    border-color: #3b5570;
+    background: #0a1929;
+    color: #f3f6fa;
+    caret-color: #ffffff;
+}
+
+:global(.dark) .taskDraftRow input::placeholder,
+:global(.dark) .formGroup input::placeholder,
+:global(.dark) .formGroup textarea::placeholder {
+    color: #71859a;
+    opacity: 1;
+}
+
+:global(.dark) .taskDraftRow input:focus,
+:global(.dark) .formGroup input:focus,
+:global(.dark) .formGroup select:focus,
+:global(.dark) .formGroup textarea:focus {
+    border-color: #5d8bb7;
+    box-shadow: 0 0 0 3px rgba(80, 137, 188, 0.18);
+}
+
+:global(.dark) .formGroup select option {
+    background: #0a1929;
+    color: #f3f6fa;
+}
+
+:global(.dark) .removeTaskDraftButton {
+    border-color: #713b46;
+    background: #2a1820;
+    color: #ffb1b8;
+}
+
+:global(.dark) .addTaskDraftButton {
+    border-color: #456d92;
+    background: #112b46;
+    color: #c5dcf0;
+}
+
+:global(.dark) .addTaskDraftButton:hover:not(:disabled) {
+    border-color: #628db3;
+    background: #173a5b;
+}
+
+:global(.dark) .modalActions {
+    border-top-color: #294057;
+}
+
+:global(.dark) .noDeadline p {
+    color: #aebdce;
+}
+

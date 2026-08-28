@@ -1648,35 +1648,50 @@ export default function InternshipRegistrationPage() {
                                         description={
                                             applicationId
                                                 ? "Bản nháp đã được lưu trong hệ thống."
-                                                : "Chưa tạo bản nháp."
+                                                : "Khởi tạo hồ sơ thực tập."
                                         }
-                                        completed={
-                                            Boolean(
-                                                applicationId
-                                            )
+                                        state={
+                                            applicationId
+                                                ? "completed"
+                                                : "active"
                                         }
                                     />
 
 
                                     <TimelineItem
                                         title="Gửi đăng ký"
-                                        description="Gửi hồ sơ để giảng viên kiểm tra."
-                                        completed={[
-                                            "SUBMITTED",
-                                            "UNDER_REVIEW",
-                                            "APPROVED",
-                                        ].includes(
-                                            applicationStatus
-                                        )}
+                                        description="Gửi hồ sơ để giảng viên phụ trách kiểm tra."
+                                        state={
+                                            [
+                                                "SUBMITTED",
+                                                "UNDER_REVIEW",
+                                                "APPROVED",
+                                            ].includes(
+                                                applicationStatus
+                                            )
+                                                ? "completed"
+                                                : applicationId
+                                                    ? "active"
+                                                    : "pending"
+                                        }
                                     />
 
 
                                     <TimelineItem
                                         title="Giảng viên duyệt"
-                                        description="Nhận kết quả hoặc yêu cầu chỉnh sửa."
-                                        completed={
+                                        description="Nhận kết quả duyệt hoặc yêu cầu bổ sung."
+                                        state={
                                             applicationStatus ===
                                             "APPROVED"
+                                                ? "completed"
+                                                : [
+                                                    "SUBMITTED",
+                                                    "UNDER_REVIEW",
+                                                ].includes(
+                                                    applicationStatus
+                                                )
+                                                    ? "active"
+                                                    : "pending"
                                         }
                                     />
                                 </div>
@@ -3407,28 +3422,39 @@ function ReviewRow({
 function TimelineItem({
     title,
     description,
-    completed,
+    state,
 }: {
     title: string;
 
     description:
     string;
 
-    completed:
-    boolean;
+    state:
+    "completed" |
+    "active" |
+    "pending";
 }) {
+    const itemClass =
+        state === "completed"
+            ? styles.timelineItemCompleted
+            : state === "active"
+                ? styles.timelineItemActive
+                : styles.timelineItemPending;
+
+    const dotClass =
+        state === "completed"
+            ? styles.timelineDotCompleted
+            : state === "active"
+                ? styles.timelineDotActive
+                : styles.timelineDotPending;
+
     return (
         <div
-            className={
-                styles.timelineItem
-            }
+            className={`${styles.timelineItem} ${itemClass}`}
         >
             <span
-                className={
-                    completed
-                        ? styles.timelineDotCompleted
-                        : styles.timelineDotPending
-                }
+                className={dotClass}
+                aria-hidden="true"
             />
 
             <div>

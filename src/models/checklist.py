@@ -48,6 +48,8 @@ class ChecklistItemResponse(BaseModel):
 class ChecklistGroupResponse(BaseModel):
     id: str
 
+    groupId: int | None = None
+
     title: str
 
     subtitle: str
@@ -106,6 +108,64 @@ class ChecklistItemCreate(BaseModel):
     priority: ChecklistPriority = "MEDIUM"
 
     dueAt: datetime | None = None
+
+
+class ChecklistBatchTaskCreate(BaseModel):
+    title: str = Field(
+        min_length=1,
+        max_length=255,
+    )
+
+
+class ChecklistBatchCreate(BaseModel):
+    title: str = Field(
+        min_length=1,
+        max_length=255,
+    )
+
+    tasks: list[ChecklistBatchTaskCreate] = Field(
+        min_length=1,
+        max_length=50,
+    )
+
+    category: ChecklistCategory
+
+    priority: ChecklistPriority = "MEDIUM"
+
+    dueAt: datetime | None = None
+
+
+class ChecklistBatchCreateResponse(BaseModel):
+    status: Literal["ok"] = "ok"
+
+    created: int
+
+    groupId: int
+
+    ids: list[int] = Field(
+        default_factory=list,
+    )
+
+
+class ChecklistGroupUpdate(BaseModel):
+    title: str = Field(
+        min_length=1,
+        max_length=255,
+    )
+
+
+class ChecklistGroupTasksCreate(BaseModel):
+    tasks: list[ChecklistBatchTaskCreate] = Field(
+        min_length=1,
+        max_length=50,
+    )
+
+
+class ChecklistItemUpdate(BaseModel):
+    title: str = Field(
+        min_length=1,
+        max_length=255,
+    )
 
 
 class ChecklistStatusUpdate(BaseModel):

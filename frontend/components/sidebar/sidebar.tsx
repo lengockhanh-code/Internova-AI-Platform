@@ -1,4 +1,4 @@
-"use client";
+
 
 import Image from "next/image";
 import Link from "next/link";
@@ -25,14 +25,14 @@ const translationMap: Record<string, string> = {
     "THỰC TẬP": "sidebar.internship",
     "HỖ TRỢ AI": "sidebar.ai_support",
     "CÁ NHÂN": "sidebar.personal",
-    "Dashboard": "sidebar.dashboard",
+    Dashboard: "sidebar.dashboard",
     "Đăng ký thực tập": "sidebar.register",
     "Hồ sơ thực tập": "sidebar.profile",
     "Báo cáo": "sidebar.report",
-    "Checklist": "sidebar.checklist",
+    Checklist: "sidebar.checklist",
     "Hỏi đáp AI": "sidebar.chatbot",
     "Lịch & Thông báo": "sidebar.notifications",
-    "Cài đặt": "sidebar.settings"
+    "Cài đặt": "sidebar.settings",
 };
 
 const navGroups = [
@@ -101,15 +101,10 @@ const navGroups = [
 export default function Sidebar() {
     const pathname = usePathname();
     const { t } = useSettings();
-
-    const [mobileOpen, setMobileOpen] =
-        useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
 
     useEffect(() => {
-        const toggleSidebar = () =>
-            setMobileOpen(
-                (open) => !open
-            );
+        const toggleSidebar = () => setMobileOpen((open) => !open);
 
         window.addEventListener(
             "internova:toggle-student-sidebar",
@@ -124,186 +119,101 @@ export default function Sidebar() {
         };
     }, []);
 
-    const isActive = (
-        href: string
-    ) => {
-        return (
-            pathname === href ||
-            pathname.startsWith(
-                `${href}/`
-            )
-        );
-    };
+    const isActive = (href: string) =>
+        pathname === href || pathname.startsWith(`${href}/`);
 
     return (
         <>
             <aside
                 className={`${styles.sidebar} ${
-                    mobileOpen
-                        ? styles.mobileOpen
-                        : ""
+                    mobileOpen ? styles.mobileOpen : ""
                 } notranslate`}
                 translate="no"
             >
-                <div>
-                    <div
-                        className={
-                            styles.sidebarLogo
-                        }
-                    >
+                <div className={styles.sidebarMain}>
+                    <div className={styles.sidebarLogo}>
                         <Link
                             href="/student/dashboard"
-                            className={
-                                styles.logoBrandLink
-                            }
-                            onClick={() =>
-                                setMobileOpen(
-                                    false
-                                )
-                            }
+                            className={styles.logoBrandLink}
+                            onClick={() => setMobileOpen(false)}
                         >
-                            <Image
-                                src="/vinuni-internship-logo.svg"
-                                alt="Internova for VinUni logo"
-                                width={40}
-                                height={40}
-                                loading="eager"
-                            />
+                            <span className={styles.brandLogoBox}>
+                                <Image
+                                    src="/intern.png"
+                                    alt="AI Internova logo"
+                                    width={44}
+                                    height={44}
+                                    priority
+                                />
+                            </span>
 
-                            <span className="notranslate" translate="no">
-                                AI Internova
+                            <span className={styles.brandCopy}>
+                                <strong>AI Internova</strong>
+                                <small>VinUni AI Platform</small>
                             </span>
                         </Link>
 
                         <button
                             aria-label="Đóng menu"
-                            className={
-                                styles.mobileCloseButton
-                            }
-                            onClick={() =>
-                                setMobileOpen(
-                                    false
-                                )
-                            }
+                            className={styles.mobileCloseButton}
+                            onClick={() => setMobileOpen(false)}
                             type="button"
                         >
                             <X size={20} />
                         </button>
                     </div>
 
-                    <nav
-                        className={
-                            styles.sidebarNav
-                        }
-                    >
-                        {navGroups.map(
-                            (group) => (
-                                <div
-                                    key={
-                                        group.title
-                                    }
-                                    className={
-                                        styles.navGroup
-                                    }
-                                >
-                                    <p
-                                        className={
-                                            styles.navGroupTitle
-                                        }
-                                    >
-                                        {
-                                            t(translationMap[group.title] || group.title)
-                                        }
-                                    </p>
+                    <nav className={styles.sidebarNav}>
+                        {navGroups.map((group) => (
+                            <div key={group.title} className={styles.navGroup}>
+                                <p className={styles.navGroupTitle}>
+                                    {t(translationMap[group.title] || group.title)}
+                                </p>
 
-                                    <div
-                                        className={
-                                            styles.navGroupItems
-                                        }
-                                    >
-                                        {group.items.map(
-                                            ({
-                                                label,
-                                                href,
-                                                icon: Icon,
-                                            }) => (
-                                                <Link
-                                                    key={
-                                                        href
-                                                    }
-                                                    href={
-                                                        href
-                                                    }
-                                                    className={`${styles.sidebarNavItem} ${
-                                                        isActive(
-                                                            href
-                                                        )
-                                                            ? styles.active
-                                                            : ""
-                                                    }`}
-                                                    onClick={() =>
-                                                        setMobileOpen(
-                                                            false
-                                                        )
-                                                    }
-                                                >
-                                                    <Icon
-                                                        size={
-                                                            19
-                                                        }
-                                                        strokeWidth={
-                                                            2
-                                                        }
-                                                    />
-
-                                                    <span>
-                                                        {
-                                                            t(translationMap[label] || label)
-                                                        }
-                                                    </span>
-                                                </Link>
-                                            )
-                                        )}
-                                    </div>
+                                <div className={styles.navGroupItems}>
+                                    {group.items.map(({ label, href, icon: Icon }) => (
+                                        <Link
+                                            key={href}
+                                            href={href}
+                                            className={`${styles.sidebarNavItem} ${
+                                                isActive(href) ? styles.active : ""
+                                            }`}
+                                            onClick={() => setMobileOpen(false)}
+                                        >
+                                            <Icon size={19} strokeWidth={1.9} />
+                                            <span>
+                                                {t(translationMap[label] || label)}
+                                            </span>
+                                        </Link>
+                                    ))}
                                 </div>
-                            )
-                        )}
+                            </div>
+                        ))}
                     </nav>
                 </div>
 
-                <div
-                    className={
-                        styles.sidebarFooterCard
-                    }
-                >
-                    <Image
-                        src="/vinuni-internship-logo.svg"
-                        alt="AI Internova logo"
-                        width={40}
-                        height={40}
-                        className={
-                            styles.sidebarFooterIcon
-                        }
-                    />
+                <div className={styles.sidebarFooterBrand}>
+                    <span className={styles.footerLogoBox}>
+                        <Image
+                            src="/vin.png"
+                            alt="VinUniversity logo"
+                            width={38}
+                            height={38}
+                        />
+                    </span>
 
-                    <p
-                        className={`${styles.sidebarFooterTitle} notranslate`}
-                        translate="no"
-                    >
-                        AI Internova
-                    </p>
+                    <span className={styles.footerBrandCopy}>
+                        <strong>VINUNIVERSITY</strong>
+                        <small>Excellence in Education</small>
+                    </span>
                 </div>
             </aside>
 
             {mobileOpen && (
                 <button
                     aria-label="Đóng menu"
-                    className={
-                        styles.mobileOverlay
-                    }
-                    onClick={() =>
-                        setMobileOpen(false)
-                    }
+                    className={styles.mobileOverlay}
+                    onClick={() => setMobileOpen(false)}
                     type="button"
                 />
             )}

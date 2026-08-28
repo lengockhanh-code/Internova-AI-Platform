@@ -1094,75 +1094,31 @@ export default function Dashboard() {
                             {
                                 weekly.weekNumber ? (
                                     <>
-                                        <div
-                                            className={
-                                                styles.progressHeader
-                                            }
-                                        >
-                                            <p>
-                                                {
-                                                    t(
-                                                        "dashboard.progress_week"
-                                                    )
-                                                }
-                                                {" "}
+                                        <div className={styles.progressVisual}>
+                                            <div
+                                                className={styles.progressRing}
+                                                style={{
+                                                    background: `conic-gradient(#123b73 ${weekly.progressPercentage * 3.6}deg, #e7ecf4 0deg)`,
+                                                }}
+                                            >
+                                                <div className={styles.progressRingInner}>
+                                                    <strong>{weekly.progressPercentage}%</strong>
+                                                </div>
+                                            </div>
 
-                                                {
-                                                    weekly.weekNumber
-                                                }
-                                                {" "}
-
-                                                <span>
-                                                    (
-                                                    {
-                                                        formatShortDate(
-                                                            weekly.startDate,
-                                                            locale
-                                                        )
-                                                    }
-
-                                                    {" - "}
-
-                                                    {
-                                                        formatShortDate(
-                                                            weekly.endDate,
-                                                            locale
-                                                        )
-                                                    }
-                                                    )
-                                                </span>
+                                            <p className={styles.progressCaption}>
+                                                {locale === "vi"
+                                                    ? `Bạn đã hoàn thành ${weekly.progressPercentage}% công việc tuần này.`
+                                                    : `You have completed ${weekly.progressPercentage}% of this week's work.`}
                                             </p>
 
-
-                                            <span
-                                                className={
-                                                    styles.progressBadge
-                                                }
-                                            >
-                                                {
-                                                    weekly.progressPercentage
-                                                }
-                                                %
-                                            </span>
-                                        </div>
-
-
-                                        {/* PROGRESS BAR */}
-
-                                        <div
-                                            className={
-                                                styles.progressBar
-                                            }
-                                        >
-                                            <div
-                                                className={
-                                                    styles.progressBarFill
-                                                }
-                                                style={{
-                                                    width:
-                                                        `${weekly.progressPercentage}%`,
-                                                }}
-                                            />
+                                            <p className={styles.progressWeekMeta}>
+                                                {t("dashboard.progress_week")} {weekly.weekNumber}
+                                                {" · "}
+                                                {formatShortDate(weekly.startDate, locale)}
+                                                {" - "}
+                                                {formatShortDate(weekly.endDate, locale)}
+                                            </p>
                                         </div>
 
 
@@ -1286,6 +1242,14 @@ export default function Dashboard() {
                             }
                         </p>
                     </div>
+
+                    <footer className={styles.dashboardFooter}>
+                        <span>© 2026 AI Internova. {locale === "vi" ? "Tất cả quyền được bảo lưu." : "All rights reserved."}</span>
+                        <div>
+                            <button type="button">{locale === "vi" ? "Chính sách bảo mật" : "Privacy policy"}</button>
+                            <button type="button">{locale === "vi" ? "Điều khoản sử dụng" : "Terms of use"}</button>
+                        </div>
+                    </footer>
                 </main>
             </div>
         </div>

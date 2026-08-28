@@ -744,3 +744,237 @@
 :global(.dark) .switchActive {
     background: #2563eb;
 }
+
+/* ============================================================
+   FINAL PRODUCTION THEME — SETTINGS
+============================================================ */
+
+.layout,
+.main,
+.page {
+    background: #f6f8fb;
+}
+
+.page {
+    color: #10233f;
+    font-family:
+        "Segoe UI Variable",
+        "Segoe UI",
+        -apple-system,
+        BlinkMacSystemFont,
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+}
+
+.pageHeader h1 {
+    color: #0b2346;
+    font-size: 29px;
+    font-weight: 760;
+    letter-spacing: -0.025em;
+}
+
+.pageHeader p {
+    color: #66758a;
+}
+
+.settingsLayout {
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 18px;
+}
+
+.settingsMenu,
+.settingsCard {
+    border-color: #dce4ed;
+    border-radius: 9px;
+    box-shadow: 0 3px 14px rgba(20, 43, 72, 0.028);
+}
+
+.settingsMenu {
+    padding: 8px;
+}
+
+.settingsMenuItem {
+    min-height: 42px;
+    border-radius: 7px;
+    color: #647489;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.settingsMenuItem:hover {
+    background: #f5f7fa;
+    color: #0b2f5b;
+}
+
+.active {
+    background: #0b2f5b;
+    color: #ffffff;
+}
+
+.settingsCard {
+    padding: 22px;
+}
+
+.cardHeader h2,
+.avatarSection h3,
+.accountBlock h3,
+.preferenceRow h3 {
+    color: #122945;
+}
+
+.cardHeader p,
+.avatarSection p,
+.accountBlock p,
+.preferenceRow p {
+    color: #77869a;
+}
+
+.avatarSection,
+.accountBlock,
+.securityNotice {
+    border-radius: 8px;
+}
+
+.avatarSection {
+    border-color: #e1e7ed;
+    background: #fafbfd;
+}
+
+.avatar {
+    background: #eef3f8;
+    color: #174c84;
+}
+
+.avatarSection button,
+.secondaryButton {
+    border-radius: 7px;
+}
+
+.avatarSection button:hover,
+.secondaryButton:hover {
+    border-color: #b7c7d8;
+    color: #0b2f5b;
+}
+
+.fieldGroup label {
+    color: #405168;
+}
+
+.inputWrapper {
+    border-radius: 7px;
+    border-color: #d7e0e9;
+}
+
+.inputWrapper:focus-within {
+    border-color: #7797b7;
+    box-shadow: 0 0 0 3px rgba(23, 76, 132, 0.08);
+}
+
+.inputWrapper input {
+    color: #132942;
+}
+
+.saveButton {
+    border-radius: 8px;
+    background: #0b2f5b;
+}
+
+.saveButton:hover {
+    background: #082747;
+}
+
+.accountIcon {
+    border: 1px solid #d9e3ed;
+    border-radius: 8px;
+    background: #f4f7fa;
+    color: #174c84;
+}
+
+.verifiedBadge {
+    border-radius: 6px;
+    background: #eaf7f2;
+    color: #25605f;
+}
+
+.securityNotice {
+    border-color: #d7e2ee;
+    background: #f5f8fb;
+}
+
+.switch {
+    background: #cfd7e1;
+}
+
+.switchActive {
+    background: #0b2f5b;
+}
+
+.savedBadge {
+    border-color: #d7e1eb;
+    border-radius: 9px;
+    color: #174c84;
+}
+
+/* Dark */
+:global(.dark) .layout,
+:global(.dark) .main,
+:global(.dark) .page {
+    background: #071524;
+}
+
+:global(.dark) .settingsMenu,
+:global(.dark) .settingsCard {
+    border-color: #294057;
+    background: #0f2135;
+    box-shadow: none;
+}
+
+:global(.dark) .pageHeader h1,
+:global(.dark) .cardHeader h2,
+:global(.dark) .avatarSection h3,
+:global(.dark) .accountBlock h3,
+:global(.dark) .preferenceRow h3 {
+    color: #f1f5f9;
+}
+
+:global(.dark) .settingsMenuItem {
+    color: #aebdce;
+}
+
+:global(.dark) .settingsMenuItem:hover {
+    background: #132a42;
+    color: #ffffff;
+}
+
+:global(.dark) .active {
+    background: #173f69;
+    color: #ffffff;
+}
+
+:global(.dark) .avatarSection,
+:global(.dark) .accountBlock {
+    border-color: #2a4057;
+    background: #10263c;
+}
+
+:global(.dark) .accountIcon,
+:global(.dark) .avatar {
+    border-color: #304b67;
+    background: #112b46;
+    color: #a6c4e2;
+}
+
+:global(.dark) .verifiedBadge {
+    background: #15372d;
+    color: #9ce0c2;
+}
+
+:global(.dark) .switch {
+    background: #435267;
+}
+
+:global(.dark) .switchActive {
+    background: #315f8f;
+}
+

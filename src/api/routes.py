@@ -1828,6 +1828,12 @@ async def chat_stream(
                     "session_id": history_session_id,
                     "response": chat_response.response,
                     "result": chat_response.result.model_dump(),
+                    "form_agent": {
+                        "session_id": history_session_id,
+                        "status": form_result.get("status"),
+                        "detected_form": form_result.get("detected_form"),
+                        "docx_ready": bool(form_result.get("docx_ready")),
+                    },
                     "processing": build_processing_summary(
                         chat_response.result,
                         round((time.perf_counter() - form_started) * 1000.0, 1),

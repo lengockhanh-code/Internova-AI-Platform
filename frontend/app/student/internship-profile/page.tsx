@@ -276,6 +276,29 @@ function getInternshipStatusLabel(
 }
 
 
+function getInitials(
+    fullName: string
+) {
+    const parts = fullName
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+    if (parts.length === 0) {
+        return "SV";
+    }
+
+    if (parts.length === 1) {
+        return parts[0]
+            .slice(0, 2)
+            .toUpperCase();
+    }
+
+    return `${parts[parts.length - 2][0]}${parts[parts.length - 1][0]}`
+        .toUpperCase();
+}
+
+
 function recalculateDocumentProgress(
     documents: ProfileDocument[]
 ) {
@@ -1187,6 +1210,12 @@ export default function InternshipProfilePage() {
         );
 
 
+    const studentInitials =
+        getInitials(
+            data.student.fullName
+        );
+
+
     const internshipInfo =
         internship
             ? [
@@ -1295,12 +1324,11 @@ export default function InternshipProfilePage() {
                             </h1>
 
                             <p>
-                                Quản lý thông tin cá
-                                nhân, đơn vị thực tập
-                                và các tài liệu liên
-                                quan.
+                                Quản lý thông tin cá nhân, đơn vị thực tập
+                                và các tài liệu liên quan.
                             </p>
                         </div>
+
                     </section>
 
 
@@ -1333,11 +1361,13 @@ export default function InternshipProfilePage() {
                                         }
                                     />
                                 ) : (
-                                    <UserRound
-                                        size={
-                                            52
+                                    <span
+                                        aria-hidden="true"
+                                    >
+                                        {
+                                            studentInitials
                                         }
-                                    />
+                                    </span>
                                 )}
                             </div>
 
@@ -1414,8 +1444,10 @@ export default function InternshipProfilePage() {
                                     />
 
                                     <span>
-                                        {internship
-                                            ?.location ??
+                                        {data.student
+                                            .address ??
+                                            internship
+                                                ?.location ??
                                             "Chưa cập nhật"}
                                     </span>
                                 </div>
@@ -1787,7 +1819,8 @@ export default function InternshipProfilePage() {
                                 style={{
                                     background:
                                         `conic-gradient(
-                                            #2563eb 0% ${data.completionPercentage}%,
+                                            #0b3559 0% ${data.completionPercentage * 0.58}%,
+                                            #178d8a ${data.completionPercentage * 0.58}% ${data.completionPercentage}%,
                                             #e2e8f0 ${data.completionPercentage}% 100%
                                         )`,
                                 }}
@@ -1803,6 +1836,11 @@ export default function InternshipProfilePage() {
                                     <span>
                                         Hoàn thiện
                                     </span>
+
+                                    <small>
+                                        {data.documents.length - data.missingDocuments}/
+                                        {data.documents.length}
+                                    </small>
                                 </div>
                             </div>
 
@@ -1834,6 +1872,37 @@ export default function InternshipProfilePage() {
                                     }}
                                 />
                             </div>
+
+                            <p
+                                className={
+                                    styles.progressNudge
+                                }
+                            >
+                                {data.missingDocuments === 0
+                                    ? "Hồ sơ đã sẵn sàng để tiếp tục."
+                                    : data.missingDocuments === 1
+                                        ? "Tuyệt vời, bạn chỉ còn 1 bước nữa!"
+                                        : `Hoàn thành thêm ${data.missingDocuments} tài liệu để hoàn thiện hồ sơ.`}
+                            </p>
+
+                            <button
+                                type="button"
+                                className={
+                                    styles.checklistButton
+                                }
+                                onClick={() =>
+                                    router.push(
+                                        "/student/checklist"
+                                    )
+                                }
+                            >
+                                Xem checklist
+                                <span
+                                    aria-hidden="true"
+                                >
+                                    →
+                                </span>
+                            </button>
                         </article>
                     </section>
                 </main>

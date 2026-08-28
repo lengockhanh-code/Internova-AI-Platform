@@ -960,10 +960,10 @@
 .reportLockedNotice {
     margin: 0;
     padding: 11px 13px;
-    border: 1px solid #fde68a;
+    border: 1px solid #cbd5e1;
     border-radius: 9px;
-    background: #fffbeb;
-    color: #92400e;
+    background: #f8fafc;
+    color: #475569;
     font-size: 10px;
     line-height: 1.55;
 }
@@ -1315,7 +1315,7 @@
 
 .reviewWarning {
     border-left:
-        3px solid #f59e0b;
+        3px solid #64748b;
 }
 
 .reviewSuggestion {
@@ -1675,9 +1675,9 @@
 }
 
 :global(.dark) .reportLockedNotice {
-    border-color: #92400e;
-    background: #451a03;
-    color: #fde68a;
+    border-color: #475569;
+    background: #111827;
+    color: #cbd5e1;
 }
 
 :global(.dark) .secondaryButton,
@@ -1697,3 +1697,614 @@
 :global(.dark) .progressBar {
     background: #334155;
 }
+
+/* ============================================================
+   FINAL PRODUCTION THEME — REPORTS
+============================================================ */
+
+.layout,
+.main,
+.reportPage {
+    background: #f6f8fb;
+}
+
+.reportPage {
+    color: #10233f;
+    font-family:
+        "Segoe UI Variable",
+        "Segoe UI",
+        -apple-system,
+        BlinkMacSystemFont,
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+}
+
+.pageHeader h1 {
+    color: #0b2346;
+    font-size: 29px;
+    font-weight: 760;
+    letter-spacing: -0.025em;
+}
+
+.pageHeader p {
+    color: #66758a;
+    font-size: 14px;
+}
+
+.createButton {
+    border-radius: 8px;
+    background: #0b2f5b;
+    box-shadow: none;
+}
+
+.createButton:hover {
+    background: #082747;
+    box-shadow: 0 7px 16px rgba(11, 47, 91, 0.12);
+}
+
+.policyNotice {
+    border-color: #d8e2eb;
+    border-radius: 8px;
+    background: #f6f9fc;
+    color: #174c84;
+}
+
+.policyNotice strong {
+    color: #123e6a;
+}
+
+.policyNotice p {
+    color: #5f7085;
+}
+
+.statGrid {
+    gap: 12px;
+}
+
+.statCard,
+.reportListCard,
+.progressCard,
+.deadlineCard,
+.aiInfoCard {
+    border-color: #dce4ed;
+    border-radius: 9px;
+    box-shadow: 0 3px 14px rgba(20, 43, 72, 0.028);
+}
+
+.statIcon {
+    width: 42px;
+    height: 42px;
+    border: 1px solid #dae4ee;
+    border-radius: 8px;
+    background: #f4f7fa;
+    color: #174c84;
+}
+
+.statCard:nth-child(2) .statIcon,
+.statCard:nth-child(4) .statIcon {
+    border-color: #bfd4e8;
+    background: #eef5fb;
+    color: #1d5f91;
+}
+
+.statContent p,
+.statContent span,
+.cardHeader p,
+.reportMeta,
+.progressStats span {
+    color: #728095;
+}
+
+.statContent strong,
+.cardHeader h2,
+.reportTitleRow h3,
+.sideTitle h2,
+.progressStats strong {
+    color: #122945;
+}
+
+.filterSelect {
+    border-radius: 7px;
+    border-color: #d6e0ea;
+}
+
+.filterSelect:focus {
+    border-color: #7e9dbd;
+    box-shadow: 0 0 0 3px rgba(23, 76, 132, 0.08);
+}
+
+.reportCard {
+    border-color: #e3e9ef;
+}
+
+.reportCard:hover {
+    background: #fafbfd;
+}
+
+.reportIcon {
+    border-radius: 8px;
+    background: #f3f6f9;
+    color: #174c84;
+}
+
+.status_DRAFT {
+    background: #f1f4f7;
+    color: #6f7e91;
+}
+
+.status_SUBMITTED,
+.status_UNDER_REVIEW {
+    background: #edf3f8;
+    color: #174c84;
+}
+
+.status_REVISION_REQUIRED {
+    background: #eef3f8;
+    color: #174c84;
+}
+
+.status_APPROVED {
+    background: #eaf7f2;
+    color: #25605f;
+}
+
+.status_LATE {
+    background: #fbf2f1;
+    color: #a54d44;
+}
+
+.reportActions button {
+    border-radius: 7px;
+    border-color: #dce4ed;
+}
+
+.reportActions button:hover {
+    border-color: #b7c7d8;
+    background: #f8fafc;
+    color: #0b2f5b;
+    transform: none;
+}
+
+.sideTitle {
+    color: #174c84;
+}
+
+.progressNumber {
+    color: #0b2f5b;
+}
+
+.progressBar {
+    background: #e3e8ee;
+}
+
+.progressFill {
+    background: #2f6f9f;
+}
+
+.deadlineContent .deadlineStatus {
+    color: #475569;
+}
+
+.aiInfoCard {
+    border-left: 3px solid #2f6f9f;
+    background: #f8fafc;
+}
+
+.aiInfoCard > svg {
+    color: #0b2f5b;
+}
+
+.aiInfoCard h2 {
+    color: #102746;
+}
+
+.aiInfoCard p {
+    color: #69788c;
+}
+
+/* Modals */
+.reportModal,
+.reportDetailModal,
+.aiReviewModal,
+.feedbackModal {
+    border-radius: 10px;
+}
+
+/* Dark */
+:global(.dark) .layout,
+:global(.dark) .main,
+:global(.dark) .reportPage {
+    background: #071524;
+}
+
+:global(.dark) .statCard,
+:global(.dark) .reportListCard,
+:global(.dark) .progressCard,
+:global(.dark) .deadlineCard,
+:global(.dark) .aiInfoCard {
+    border-color: #294057;
+    background: #0f2135;
+    box-shadow: none;
+}
+
+:global(.dark) .pageHeader h1,
+:global(.dark) .statContent strong,
+:global(.dark) .cardHeader h2,
+:global(.dark) .reportTitleRow h3,
+:global(.dark) .sideTitle h2 {
+    color: #f1f5f9;
+}
+
+:global(.dark) .statIcon {
+    border-color: #304b67;
+    background: #112b46;
+    color: #a6c4e2;
+}
+
+:global(.dark) .statCard:nth-child(2) .statIcon,
+:global(.dark) .statCard:nth-child(4) .statIcon {
+    border-color: #304b67;
+    background: #112b46;
+    color: #b8d0e8;
+}
+
+:global(.dark) .progressFill {
+    background: #4f93cf;
+}
+
+:global(.dark) .aiInfoCard {
+    border-left-color: #5d8bb7;
+    background: #131f2e;
+}
+
+/* ============================================================
+   DARK MODE CONTRAST FIX — PRODUCTION
+   Added to remove white modal surfaces and low-contrast controls.
+============================================================ */
+
+:global(.dark) .layout,
+:global(.dark) .main,
+:global(.dark) .reportPage {
+    background: #071524;
+    color: #eaf0f7;
+}
+
+:global(.dark) .pageHeader h1,
+:global(.dark) .statContent strong,
+:global(.dark) .cardHeader h2,
+:global(.dark) .reportTitleRow h3,
+:global(.dark) .sideTitle h2,
+:global(.dark) .modalHeader h2,
+:global(.dark) .reportDetailSection h3,
+:global(.dark) .reviewSection h3,
+:global(.dark) .feedbackText h3,
+:global(.dark) .emptyState h3,
+:global(.dark) .deadlineContent strong,
+:global(.dark) .progressStats strong,
+:global(.dark) .aiInfoCard h2 {
+    color: #f4f7fb;
+}
+
+:global(.dark) .pageHeader p,
+:global(.dark) .policyNotice p,
+:global(.dark) .statContent p,
+:global(.dark) .statContent span,
+:global(.dark) .cardHeader p,
+:global(.dark) .reportMeta,
+:global(.dark) .reportContent,
+:global(.dark) .reportType,
+:global(.dark) .fileInfo,
+:global(.dark) .reportDetailContent,
+:global(.dark) .reportDetailEmpty,
+:global(.dark) .reportDetailSummary span,
+:global(.dark) .reportAttachment span,
+:global(.dark) .modalHeader p,
+:global(.dark) .feedbackText p,
+:global(.dark) .progressStats span,
+:global(.dark) .deadlineContent span,
+:global(.dark) .noDeadline p,
+:global(.dark) .aiInfoCard p,
+:global(.dark) .emptyState p {
+    color: #aebdce;
+}
+
+:global(.dark) .statCard,
+:global(.dark) .reportListCard,
+:global(.dark) .progressCard,
+:global(.dark) .deadlineCard,
+:global(.dark) .aiInfoCard {
+    border-color: #294057;
+    background: #0f2135;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+}
+
+:global(.dark) .reportCard {
+    border-bottom-color: #294057;
+    background: transparent;
+}
+
+:global(.dark) .reportCard:hover {
+    background: #132a42;
+}
+
+:global(.dark) .statIcon,
+:global(.dark) .typeIcon {
+    border-color: #304b67;
+    background: #112b46;
+    color: #b8d0e8;
+}
+
+:global(.dark) .statCard:nth-child(2) .statIcon,
+:global(.dark) .statCard:nth-child(4) .statIcon {
+    border-color: #304b67;
+    background: #112b46;
+    color: #b8d0e8;
+}
+
+:global(.dark) .policyNotice {
+    border-color: #315d86;
+    background: #102a43;
+    color: #bcd7ef;
+}
+
+:global(.dark) .policyNotice strong {
+    color: #d8e9f8;
+}
+
+:global(.dark) .filterSelect {
+    border-color: #3b5570;
+    background: #0b1c2e;
+    color: #dce6f0;
+}
+
+:global(.dark) .filterSelect option {
+    background: #0b1c2e;
+    color: #f4f7fb;
+}
+
+:global(.dark) .reportActions button,
+:global(.dark) .secondaryButton {
+    border-color: #405a73;
+    background: #0c1c2d;
+    color: #c5d2df;
+}
+
+:global(.dark) .reportActions button:hover,
+:global(.dark) .secondaryButton:hover {
+    border-color: #5c84aa;
+    background: #15314d;
+    color: #ffffff;
+}
+
+:global(.dark) .reportActions .viewReportAction {
+    border-color: #456d92;
+    background: #133451;
+    color: #c9e0f4;
+}
+
+:global(.dark) .primaryButton,
+:global(.dark) .createButton {
+    background: #1b568a;
+    color: #ffffff;
+    box-shadow: 0 7px 18px rgba(0, 0, 0, 0.2);
+}
+
+:global(.dark) .primaryButton:hover,
+:global(.dark) .createButton:hover {
+    background: #2369a5;
+}
+
+:global(.dark) .progressBar,
+:global(.dark) .progressTrack {
+    background: #263d53;
+}
+
+:global(.dark) .progressFill {
+    background: #4f93cf;
+}
+
+:global(.dark) .progressNumber {
+    color: #b9d6ef;
+}
+
+:global(.dark) .deadlineContent p {
+    color: #b9d6ef;
+}
+
+:global(.dark) .deadlineContent .deadlineStatus {
+    background: #26384a;
+    color: #c2cfdb;
+}
+
+:global(.dark) .aiInfoCard {
+    border-left-color: #5d8bb7;
+    background: #111f30;
+}
+
+:global(.dark) .emptyState {
+    color: #8fa4b9;
+}
+
+:global(.dark) .emptyState svg {
+    color: #7f96ad;
+}
+
+:global(.dark) .modalOverlay {
+    background: rgba(2, 8, 18, 0.76);
+    backdrop-filter: blur(7px);
+}
+
+:global(.dark) .reportModal,
+:global(.dark) .reportDetailModal,
+:global(.dark) .aiReviewModal,
+:global(.dark) .feedbackModal {
+    border: 1px solid #314b65;
+    background: #0f2135;
+    color: #eaf0f7;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.56);
+}
+
+:global(.dark) .modalHeader {
+    border-bottom-color: #294057;
+    background: #10243a;
+}
+
+:global(.dark) .modalHeader > button {
+    color: #aebdce;
+}
+
+:global(.dark) .modalHeader > button:hover {
+    background: #193149;
+    color: #ffffff;
+}
+
+:global(.dark) .reportForm {
+    background: #0f2135;
+}
+
+:global(.dark) .reportForm label {
+    color: #d6e0ea;
+}
+
+:global(.dark) .reportForm input,
+:global(.dark) .reportForm select,
+:global(.dark) .reportForm textarea {
+    border-color: #3b5570;
+    background: #0a1929;
+    color: #f3f6fa;
+    caret-color: #ffffff;
+}
+
+:global(.dark) .reportForm input::placeholder,
+:global(.dark) .reportForm textarea::placeholder {
+    color: #71859a;
+    opacity: 1;
+}
+
+:global(.dark) .reportForm select option {
+    background: #0a1929;
+    color: #f3f6fa;
+}
+
+:global(.dark) .reportForm input:focus,
+:global(.dark) .reportForm select:focus,
+:global(.dark) .reportForm textarea:focus {
+    border-color: #5d8bb7;
+    box-shadow: 0 0 0 3px rgba(80, 137, 188, 0.18);
+}
+
+:global(.dark) .createFileUpload {
+    border-color: #42698d;
+    background: #0b1d30;
+    color: #bfd8ee;
+}
+
+:global(.dark) .createFileUpload:hover {
+    border-color: #6a93b7;
+    background: #112b46;
+}
+
+:global(.dark) .createFileUpload span {
+    color: #d8e8f6;
+}
+
+:global(.dark) .createFileUpload small {
+    color: #98aabd;
+}
+
+:global(.dark) .selectedCreateFile {
+    border-color: #3f6486;
+    background: #112b46;
+    color: #d3e6f6;
+}
+
+:global(.dark) .selectedCreateFile button {
+    color: #bcd8ee;
+}
+
+:global(.dark) .aiSupportNotice,
+:global(.dark) .aiDisclaimer {
+    border-color: #51456f;
+    background: #211d33;
+    color: #d7ccef;
+}
+
+:global(.dark) .aiSupportNotice strong {
+    color: #e5dbf6;
+}
+
+:global(.dark) .aiSupportNotice p {
+    color: #b9adca;
+}
+
+:global(.dark) .modalActions {
+    border-top-color: #294057;
+    background: #0f2135;
+}
+
+:global(.dark) .reportDetailBody {
+    background: #0f2135;
+}
+
+:global(.dark) .reportDetailSummary > div,
+:global(.dark) .reportDetailSection,
+:global(.dark) .reviewSection {
+    border-color: #34506b;
+    background: #0b1c2e;
+}
+
+:global(.dark) .reportDetailSummary strong:not(.statusBadge),
+:global(.dark) .reportAttachment strong {
+    color: #edf3f8;
+}
+
+:global(.dark) .reportAttachment {
+    border-color: #3c6284;
+    background: #0d243a;
+    color: #bcd8ee;
+}
+
+:global(.dark) .reportAttachmentActions button {
+    border-color: #456d92;
+    background: #112b46;
+    color: #c9e0f4;
+}
+
+:global(.dark) .reportAttachmentActions button:hover {
+    border-color: #6b95b9;
+    background: #173a5b;
+}
+
+:global(.dark) .reportLockedNotice {
+    border-color: #475569;
+    background: #111827;
+    color: #cbd5e1;
+}
+
+:global(.dark) .status_DRAFT {
+    background: #26384a;
+    color: #c2cfdb;
+}
+
+:global(.dark) .status_SUBMITTED,
+:global(.dark) .status_UNDER_REVIEW {
+    background: #173d61;
+    color: #c7e0f5;
+}
+
+:global(.dark) .status_LATE {
+    background: #422126;
+    color: #ffb8be;
+}
+
+:global(.dark) .status_REVISION_REQUIRED {
+    background: #26384a;
+    color: #c2cfdb;
+}
+
+:global(.dark) .status_APPROVED {
+    background: #15372d;
+    color: #9ce0c2;
+}
+

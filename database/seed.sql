@@ -520,7 +520,7 @@ VALUES
     'Đã setup môi trường backend và tìm hiểu dự án.',
     'APPROVED',
     'Hoàn thành tốt.',
-    85,
+    8.5,
     '2026-06-07 23:59:59',
     '2026-06-07 20:00:00',
     '2026-06-08 09:00:00'
@@ -559,7 +559,7 @@ VALUES
     'Tìm hiểu RAG pipeline.',
     'APPROVED',
     'Tốt.',
-    92,
+    9.2,
     '2026-06-07 23:59:59',
     '2026-06-06 21:00:00',
     '2026-06-08 10:00:00'
@@ -588,7 +588,7 @@ VALUES
     1,
     'LECTURER',
     'MIDTERM',
-    85,
+    8.5,
     'Sinh viên có tiến bộ tốt.',
     'Chủ động và kỹ thuật tốt.',
     'Cải thiện tài liệu hóa.',
@@ -600,7 +600,7 @@ VALUES
     1,
     'LECTURER',
     'MIDTERM',
-    80,
+    8.0,
     'Hoàn thành công việc đúng hạn.',
     'UI tốt.',
     'Cần cải thiện testing.',
@@ -612,7 +612,7 @@ VALUES
     1,
     'LECTURER',
     'FINAL',
-    93,
+    9.3,
     'Hoàn thành xuất sắc.',
     'Khả năng nghiên cứu tốt.',
     'Tiếp tục nâng cao kỹ năng triển khai.',
@@ -1059,5 +1059,203 @@ VALUES
 );
 
 
+
+COMMIT;
+BEGIN;
+
+DO $$
+DECLARE
+    student RECORD;
+    target_user_id BIGINT;
+BEGIN
+    FOR student IN
+        SELECT *
+        FROM (
+            VALUES
+            ('2A202601101', 'pending.2a202601101@vinuni.edu.vn', 'Nguyễn Văn An', 'MALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 2.65, ARRAY['Python', 'FastAPI', 'PostgreSQL']::text[], 'CS2026-A'),
+            ('2A202601102', 'pending.2a202601102@vinuni.edu.vn', 'Võ Minh Hà', 'FEMALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 2.82, ARRAY['React', 'Next.js', 'TypeScript']::text[], 'CS2026-A'),
+            ('2A202601103', 'pending.2a202601103@vinuni.edu.vn', 'Lý Xuân Huy', 'MALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 2.99, ARRAY['Python', 'Machine Learning', 'SQL']::text[], 'DS2026-A'),
+            ('2A202601104', 'pending.2a202601104@vinuni.edu.vn', 'Vũ Phương My', 'FEMALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.16, ARRAY['Data Analysis', 'Pandas', 'Power BI']::text[], 'DS2026-A'),
+            ('2A202601105', 'pending.2a202601105@vinuni.edu.vn', 'Dương Anh Phúc', 'MALE', 'College of Engineering and Computer Science', 'Electrical Engineering', '2026', 3.33, ARRAY['C++', 'Embedded Systems', 'MATLAB']::text[], 'EE2026-A'),
+            ('2A202601106', 'pending.2a202601106@vinuni.edu.vn', 'Phan Ngọc Thảo', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.50, ARRAY['Communication', 'Marketing', 'Excel']::text[], 'BA2026-A'),
+            ('2A202601107', 'pending.2a202601107@vinuni.edu.vn', 'Ngô Hữu Tuấn', 'MALE', 'College of Business and Management', 'Business Administration', '2026', 3.67, ARRAY['Finance', 'Excel', 'Presentation']::text[], 'BA2026-A'),
+            ('2A202601108', 'pending.2a202601108@vinuni.edu.vn', 'Hoàng Diệu Nhung', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.84, ARRAY['Project Management', 'Research', 'Communication']::text[], 'BA2026-A'),
+            ('2A202601109', 'pending.2a202601109@vinuni.edu.vn', 'Hồ Minh Tùng', 'MALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 2.75, ARRAY['Python', 'FastAPI', 'PostgreSQL']::text[], 'CS2026-B'),
+            ('2A202601110', 'pending.2a202601110@vinuni.edu.vn', 'Phạm Mai Giang', 'FEMALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 2.92, ARRAY['React', 'Next.js', 'TypeScript']::text[], 'CS2026-B'),
+            ('2A202601111', 'pending.2a202601111@vinuni.edu.vn', 'Đỗ Thanh Hoàng', 'MALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.09, ARRAY['Python', 'Machine Learning', 'SQL']::text[], 'DS2026-B'),
+            ('2A202601112', 'pending.2a202601112@vinuni.edu.vn', 'Lê Bảo Mai', 'FEMALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.26, ARRAY['Data Analysis', 'Pandas', 'Power BI']::text[], 'DS2026-B'),
+            ('2A202601113', 'pending.2a202601113@vinuni.edu.vn', 'Bùi Hoàng Phong', 'MALE', 'College of Engineering and Computer Science', 'Electrical Engineering', '2026', 3.43, ARRAY['C++', 'Embedded Systems', 'MATLAB']::text[], 'EE2026-B'),
+            ('2A202601114', 'pending.2a202601114@vinuni.edu.vn', 'Trần Minh Quỳnh', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.60, ARRAY['Communication', 'Marketing', 'Excel']::text[], 'BA2026-B'),
+            ('2A202601115', 'pending.2a202601115@vinuni.edu.vn', 'Đặng Gia Trung', 'MALE', 'College of Business and Management', 'Business Administration', '2026', 3.77, ARRAY['Finance', 'Excel', 'Presentation']::text[], 'BA2026-B'),
+            ('2A202601116', 'pending.2a202601116@vinuni.edu.vn', 'Nguyễn Phương Chi', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 2.68, ARRAY['Project Management', 'Research', 'Communication']::text[], 'BA2026-B'),
+            ('2A202601117', 'pending.2a202601117@vinuni.edu.vn', 'Võ Quang Kiên', 'MALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 2.85, ARRAY['Python', 'FastAPI', 'PostgreSQL']::text[], 'CS2026-C'),
+            ('2A202601118', 'pending.2a202601118@vinuni.edu.vn', 'Lý Ngọc Châu', 'FEMALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.02, ARRAY['React', 'Next.js', 'TypeScript']::text[], 'CS2026-C'),
+            ('2A202601119', 'pending.2a202601119@vinuni.edu.vn', 'Vũ Công Hiếu', 'MALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.19, ARRAY['Python', 'Machine Learning', 'SQL']::text[], 'DS2026-C'),
+            ('2A202601120', 'pending.2a202601120@vinuni.edu.vn', 'Dương Diệu Linh', 'FEMALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.36, ARRAY['Data Analysis', 'Pandas', 'Power BI']::text[], 'DS2026-C'),
+            ('2A202601121', 'pending.2a202601121@vinuni.edu.vn', 'Phan Nhật Nam', 'MALE', 'College of Engineering and Computer Science', 'Electrical Engineering', '2026', 3.53, ARRAY['C++', 'Embedded Systems', 'MATLAB']::text[], 'EE2026-C'),
+            ('2A202601122', 'pending.2a202601122@vinuni.edu.vn', 'Ngô Mai Phương', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.70, ARRAY['Communication', 'Marketing', 'Excel']::text[], 'BA2026-C'),
+            ('2A202601123', 'pending.2a202601123@vinuni.edu.vn', 'Hoàng Tuấn Thắng', 'MALE', 'College of Business and Management', 'Business Administration', '2026', 3.87, ARRAY['Finance', 'Excel', 'Presentation']::text[], 'BA2026-C'),
+            ('2A202601124', 'pending.2a202601124@vinuni.edu.vn', 'Hồ Bảo Yến', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 2.78, ARRAY['Project Management', 'Research', 'Communication']::text[], 'BA2026-C'),
+            ('2A202601125', 'pending.2a202601125@vinuni.edu.vn', 'Phạm Đức Bách', 'MALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 2.95, ARRAY['Python', 'FastAPI', 'PostgreSQL']::text[], 'CS2026-A'),
+            ('2A202601126', 'pending.2a202601126@vinuni.edu.vn', 'Đỗ Minh Anh', 'FEMALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.12, ARRAY['React', 'Next.js', 'TypeScript']::text[], 'CS2026-A'),
+            ('2A202601127', 'pending.2a202601127@vinuni.edu.vn', 'Lê Văn Hải', 'MALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.29, ARRAY['Python', 'Machine Learning', 'SQL']::text[], 'DS2026-A'),
+            ('2A202601128', 'pending.2a202601128@vinuni.edu.vn', 'Bùi Phương Lan', 'FEMALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.46, ARRAY['Data Analysis', 'Pandas', 'Power BI']::text[], 'DS2026-A'),
+            ('2A202601129', 'pending.2a202601129@vinuni.edu.vn', 'Trần Xuân Minh', 'MALE', 'College of Engineering and Computer Science', 'Electrical Engineering', '2026', 3.63, ARRAY['C++', 'Embedded Systems', 'MATLAB']::text[], 'EE2026-A'),
+            ('2A202601130', 'pending.2a202601130@vinuni.edu.vn', 'Đặng Ngọc Nhi', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.80, ARRAY['Communication', 'Marketing', 'Excel']::text[], 'BA2026-A'),
+            ('2A202601131', 'pending.2a202601131@vinuni.edu.vn', 'Nguyễn Anh Thành', 'MALE', 'College of Business and Management', 'Business Administration', '2026', 2.71, ARRAY['Finance', 'Excel', 'Presentation']::text[], 'BA2026-A'),
+            ('2A202601132', 'pending.2a202601132@vinuni.edu.vn', 'Võ Diệu Vy', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 2.88, ARRAY['Project Management', 'Research', 'Communication']::text[], 'BA2026-A'),
+            ('2A202601133', 'pending.2a202601133@vinuni.edu.vn', 'Lý Hữu Đạt', 'MALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.05, ARRAY['Python', 'FastAPI', 'PostgreSQL']::text[], 'CS2026-B'),
+            ('2A202601134', 'pending.2a202601134@vinuni.edu.vn', 'Vũ Mai Diệp', 'FEMALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.22, ARRAY['React', 'Next.js', 'TypeScript']::text[], 'CS2026-B'),
+            ('2A202601135', 'pending.2a202601135@vinuni.edu.vn', 'Dương Minh Dũng', 'MALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.39, ARRAY['Python', 'Machine Learning', 'SQL']::text[], 'DS2026-B'),
+            ('2A202601136', 'pending.2a202601136@vinuni.edu.vn', 'Phan Bảo Hương', 'FEMALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.56, ARRAY['Data Analysis', 'Pandas', 'Power BI']::text[], 'DS2026-B'),
+            ('2A202601137', 'pending.2a202601137@vinuni.edu.vn', 'Ngô Thanh Long', 'MALE', 'College of Engineering and Computer Science', 'Electrical Engineering', '2026', 3.73, ARRAY['C++', 'Embedded Systems', 'MATLAB']::text[], 'EE2026-B'),
+            ('2A202601138', 'pending.2a202601138@vinuni.edu.vn', 'Hoàng Minh Ngân', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.90, ARRAY['Communication', 'Marketing', 'Excel']::text[], 'BA2026-B'),
+            ('2A202601139', 'pending.2a202601139@vinuni.edu.vn', 'Hồ Hoàng Sơn', 'MALE', 'College of Business and Management', 'Business Administration', '2026', 2.81, ARRAY['Finance', 'Excel', 'Presentation']::text[], 'BA2026-B'),
+            ('2A202601140', 'pending.2a202601140@vinuni.edu.vn', 'Phạm Phương Trinh', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 2.98, ARRAY['Project Management', 'Research', 'Communication']::text[], 'BA2026-B'),
+            ('2A202601141', 'pending.2a202601141@vinuni.edu.vn', 'Đỗ Gia Khang', 'MALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.15, ARRAY['Python', 'FastAPI', 'PostgreSQL']::text[], 'CS2026-C'),
+            ('2A202601142', 'pending.2a202601142@vinuni.edu.vn', 'Lê Ngọc Thư', 'FEMALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.32, ARRAY['React', 'Next.js', 'TypeScript']::text[], 'CS2026-C'),
+            ('2A202601143', 'pending.2a202601143@vinuni.edu.vn', 'Bùi Quang Bình', 'MALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.49, ARRAY['Python', 'Machine Learning', 'SQL']::text[], 'DS2026-C'),
+            ('2A202601144', 'pending.2a202601144@vinuni.edu.vn', 'Trần Diệu Hạnh', 'FEMALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.66, ARRAY['Data Analysis', 'Pandas', 'Power BI']::text[], 'DS2026-C'),
+            ('2A202601145', 'pending.2a202601145@vinuni.edu.vn', 'Đặng Công Khánh', 'MALE', 'College of Engineering and Computer Science', 'Electrical Engineering', '2026', 3.83, ARRAY['C++', 'Embedded Systems', 'MATLAB']::text[], 'EE2026-C'),
+            ('2A202601146', 'pending.2a202601146@vinuni.edu.vn', 'Nguyễn Mai Nga', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 2.74, ARRAY['Communication', 'Marketing', 'Excel']::text[], 'BA2026-C'),
+            ('2A202601147', 'pending.2a202601147@vinuni.edu.vn', 'Võ Nhật Quân', 'MALE', 'College of Business and Management', 'Business Administration', '2026', 2.91, ARRAY['Finance', 'Excel', 'Presentation']::text[], 'BA2026-C'),
+            ('2A202601148', 'pending.2a202601148@vinuni.edu.vn', 'Lý Bảo Trang', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.08, ARRAY['Project Management', 'Research', 'Communication']::text[], 'BA2026-C'),
+            ('2A202601149', 'pending.2a202601149@vinuni.edu.vn', 'Vũ Tuấn Việt', 'MALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.25, ARRAY['Python', 'FastAPI', 'PostgreSQL']::text[], 'CS2026-A'),
+            ('2A202601150', 'pending.2a202601150@vinuni.edu.vn', 'Dương Minh Uyên', 'FEMALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.42, ARRAY['React', 'Next.js', 'TypeScript']::text[], 'CS2026-A'),
+            ('2A202601151', 'pending.2a202601151@vinuni.edu.vn', 'Phan Đức An', 'MALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.59, ARRAY['Python', 'Machine Learning', 'SQL']::text[], 'DS2026-A'),
+            ('2A202601152', 'pending.2a202601152@vinuni.edu.vn', 'Ngô Phương Hà', 'FEMALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.76, ARRAY['Data Analysis', 'Pandas', 'Power BI']::text[], 'DS2026-A'),
+            ('2A202601153', 'pending.2a202601153@vinuni.edu.vn', 'Hoàng Văn Huy', 'MALE', 'College of Engineering and Computer Science', 'Electrical Engineering', '2026', 2.67, ARRAY['C++', 'Embedded Systems', 'MATLAB']::text[], 'EE2026-A'),
+            ('2A202601154', 'pending.2a202601154@vinuni.edu.vn', 'Hồ Ngọc My', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 2.84, ARRAY['Communication', 'Marketing', 'Excel']::text[], 'BA2026-A'),
+            ('2A202601155', 'pending.2a202601155@vinuni.edu.vn', 'Phạm Xuân Phúc', 'MALE', 'College of Business and Management', 'Business Administration', '2026', 3.01, ARRAY['Finance', 'Excel', 'Presentation']::text[], 'BA2026-A'),
+            ('2A202601156', 'pending.2a202601156@vinuni.edu.vn', 'Đỗ Diệu Thảo', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.18, ARRAY['Project Management', 'Research', 'Communication']::text[], 'BA2026-A'),
+            ('2A202601157', 'pending.2a202601157@vinuni.edu.vn', 'Lê Anh Tuấn', 'MALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.35, ARRAY['Python', 'FastAPI', 'PostgreSQL']::text[], 'CS2026-B'),
+            ('2A202601158', 'pending.2a202601158@vinuni.edu.vn', 'Bùi Mai Nhung', 'FEMALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.52, ARRAY['React', 'Next.js', 'TypeScript']::text[], 'CS2026-B'),
+            ('2A202601159', 'pending.2a202601159@vinuni.edu.vn', 'Trần Hữu Tùng', 'MALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.69, ARRAY['Python', 'Machine Learning', 'SQL']::text[], 'DS2026-B'),
+            ('2A202601160', 'pending.2a202601160@vinuni.edu.vn', 'Đặng Bảo Giang', 'FEMALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.86, ARRAY['Data Analysis', 'Pandas', 'Power BI']::text[], 'DS2026-B'),
+            ('2A202601161', 'pending.2a202601161@vinuni.edu.vn', 'Nguyễn Minh Hoàng', 'MALE', 'College of Engineering and Computer Science', 'Electrical Engineering', '2026', 2.77, ARRAY['C++', 'Embedded Systems', 'MATLAB']::text[], 'EE2026-B'),
+            ('2A202601162', 'pending.2a202601162@vinuni.edu.vn', 'Võ Minh Mai', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 2.94, ARRAY['Communication', 'Marketing', 'Excel']::text[], 'BA2026-B'),
+            ('2A202601163', 'pending.2a202601163@vinuni.edu.vn', 'Lý Thanh Phong', 'MALE', 'College of Business and Management', 'Business Administration', '2026', 3.11, ARRAY['Finance', 'Excel', 'Presentation']::text[], 'BA2026-B'),
+            ('2A202601164', 'pending.2a202601164@vinuni.edu.vn', 'Vũ Phương Quỳnh', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.28, ARRAY['Project Management', 'Research', 'Communication']::text[], 'BA2026-B'),
+            ('2A202601165', 'pending.2a202601165@vinuni.edu.vn', 'Dương Hoàng Trung', 'MALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.45, ARRAY['Python', 'FastAPI', 'PostgreSQL']::text[], 'CS2026-C'),
+            ('2A202601166', 'pending.2a202601166@vinuni.edu.vn', 'Phan Ngọc Chi', 'FEMALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.62, ARRAY['React', 'Next.js', 'TypeScript']::text[], 'CS2026-C'),
+            ('2A202601167', 'pending.2a202601167@vinuni.edu.vn', 'Ngô Gia Kiên', 'MALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.79, ARRAY['Python', 'Machine Learning', 'SQL']::text[], 'DS2026-C'),
+            ('2A202601168', 'pending.2a202601168@vinuni.edu.vn', 'Hoàng Diệu Châu', 'FEMALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 2.70, ARRAY['Data Analysis', 'Pandas', 'Power BI']::text[], 'DS2026-C'),
+            ('2A202601169', 'pending.2a202601169@vinuni.edu.vn', 'Hồ Quang Hiếu', 'MALE', 'College of Engineering and Computer Science', 'Electrical Engineering', '2026', 2.87, ARRAY['C++', 'Embedded Systems', 'MATLAB']::text[], 'EE2026-C'),
+            ('2A202601170', 'pending.2a202601170@vinuni.edu.vn', 'Phạm Mai Linh', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.04, ARRAY['Communication', 'Marketing', 'Excel']::text[], 'BA2026-C'),
+            ('2A202601171', 'pending.2a202601171@vinuni.edu.vn', 'Đỗ Công Nam', 'MALE', 'College of Business and Management', 'Business Administration', '2026', 3.21, ARRAY['Finance', 'Excel', 'Presentation']::text[], 'BA2026-C'),
+            ('2A202601172', 'pending.2a202601172@vinuni.edu.vn', 'Lê Bảo Phương', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.38, ARRAY['Project Management', 'Research', 'Communication']::text[], 'BA2026-C'),
+            ('2A202601173', 'pending.2a202601173@vinuni.edu.vn', 'Bùi Nhật Thắng', 'MALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.55, ARRAY['Python', 'FastAPI', 'PostgreSQL']::text[], 'CS2026-A'),
+            ('2A202601174', 'pending.2a202601174@vinuni.edu.vn', 'Trần Minh Yến', 'FEMALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.72, ARRAY['React', 'Next.js', 'TypeScript']::text[], 'CS2026-A'),
+            ('2A202601175', 'pending.2a202601175@vinuni.edu.vn', 'Đặng Tuấn Bách', 'MALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.89, ARRAY['Python', 'Machine Learning', 'SQL']::text[], 'DS2026-A'),
+            ('2A202601176', 'pending.2a202601176@vinuni.edu.vn', 'Nguyễn Phương Anh', 'FEMALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 2.80, ARRAY['Data Analysis', 'Pandas', 'Power BI']::text[], 'DS2026-A'),
+            ('2A202601177', 'pending.2a202601177@vinuni.edu.vn', 'Võ Đức Hải', 'MALE', 'College of Engineering and Computer Science', 'Electrical Engineering', '2026', 2.97, ARRAY['C++', 'Embedded Systems', 'MATLAB']::text[], 'EE2026-A'),
+            ('2A202601178', 'pending.2a202601178@vinuni.edu.vn', 'Lý Ngọc Lan', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.14, ARRAY['Communication', 'Marketing', 'Excel']::text[], 'BA2026-A'),
+            ('2A202601179', 'pending.2a202601179@vinuni.edu.vn', 'Vũ Văn Minh', 'MALE', 'College of Business and Management', 'Business Administration', '2026', 3.31, ARRAY['Finance', 'Excel', 'Presentation']::text[], 'BA2026-A'),
+            ('2A202601180', 'pending.2a202601180@vinuni.edu.vn', 'Dương Diệu Nhi', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.48, ARRAY['Project Management', 'Research', 'Communication']::text[], 'BA2026-A'),
+            ('2A202601181', 'pending.2a202601181@vinuni.edu.vn', 'Phan Xuân Thành', 'MALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.65, ARRAY['Python', 'FastAPI', 'PostgreSQL']::text[], 'CS2026-B'),
+            ('2A202601182', 'pending.2a202601182@vinuni.edu.vn', 'Ngô Mai Vy', 'FEMALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.82, ARRAY['React', 'Next.js', 'TypeScript']::text[], 'CS2026-B'),
+            ('2A202601183', 'pending.2a202601183@vinuni.edu.vn', 'Hoàng Anh Đạt', 'MALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 2.73, ARRAY['Python', 'Machine Learning', 'SQL']::text[], 'DS2026-B'),
+            ('2A202601184', 'pending.2a202601184@vinuni.edu.vn', 'Hồ Bảo Diệp', 'FEMALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 2.90, ARRAY['Data Analysis', 'Pandas', 'Power BI']::text[], 'DS2026-B'),
+            ('2A202601185', 'pending.2a202601185@vinuni.edu.vn', 'Phạm Hữu Dũng', 'MALE', 'College of Engineering and Computer Science', 'Electrical Engineering', '2026', 3.07, ARRAY['C++', 'Embedded Systems', 'MATLAB']::text[], 'EE2026-B'),
+            ('2A202601186', 'pending.2a202601186@vinuni.edu.vn', 'Đỗ Minh Hương', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.24, ARRAY['Communication', 'Marketing', 'Excel']::text[], 'BA2026-B'),
+            ('2A202601187', 'pending.2a202601187@vinuni.edu.vn', 'Lê Minh Long', 'MALE', 'College of Business and Management', 'Business Administration', '2026', 3.41, ARRAY['Finance', 'Excel', 'Presentation']::text[], 'BA2026-B'),
+            ('2A202601188', 'pending.2a202601188@vinuni.edu.vn', 'Bùi Phương Ngân', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.58, ARRAY['Project Management', 'Research', 'Communication']::text[], 'BA2026-B'),
+            ('2A202601189', 'pending.2a202601189@vinuni.edu.vn', 'Trần Thanh Sơn', 'MALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.75, ARRAY['Python', 'FastAPI', 'PostgreSQL']::text[], 'CS2026-C'),
+            ('2A202601190', 'pending.2a202601190@vinuni.edu.vn', 'Đặng Ngọc Trinh', 'FEMALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 2.66, ARRAY['React', 'Next.js', 'TypeScript']::text[], 'CS2026-C'),
+            ('2A202601191', 'pending.2a202601191@vinuni.edu.vn', 'Nguyễn Hoàng Khang', 'MALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 2.83, ARRAY['Python', 'Machine Learning', 'SQL']::text[], 'DS2026-C'),
+            ('2A202601192', 'pending.2a202601192@vinuni.edu.vn', 'Võ Diệu Thư', 'FEMALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.00, ARRAY['Data Analysis', 'Pandas', 'Power BI']::text[], 'DS2026-C'),
+            ('2A202601193', 'pending.2a202601193@vinuni.edu.vn', 'Lý Gia Bình', 'MALE', 'College of Engineering and Computer Science', 'Electrical Engineering', '2026', 3.17, ARRAY['C++', 'Embedded Systems', 'MATLAB']::text[], 'EE2026-C'),
+            ('2A202601194', 'pending.2a202601194@vinuni.edu.vn', 'Vũ Mai Hạnh', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.34, ARRAY['Communication', 'Marketing', 'Excel']::text[], 'BA2026-C'),
+            ('2A202601195', 'pending.2a202601195@vinuni.edu.vn', 'Dương Quang Khánh', 'MALE', 'College of Business and Management', 'Business Administration', '2026', 3.51, ARRAY['Finance', 'Excel', 'Presentation']::text[], 'BA2026-C'),
+            ('2A202601196', 'pending.2a202601196@vinuni.edu.vn', 'Phan Bảo Nga', 'FEMALE', 'College of Business and Management', 'Business Administration', '2026', 3.68, ARRAY['Project Management', 'Research', 'Communication']::text[], 'BA2026-C'),
+            ('2A202601197', 'pending.2a202601197@vinuni.edu.vn', 'Ngô Công Quân', 'MALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 3.85, ARRAY['Python', 'FastAPI', 'PostgreSQL']::text[], 'CS2026-A'),
+            ('2A202601198', 'pending.2a202601198@vinuni.edu.vn', 'Hoàng Minh Trang', 'FEMALE', 'College of Engineering and Computer Science', 'Computer Science', '2026', 2.76, ARRAY['React', 'Next.js', 'TypeScript']::text[], 'CS2026-A'),
+            ('2A202601199', 'pending.2a202601199@vinuni.edu.vn', 'Hồ Nhật Việt', 'MALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 2.93, ARRAY['Python', 'Machine Learning', 'SQL']::text[], 'DS2026-A'),
+            ('2A202601200', 'pending.2a202601200@vinuni.edu.vn', 'Phạm Phương Uyên', 'FEMALE', 'College of Engineering and Computer Science', 'Data Science', '2026', 3.10, ARRAY['Data Analysis', 'Pandas', 'Power BI']::text[], 'DS2026-A')
+        ) AS seed_data(
+            student_code,
+            pending_email,
+            full_name,
+            gender,
+            faculty,
+            major,
+            cohort,
+            gpa,
+            skills,
+            class_name
+        )
+    LOOP
+        -- ====================================================
+        -- 1. KIỂM TRA USER ĐÃ CÓ CHƯA
+        -- ====================================================
+
+        SELECT id
+        INTO target_user_id
+        FROM public.users
+        WHERE email = student.pending_email
+        LIMIT 1;
+
+        -- Nếu chưa có thì tạo user sinh viên
+        IF target_user_id IS NULL THEN
+            INSERT INTO public.users
+            (
+                email,
+                password_hash,
+                full_name,
+                role,
+                is_active,
+                gender
+            )
+            VALUES
+            (
+                student.pending_email,
+                NULL,
+                student.full_name,
+                'STUDENT',
+                TRUE,
+                student.gender
+            )
+            RETURNING id
+            INTO target_user_id;
+        END IF;
+
+
+        -- ====================================================
+        -- 2. CHỈ THÊM STUDENT_PROFILE NẾU MSSV CHƯA TỒN TẠI
+        -- ====================================================
+
+        IF NOT EXISTS (
+            SELECT 1
+            FROM public.student_profiles
+            WHERE student_code = student.student_code
+        ) THEN
+            INSERT INTO public.student_profiles
+            (
+                student_id,
+                student_code,
+                faculty,
+                major,
+                cohort,
+                gpa,
+                skills,
+                class_name
+            )
+            VALUES
+            (
+                target_user_id,
+                student.student_code,
+                student.faculty,
+                student.major,
+                student.cohort,
+                student.gpa,
+                student.skills,
+                student.class_name
+            );
+        END IF;
+
+        target_user_id := NULL;
+    END LOOP;
+END
+$$;
 
 COMMIT;

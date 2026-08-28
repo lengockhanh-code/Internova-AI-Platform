@@ -3563,7 +3563,7 @@ function ReportModal({
                                 />
 
                                 <span>
-                                    Tai form bao cao len
+                                    Tải form báo cáo lên
                                 </span>
 
                                 <small>

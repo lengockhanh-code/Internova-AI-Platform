@@ -1,3 +1,8 @@
+/* =========================================================
+   AI INTERNOVA — STUDENT SIDEBAR
+   VinUni Navy + Academic Slate
+   ========================================================= */
+
 .sidebar {
     position: sticky;
     top: 0;
@@ -5,129 +10,236 @@
     z-index: 50;
 
     display: flex;
+    width: 256px;
+    min-width: 256px;
+    height: 100vh;
     flex-shrink: 0;
     flex-direction: column;
     justify-content: space-between;
 
-    width: 256px;
-    min-width: 256px;
-    height: 100vh;
-
-    padding: 24px 16px;
-
-    border-right: 1px solid #e2e8f0;
-    background: #ffffff;
+    padding: 27px 20px 26px;
 
     box-sizing: border-box;
+    overflow-x: hidden;
     overflow-y: auto;
+
+    /* Deep academic navy */
+    background: #071f43;
+
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
 }
 
-/* =========================
-   LOGO
-========================= */
+.sidebar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+
+/* =========================================================
+   MAIN
+   ========================================================= */
+
+.sidebarMain {
+    min-width: 0;
+}
+
+
+/* =========================================================
+   BRAND
+   ========================================================= */
 
 .sidebarLogo {
     display: flex;
     align-items: center;
     justify-content: space-between;
 
-    padding: 0 8px;
-    margin-bottom: 30px;
+    gap: 10px;
+
+    margin-bottom: 38px;
 }
 
 .logoBrandLink {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    min-width: 0;
 
+    align-items: center;
+
+    gap: 11px;
+
+    color: inherit;
     text-decoration: none;
+
     cursor: pointer;
 
-    transition: opacity 0.2s ease;
+    transition: opacity 0.16s ease;
 }
 
 .logoBrandLink:hover {
-    opacity: 0.85;
+    opacity: 0.92;
 }
 
-.sidebarLogo img {
-    flex-shrink: 0;
+.brandLogoBox {
+    display: grid;
+
+    width: 40px;
+    height: 40px;
+
+    flex: 0 0 40px;
+
+    place-items: center;
+}
+
+.brandLogoBox img {
+    display: block;
+
+    width: 40px;
+    height: 40px;
+
     object-fit: contain;
 }
 
-.sidebarLogo span {
-    color: #0f172a;
 
-    font-size: 20px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+/* ---------- Brand text ---------- */
+
+.brandCopy {
+    display: flex;
+    min-width: 0;
+
+    flex-direction: column;
+
+    gap: 3px;
+
+    line-height: 1.1;
 }
+
+.brandCopy strong {
+    /*
+     * Diamond white:
+     * không trắng gắt #fff
+     */
+    color: #f1f5fa;
+
+    font-size: 16px;
+    font-weight: 650;
+
+    letter-spacing: -0.015em;
+
+    white-space: nowrap;
+}
+
+.brandCopy small {
+    color: #b8c6d8;
+
+    font-size: 10px;
+    font-weight: 450;
+
+    letter-spacing: 0.01em;
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   MOBILE CONTROLS
+   ========================================================= */
 
 .mobileCloseButton,
 .mobileOverlay {
     display: none;
 }
 
-/* =========================
+
+/* =========================================================
    NAVIGATION
-========================= */
+   ========================================================= */
 
 .sidebarNav {
     display: flex;
     flex-direction: column;
+
     gap: 24px;
 }
-
-/* Navigation group */
 
 .navGroup {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+
+    gap: 7px;
 }
+
+
+/* =========================================================
+   GROUP TITLES
+   Academic slate-blue, quiet and readable.
+   ========================================================= */
 
 .navGroupTitle {
     margin: 0;
-    padding: 0 12px;
+    padding: 0 8px;
 
-    color: #94a3b8;
-
-    font-size: 11px;
-    font-weight: 700;
+    color: #8da4c2;
+    font-size: 10px;
+    font-weight: 720;
     line-height: 1.4;
-
     letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
+
+
+/* =========================================================
+   GROUP ITEMS
+   ========================================================= */
 
 .navGroupItems {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+
+    gap: 3px;
 }
 
-/* Navigation item */
+
+/* =========================================================
+   NAV ITEM
+   ========================================================= */
 
 .sidebarNavItem {
     position: relative;
 
     display: flex;
-    align-items: center;
-    gap: 12px;
 
     width: 100%;
-    min-height: 44px;
+    min-height: 40px;
 
-    padding: 10px 12px;
+    align-items: center;
 
-    border-radius: 12px;
+    gap: 11px;
+
+    padding: 9px 10px;
+
+    border-radius: 8px;
 
     background: transparent;
 
-    color: #64748b;
+    /*
+     * Diamond / silver-white
+     */
+    color: #e6edf6;
 
-    font-size: 15px;
-    font-weight: 500;
-    line-height: 1.4;
+    font-size: 13.5px;
+    font-weight: 450;
+
+    line-height: 1.35;
 
     text-decoration: none;
 
@@ -136,144 +248,186 @@
     cursor: pointer;
 
     transition:
-        background-color 0.2s ease,
-        color 0.2s ease,
-        transform 0.2s ease;
+        background-color 0.15s ease,
+        color 0.15s ease;
 }
+
+
+/* ---------- Icon ---------- */
 
 .sidebarNavItem svg {
-    flex-shrink: 0;
+    flex: 0 0 auto;
 
-    transition:
-        color 0.2s ease,
-        transform 0.2s ease;
+    color: #b8c9dc;
+
+    transition: color 0.15s ease;
 }
 
-.sidebarNavItem:hover {
-    background: #f8fafc;
-    color: #334155;
 
-    transform: translateX(2px);
+/* =========================================================
+   HOVER
+   ========================================================= */
+
+.sidebarNavItem:hover {
+    background: rgba(255, 255, 255, 0.055);
+
+    color: #ffffff;
 }
 
 .sidebarNavItem:hover svg {
-    transform: scale(1.05);
+    color: #e9f0f8;
 }
 
-/* =========================
+
+/* =========================================================
    ACTIVE
-========================= */
+   giống ô Hỏi đáp AI trong ảnh mẫu
+   ========================================================= */
 
-.active {
-    background: #eff6ff;
-    color: #2563eb;
+.active,
+.active:hover {
+    background: #2a4773;
 
-    font-weight: 600;
+    color: #dbeafe;
+
+    font-weight: 550;
 }
 
 .active::before {
-    content: "";
-
-    position: absolute;
-
-    top: 50%;
-    left: 0;
-
-    width: 4px;
-    height: 24px;
-
-    border-radius: 0 6px 6px 0;
-
-    background: #2563eb;
-
-    transform: translateY(-50%);
+    display: none;
 }
 
-.active svg {
-    color: #2563eb;
+.active svg,
+.active:hover svg {
+    color: #9cc8f4;
 }
 
-.active:hover {
-    background: #dbeafe;
-    color: #1d4ed8;
+
+/* =========================================================
+   VINUNIVERSITY FOOTER
+   ========================================================= */
+
+.sidebarFooterBrand {
+    position: relative;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    margin-top: 32px;
+
+    padding: 22px 8px 0;
+
+    border-top: 1px solid rgba(255, 255, 255, 0.13);
 }
 
-/* =========================
-   FOOTER
-========================= */
 
-.sidebarFooterCard {
-    margin-top: 28px;
+/* ---------- Footer logo ---------- */
 
-    padding: 16px;
+.footerLogoBox {
+    display: grid;
 
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
+    width: 35px;
+    height: 35px;
 
-    background: #ffffff;
+    flex: 0 0 35px;
 
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    place-items: center;
 }
 
-.sidebarFooterIcon {
+.footerLogoBox img {
     display: block;
-    width: 40px;
-    height: 40px;
-    margin-bottom: 8px;
+
+    width: 35px;
+    height: 35px;
+
+    object-fit: contain;
 }
 
-.sidebarFooterTitle {
-    margin: 0;
 
-    color: #0f172a;
+/* ---------- Footer text ---------- */
 
-    font-size: 15px;
-    font-weight: 600;
+.footerBrandCopy {
+    display: flex;
+
+    min-width: 0;
+
+    flex-direction: column;
+
+    gap: 3px;
+
+    line-height: 1.05;
 }
 
-.sidebarFooterDesc {
-    margin: 5px 0 0;
+.footerBrandCopy strong {
+    color: #f1f5f9;
 
-    color: #64748b;
+    font-size: 10.5px;
+    font-weight: 700;
 
-    font-size: 13px;
-    line-height: 1.5;
+    letter-spacing: 0.01em;
+
+    white-space: nowrap;
 }
 
-/* =========================
-   RESPONSIVE
-========================= */
+.footerBrandCopy small {
+    color: #9dafc4;
+
+    font-size: 7.5px;
+    font-weight: 450;
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   TABLET
+   ========================================================= */
 
 @media (max-width: 1024px) {
     .sidebar {
-        width: 220px;
-        min-width: 220px;
+        width: 230px;
+        min-width: 230px;
 
-        padding: 20px 12px;
+        padding: 24px 14px 24px;
+    }
+
+    .brandCopy strong {
+        font-size: 15px;
     }
 
     .sidebarNavItem {
-        padding: 10px;
+        padding-inline: 9px;
 
-        font-size: 14px;
-    }
-
-    .navGroupTitle {
-        padding: 0 10px;
+        font-size: 13px;
     }
 }
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
 
 @media (max-width: 768px) {
     .sidebar {
         position: fixed;
+
         inset: 0 auto 0 0;
+
         z-index: 110;
-        display: flex;
-        width: min(300px, 84vw);
+
+        width: min(300px, 86vw);
         min-width: 0;
+
         height: 100dvh;
+
         transform: translateX(-100%);
+
         transition: transform 200ms ease;
+
+        box-shadow: 14px 0 38px rgba(0, 12, 32, 0.34);
     }
 
     .mobileOpen {
@@ -282,85 +436,153 @@
 
     .mobileCloseButton {
         display: grid;
-        width: 36px;
-        height: 36px;
+
+        width: 34px;
+        height: 34px;
+
         margin-left: auto;
+
+        flex: 0 0 34px;
+
         place-items: center;
+
         padding: 0;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        background: #fff;
-        color: #526176;
+
+        border: 1px solid rgba(255, 255, 255, 0.14);
+
+        border-radius: 7px;
+
+        background: rgba(255, 255, 255, 0.055);
+
+        color: #edf3fa;
+
         cursor: pointer;
+    }
+
+    .mobileCloseButton:hover {
+        background: rgba(255, 255, 255, 0.1);
     }
 
     .mobileOverlay {
         position: fixed;
+
         inset: 0;
+
         z-index: 100;
+
         display: block;
+
+        padding: 0;
+
         border: 0;
-        background: rgba(15, 23, 42, 0.46);
+
+        background: rgba(5, 14, 28, 0.62);
+
+        backdrop-filter: blur(2px);
     }
 }
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
 
 @media (prefers-reduced-motion: reduce) {
-
+    .logoBrandLink,
     .sidebarNavItem,
-    .sidebarNavItem svg {
+    .mobileCloseButton {
         transition: none;
     }
-
-    .sidebarNavItem:hover {
-        transform: none;
-    }
-
-    .sidebarNavItem:hover svg {
-        transform: none;
-    }
 }
+
+
+/* =========================================================
+   DARK MODE
+   Sidebar đã là dark nên chỉ tối sâu hơn nhẹ
+   ========================================================= */
 
 :global(.dark) .sidebar {
-    border-color: #334155;
-    background: #111827;
-    color: #f8fafc;
+    background: #081f43;
+
+    border-right-color: rgba(255, 255, 255, 0.07);
 }
 
-:global(.dark) .sidebarLogo span,
-:global(.dark) .sidebarFooterTitle {
-    color: #f8fafc;
+
+/* Brand */
+
+:global(.dark) .brandCopy strong {
+    color: #f4f7fb;
 }
+
+:global(.dark) .brandCopy small {
+    color: #aabbd0;
+}
+
+
+/* Group titles keep the same academic slate tone in dark mode. */
 
 :global(.dark) .navGroupTitle {
-    color: #94a3b8;
+    color: #91a8c6;
 }
 
+
+/* Menu */
+
 :global(.dark) .sidebarNavItem {
-    color: #cbd5e1;
+    color: #e1e9f3;
+}
+
+:global(.dark) .sidebarNavItem svg {
+    color: #aebfd3;
 }
 
 :global(.dark) .sidebarNavItem:hover {
-    background: #1f2937;
-    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.055);
+
+    color: #ffffff;
 }
+
+:global(.dark) .sidebarNavItem:hover svg {
+    color: #ffffff;
+}
+
+
+/* Active */
 
 :global(.dark) .active,
 :global(.dark) .active:hover {
-    background: #0f2f5f;
-    color: #dbeafe;
+    background: #253f68;
+
+    color: #e7f0fb;
 }
 
-:global(.dark) .active svg {
-    color: #93c5fd;
+:global(.dark) .active svg,
+:global(.dark) .active:hover svg {
+    color: #91c5ff;
 }
 
-:global(.dark) .sidebarFooterCard,
+
+/* Footer */
+
+:global(.dark) .sidebarFooterBrand {
+    border-top-color: rgba(255, 255, 255, 0.11);
+}
+
+:global(.dark) .footerBrandCopy strong {
+    color: #f1f5f9;
+}
+
+:global(.dark) .footerBrandCopy small {
+    color: #91a5be;
+}
+
+
+/* Mobile dark */
+
 :global(.dark) .mobileCloseButton {
-    border-color: #334155;
-    background: #1f2937;
-    color: #e5e7eb;
-}
+    border-color: rgba(255, 255, 255, 0.13);
 
-:global(.dark) .sidebarFooterDesc {
-    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.055);
+
+    color: #f1f5f9;
 }

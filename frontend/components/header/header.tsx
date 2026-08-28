@@ -8,6 +8,7 @@ import {
     Lock,
     LogOut,
     Menu,
+    Search,
     MessageSquareWarning,
     Moon,
     ShieldCheck,
@@ -16,8 +17,6 @@ import {
     UserRound,
     X,
 } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
     useEffect,
@@ -538,25 +537,13 @@ setLatestNotifications(normalized);
                     <Menu size={20} />
                 </button>
 
-                <Link
-                    className={`${styles.logoBrandLink} notranslate`}
-                    href="/student/dashboard"
-                    translate="no"
-                >
-                    <span className={styles.logoIcon}>
-                        <Image
-                            alt="AI Internova logo"
-                            height={42}
-                            priority
-                            src="/vinuni-internship-logo.svg"
-                            width={42}
-                        />
+                <div className={styles.searchShell} role="search">
+                    <Search size={17} aria-hidden="true" />
+                    <span className={styles.searchPlaceholder}>
+                        {locale === "vi" ? "Tìm kiếm nhanh..." : "Quick search..."}
                     </span>
-
-                    <div className={`${styles.logoText} notranslate`} translate="no">
-                        <strong>AI Internova</strong>
-                    </div>
-                </Link>
+                    <kbd>Ctrl + K</kbd>
+                </div>
             </div>
 
             <div className={styles.headerRight}>

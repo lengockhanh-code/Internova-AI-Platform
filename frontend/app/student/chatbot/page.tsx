@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
     memo,
@@ -9,6 +9,7 @@ import {
     useState,
 } from "react";
 
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -18,11 +19,14 @@ import FormAgentPanel from "@/components/FormAgentPanel";
 import { useSettings } from "@/context/settings-provider";
 
 import {
-    Bot,
     BrainCircuit,
     ChevronDown,
     CircleCheck,
     ArrowDown,
+    ArrowRight,
+    Clock,
+    ClipboardList,
+    CircleHelp,
     Database,
     Download,
     Eye,
@@ -38,7 +42,6 @@ import {
     Square,
     Send,
     Trash2,
-    User,
     X,
 } from "lucide-react";
 
@@ -51,18 +54,26 @@ const API_URL =
     "http://localhost:8000";
 
 
-const CHAT_MESSAGES_KEY =
+const CHAT_MESSAGES_KEY_PREFIX =
     "internova_chat_messages";
 
-const CHAT_SESSION_KEY =
+const CHAT_SESSION_KEY_PREFIX =
     "internova_chat_session_id";
+
+const CHAT_SESSION_DRAFT_KEY_PREFIX =
+    "internova_chat_session_draft";
 
 const CHAT_UPDATED_EVENT =
     "internova:chat-updated";
 
+let unscopedChatStorageId: string | null = null;
+
 type ChatRuntimeWindow = Window & {
     __internovaChatStreamActive?: boolean;
     __internovaChatAbortController?: AbortController | null;
+    // Session that currently owns the active streaming request.
+    // This lets the stream continue safely while the user browses another chat.
+    __internovaChatStreamSessionId?: string | null;
 };
 
 
@@ -280,11 +291,19 @@ type StreamEvent = {
     route_scope?: string | null;
     step?: ProcessingStep | null;
     processing?: ProcessingSummary;
+    form_agent?: {
+        session_id?: string | null;
+        status?: string | null;
+        detected_form?: string | null;
+        docx_ready?: boolean;
+    };
     result?: {
         answer?: string;
         answer_status?: string;
         confidence?: number;
         needs_retrieval?: boolean;
+        route_intent?: string | null;
+        route_scope?: string | null;
         sources?: Source[];
     };
 };
@@ -324,6 +343,120 @@ function getToken() {
         return null;
     }
     return localStorage.getItem("internova_access_token");
+}
+
+function getChatStorageUserId(): string | null {
+    if (typeof window === "undefined") {
+        return null;
+    }
+
+    try {
+        const storedUser = JSON.parse(
+            localStorage.getItem("internova_user") ?? "null",
+        ) as { id?: string | number } | null;
+        const userId = String(storedUser?.id ?? "").trim();
+
+        if (userId) {
+            return userId;
+        }
+    } catch {
+        // Fall back to the authenticated token when local user data is invalid.
+    }
+
+    try {
+        const encodedPayload = getToken()?.split(".")[1];
+        if (!encodedPayload) {
+            return null;
+        }
+
+        const normalizedPayload = encodedPayload
+            .replace(/-/g, "+")
+            .replace(/_/g, "/")
+            .padEnd(Math.ceil(encodedPayload.length / 4) * 4, "=");
+        const payload = JSON.parse(atob(normalizedPayload)) as {
+            user_id?: string | number;
+            sub?: string | number;
+        };
+        const userId = String(payload.user_id ?? payload.sub ?? "").trim();
+
+        return userId || null;
+    } catch {
+        return null;
+    }
+}
+
+function getChatStorageKey(prefix: string): string {
+    const userId = getChatStorageUserId();
+
+    if (userId) {
+        return `${prefix}:user:${userId}`;
+    }
+
+    // Do not let malformed local auth data fall back to a shared chat key.
+    unscopedChatStorageId ??= crypto.randomUUID();
+    return `${prefix}:unscoped:${unscopedChatStorageId}`;
+}
+
+function getChatMessagesStorageKey(): string {
+    return getChatStorageKey(CHAT_MESSAGES_KEY_PREFIX);
+}
+
+function getChatSessionStorageKey(): string {
+    return getChatStorageKey(CHAT_SESSION_KEY_PREFIX);
+}
+
+function getChatSessionDraftStorageKey(
+    sessionId: string,
+): string {
+    return `${getChatStorageKey(CHAT_SESSION_DRAFT_KEY_PREFIX)}:session:${sessionId}`;
+}
+
+function readChatSessionDraft(
+    sessionId: string,
+): Message[] | null {
+    if (typeof window === "undefined" || !sessionId) {
+        return null;
+    }
+
+    try {
+        const stored = sessionStorage.getItem(
+            getChatSessionDraftStorageKey(sessionId),
+        );
+
+        if (!stored) {
+            return null;
+        }
+
+        const parsed = JSON.parse(stored) as Message[];
+        return Array.isArray(parsed) ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+function mergeChatMessages(
+    serverMessages: Message[],
+    draftMessages: Message[],
+): Message[] {
+    if (draftMessages.length === 0) {
+        return serverMessages;
+    }
+
+    const draftById = new Map(
+        draftMessages.map(message => [message.id, message]),
+    );
+    const serverIds = new Set(
+        serverMessages.map(message => message.id),
+    );
+
+    return [
+        ...serverMessages.map(
+            message => draftById.get(message.id) ?? message,
+        ),
+        ...draftMessages.filter(
+            message => !serverIds.has(message.id),
+        ),
+    ];
 }
 
 function formatChatTimestamp(
@@ -420,6 +553,12 @@ export default function RagChatPage() {
         t("chat.suggestion.3"),
     ];
 
+    const suggestionIcons = [
+        Clock,
+        ClipboardList,
+        CircleHelp,
+    ];
+
     const [
         messages,
         setMessages,
@@ -504,32 +643,63 @@ export default function RagChatPage() {
 
     // ── FORM AGENT: mỗi lượt là 1 tin nhắn assistant bình thường,
     // hiện tự nhiên trong dòng chat — không còn panel cố định.
-    const [pendingSuggestedForm, setPendingSuggestedForm] = useState<string | null>(null);
     const [activeFormAgentSessionId, setActiveFormAgentSessionId] = useState<string | null>(null);
     const [activeFormAgentStatus, setActiveFormAgentStatus] = useState<string | null>(null);
 
-    const CONFIRM_ONLY_TOKENS = new Set([
-        "co", "uh", "um", "uk", "u", "ok", "okay", "duoc", "roi",
-        "dong", "y", "vang", "ung", "yes", "yep", "sure",
-        "giup", "minh", "mik", "mjk", "em", "toi", "voi",
-        "nhe", "di", "luon", "dien", "form", "don", "gium", "ho",
-        "da", "a", "can",
-        "lam", "tao", "dung", "1", "2", "3", "4", "5",
-    ]);
 
-    function isPureConfirmReply(message: string): boolean {
-        const normalized = message
+    function normalizeFormIntentText(value: string): string {
+        return value
             .toLowerCase()
-            .replace(/đ/g, "d")
+            .replace(/\u0111/g, "d")
+            .replace(/\u0110/g, "d")
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "")
-            .replace(/(\d)\.(\d)/g, "$1 $2");
+            .replace(/[^a-z0-9\s-]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
 
-        const tokens = normalized.split(/\s+/).filter(Boolean);
+    function isExplicitFormFillRequest(value: string): boolean {
+        const normalized = normalizeFormIntentText(value);
+        const hasFormTarget = /\b(form|don|bieu mau)\b/.test(normalized);
+        const hasFillOrCreateAction = /\b(dien|lam|tao|fill|complete|prepare)\b/.test(normalized);
+        const directCommand = /^(dien|lam|tao|fill|complete|prepare)\s+(form|don|bieu mau)\b/.test(normalized);
+        const asksForHelp = [
+            "giup",
+            "ho",
+            "gium",
+            "cho minh",
+            "cho em",
+            "cho toi",
+            "toi muon",
+            "em muon",
+            "minh muon",
+            "can ban",
+            "can minh",
+            "bat dau",
+            "lam luon",
+            "dien luon",
+            "help me",
+            "i want",
+            "please",
+        ].some(phrase => normalized.includes(phrase));
+        const asksAboutInstructions = [
+            "cach dien",
+            "huong dan dien",
+            "quy trinh dien",
+            "tai form",
+            "download form",
+            "form nao",
+            "can form nao",
+        ].some(phrase => normalized.includes(phrase));
 
-        if (tokens.length === 0 || tokens.length > 10) return false;
+        return hasFormTarget && hasFillOrCreateAction && (directCommand || asksForHelp) && !asksAboutInstructions;
+    }
 
-        return tokens.every(t => CONFIRM_ONLY_TOKENS.has(t));
+    function isActiveFormAgentTurn(status: string | null): boolean {
+        return status === "selecting_form"
+            || status === "collecting_info"
+            || status === "awaiting_review";
     }
 
     function updateMessageById(
@@ -602,7 +772,6 @@ export default function RagChatPage() {
 
             setActiveFormAgentSessionId(data.session_id);
             setActiveFormAgentStatus(data.status);
-            setPendingSuggestedForm(null);
 
             await persistStandaloneMessage(
                 newId,
@@ -619,17 +788,11 @@ export default function RagChatPage() {
                 formAgentLoading: false,
                 formAgentErrorMsg: err instanceof Error ? err.message : "Đã có lỗi xảy ra",
             }));
-            setPendingSuggestedForm(null);
         }
     }
 
     // Bấm nút gợi ý -> Chạy Form Agent trực tiếp ngay lập tức
-    function handleFormAgentRequest(formName?: string) {
-        setPendingSuggestedForm(null);
-        void startFormAgent(formName, "bắt đầu điền đơn");
-    }
-
-    // Sinh viên gõ câu trả lời cho agent NGAY TẠI Ô NHẬP CHÍNH →
+// Sinh viên gõ câu trả lời cho agent NGAY TẠI Ô NHẬP CHÍNH →
     // THÊM 1 tin nhắn assistant mới (không sửa tin nhắn cũ) chứa
     // câu hỏi/kết quả tiếp theo — giống hệt cách chat RAG bình
     // thường thêm tin nhắn mới mỗi lượt.
@@ -896,8 +1059,16 @@ export default function RagChatPage() {
     ) => {
         messagesRef.current = nextMessages;
 
+        const activeSessionId = sessionIdRef.current;
+        if (activeSessionId) {
+            sessionStorage.setItem(
+                getChatSessionDraftStorageKey(activeSessionId),
+                JSON.stringify(nextMessages),
+            );
+        }
+
         sessionStorage.setItem(
-            CHAT_MESSAGES_KEY,
+            getChatMessagesStorageKey(),
             JSON.stringify(nextMessages)
         );
 
@@ -970,12 +1141,11 @@ export default function RagChatPage() {
 
             const data = await response.json() as ChatSessionsResponse;
             setChatSessions(data.sessions ?? []);
-        } catch (error) {
-            console.error("Không thể tải lịch sử trò chuyện:", error);
+        } catch {
             setHistoryError(
                 locale === "en"
-                    ? "Unable to load chat history."
-                    : "Không thể tải lịch sử trò chuyện.",
+                    ? "Unable to load chat history. Please check the backend connection."
+                    : "Không thể tải lịch sử trò chuyện. Vui lòng kiểm tra kết nối backend.",
             );
         } finally {
             setHistoryLoading(false);
@@ -1032,7 +1202,12 @@ export default function RagChatPage() {
             return;
         }
 
-        stopGeneration();
+        /*
+         * IMPORTANT:
+         * Do NOT call stopGeneration() here.
+         * The current stream belongs to its original session and is allowed
+         * to finish in the background while the user browses another chat.
+         */
         setSwitchingSessionId(sessionId);
         setHistoryError("");
         olderLoadInFlightRef.current = false;
@@ -1054,17 +1229,41 @@ export default function RagChatPage() {
             }
 
             const data = await response.json() as ChatMessagesPageResponse;
-            const restoredMessages = data.messages ?? [];
+            const runtime = getChatRuntime();
+            const streamBelongsToTarget =
+                runtime.__internovaChatStreamActive === true
+                &&
+                runtime.__internovaChatStreamSessionId === sessionId;
+
+            const liveDraft =
+                streamBelongsToTarget
+                    ? readChatSessionDraft(sessionId)
+                    : null;
+
+            const restoredMessages =
+                liveDraft && liveDraft.length > 0
+                    ? mergeChatMessages(
+                        data.messages ?? [],
+                        liveDraft,
+                    )
+                    : (data.messages ?? []);
+
             const nextCursor = data.nextCursor ?? null;
             const hasMore =
                 Boolean(data.hasMore) &&
                 Boolean(nextCursor);
 
             sessionIdRef.current = sessionId;
-            sessionStorage.setItem(CHAT_SESSION_KEY, sessionId);
+            sessionStorage.setItem(getChatSessionStorageKey(), sessionId);
 
             persistMessages(restoredMessages);
             setMessages(restoredMessages);
+
+            // Keep the composer locked while any background stream is active.
+            // This prevents a second concurrent stream from reusing the same refs.
+            setLoading(
+                runtime.__internovaChatStreamActive === true,
+            );
             setVisibleMessageCount(
                 Math.max(
                     restoredMessages.length,
@@ -1076,7 +1275,6 @@ export default function RagChatPage() {
                 hasMore,
             );
 
-            setPendingSuggestedForm(null);
             setActiveFormAgentSessionId(null);
             setActiveFormAgentStatus(null);
             setShowJumpToLatest(false);
@@ -1189,10 +1387,15 @@ export default function RagChatPage() {
             return;
         }
 
+        // These legacy keys were shared by every account in the same tab.
+        // Never restore them because their owner cannot be established safely.
+        sessionStorage.removeItem(CHAT_MESSAGES_KEY_PREFIX);
+        sessionStorage.removeItem(CHAT_SESSION_KEY_PREFIX);
+
         try {
             const storedMessages =
                 sessionStorage.getItem(
-                    CHAT_MESSAGES_KEY
+                    getChatMessagesStorageKey()
                 );
 
             if (storedMessages) {
@@ -1278,14 +1481,14 @@ export default function RagChatPage() {
 
 
             sessionStorage.removeItem(
-                CHAT_MESSAGES_KEY
+                getChatMessagesStorageKey()
             );
         }
 
 
         let sessionId =
             sessionStorage.getItem(
-                CHAT_SESSION_KEY
+                getChatSessionStorageKey()
             );
 
 
@@ -1296,7 +1499,7 @@ export default function RagChatPage() {
 
 
             sessionStorage.setItem(
-                CHAT_SESSION_KEY,
+                getChatSessionStorageKey(),
                 sessionId
             );
         }
@@ -1342,7 +1545,7 @@ export default function RagChatPage() {
         const syncFromStorage = () => {
             const stored =
                 sessionStorage.getItem(
-                    CHAT_MESSAGES_KEY
+                    getChatMessagesStorageKey()
                 );
 
             if (!stored) {
@@ -1410,7 +1613,7 @@ export default function RagChatPage() {
         try {
 
             sessionStorage.setItem(
-                CHAT_MESSAGES_KEY,
+                getChatMessagesStorageKey(),
                 JSON.stringify(
                     messages
                 )
@@ -1810,6 +2013,16 @@ export default function RagChatPage() {
                 message.role === "user"
         );
 
+    // A history session can legitimately contain exactly one USER message
+    // (for example while the answer is still running). Do not treat every
+    // one-message session as the welcome screen.
+    const isWelcomeState =
+        messages.length === 1
+        &&
+        messages[0]?.id === "welcome"
+        &&
+        messages[0]?.role === "assistant";
+
 
 
     /* ============================================================
@@ -1821,20 +2034,12 @@ export default function RagChatPage() {
         const runtime =
             getChatRuntime();
 
-        (
-            runtime.__internovaChatAbortController
-            ??
-            abortControllerRef.current
-        )?.abort();
-
-        runtime.__internovaChatAbortController =
-            null;
-
-        runtime.__internovaChatStreamActive =
-            false;
-
-        abortControllerRef.current =
-            null;
+        /*
+         * Starting/browsing another chat must not cancel a response that is
+         * already streaming in a different session.
+         */
+        const hasBackgroundStream =
+            runtime.__internovaChatStreamActive === true;
 
         const newSessionId =
             crypto.randomUUID();
@@ -1845,7 +2050,7 @@ export default function RagChatPage() {
 
 
         sessionStorage.setItem(
-            CHAT_SESSION_KEY,
+            getChatSessionStorageKey(),
             newSessionId
         );
 
@@ -1886,24 +2091,25 @@ export default function RagChatPage() {
 
 
         setLoading(
-            false
+            hasBackgroundStream
         );
 
-        if (
-            streamFrameRef.current !==
-            null
-        ) {
-            cancelAnimationFrame(
-                streamFrameRef.current
-            );
+        if (!hasBackgroundStream) {
+            if (
+                streamFrameRef.current !==
+                null
+            ) {
+                cancelAnimationFrame(
+                    streamFrameRef.current
+                );
 
-            streamFrameRef.current = null;
+                streamFrameRef.current = null;
+            }
+
+            streamBufferRef.current = "";
         }
-
-        streamBufferRef.current = "";
         setShowJumpToLatest(false);
 
-        setPendingSuggestedForm(null);
         setActiveFormAgentSessionId(null);
         setActiveFormAgentStatus(null);
         setHistoryOpen(false);
@@ -1928,6 +2134,7 @@ export default function RagChatPage() {
         abortControllerRef.current = null;
         runtime.__internovaChatAbortController = null;
         runtime.__internovaChatStreamActive = false;
+        runtime.__internovaChatStreamSessionId = null;
 
         setLoading(false);
         if (streamFrameRef.current !== null) {
@@ -1964,7 +2171,7 @@ export default function RagChatPage() {
         // ── FORM AGENT 1: Nếu đang có phiên Form Agent đang chạy ───────
         if (
             activeFormAgentSessionId &&
-            (activeFormAgentStatus === "collecting_info" || activeFormAgentStatus === "awaiting_review")
+            isActiveFormAgentTurn(activeFormAgentStatus)
         ) {
             const userMessage: Message = {
                 id: crypto.randomUUID(),
@@ -1983,7 +2190,7 @@ export default function RagChatPage() {
 
             // Kiểm tra câu từ chối / hủy phiên thực sự
             const cancelPhrases = [
-                "huy", "huy phien", "huy don", "huy dien don", "cancel",
+                "huy", "huy phien", "huy don", "huy dien don", "dung", "dung lai", "cancel",
                 "dung lai", "dung phien", "dung dien don", "khong dien nua",
                 "khong muon dien nua", "thoi khong lam nua", "thoi khong dien nua"
             ];
@@ -2006,37 +2213,24 @@ export default function RagChatPage() {
             return;
         }
 
-        // ── FORM AGENT 2: Nếu có form vừa được gợi ý VÀ người dùng gõ xác nhận ──
-        if (pendingSuggestedForm && !activeFormAgentSessionId) {
-            const noWords = ["khong", "thoi", "khoi", "no", "khong can"];
-            const normalized = message
-                .toLowerCase()
-                .replace(/đ/g, "d")
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "");
-            const tokens = normalized.split(/\s+/).filter(Boolean);
-            const isExplicitNo = tokens.some(t => noWords.includes(t));
+        // ── FORM AGENT 2: Chỉ mở agent khi người dùng chủ động muốn điền form ──
 
-            if (!isExplicitNo && isPureConfirmReply(message)) {
-                const userMessage: Message = {
-                    id: crypto.randomUUID(),
-                    role: "user",
-                    content: message,
-                };
-                setMessages(current => [...current, userMessage]);
-                setInput("");
-                isNearBottomRef.current = true;
-                setShowJumpToLatest(false);
-                requestAnimationFrame(() => scrollToBottom("smooth"));
+        // Start Form Agent only for a clear fill/create-form request; unclear form choice is handled inside the agent.
+        if (!activeFormAgentSessionId && isExplicitFormFillRequest(message)) {
+            const userMessage: Message = {
+                id: crypto.randomUUID(),
+                role: "user",
+                content: message,
+            };
 
-                const targetForm = pendingSuggestedForm;
-                setPendingSuggestedForm(null);
-                void startFormAgent(targetForm, message, userMessage);
-                return;
-            }
+            setMessages(current => [...current, userMessage]);
+            setInput("");
+            isNearBottomRef.current = true;
+            setShowJumpToLatest(false);
+            requestAnimationFrame(() => scrollToBottom("smooth"));
 
-            // Nếu là câu hỏi khác hoặc câu từ chối -> xóa pending form và tiếp tục chạy xuống RAG
-            setPendingSuggestedForm(null);
+            void startFormAgent(undefined, message, userMessage);
+            return;
         }
         // ── HẾT PHẦN FORM AGENT ──────────────────────────────────────
 
@@ -2054,11 +2248,16 @@ export default function RagChatPage() {
 
 
             sessionStorage.setItem(
-                CHAT_SESSION_KEY,
+                getChatSessionStorageKey(),
                 newSessionId
             );
         }
 
+
+        // Capture the owner session once. Never read sessionIdRef.current
+        // later inside the stream because the user may browse another chat.
+        const requestSessionId =
+            sessionIdRef.current;
 
         const userMessage:
             Message = {
@@ -2122,6 +2321,11 @@ export default function RagChatPage() {
             assistantMessage,
         ];
 
+        // This snapshot belongs permanently to requestSessionId even if the
+        // visible chat changes while the stream is still running.
+        let streamMessages =
+            nextMessages;
+
         persistMessages(
             nextMessages
         );
@@ -2147,8 +2351,8 @@ export default function RagChatPage() {
                 current: Message,
             ) => Message,
         ) => {
-            const nextMessages =
-                messagesRef.current.map(
+            streamMessages =
+                streamMessages.map(
                     item => {
                         if (
                             item.id !==
@@ -2161,44 +2365,41 @@ export default function RagChatPage() {
                     }
                 );
 
-            persistMessages(
-                nextMessages
+            // Always persist the stream into its OWN session snapshot.
+            // Therefore switching history never loses the in-flight answer.
+            sessionStorage.setItem(
+                getChatSessionDraftStorageKey(requestSessionId),
+                JSON.stringify(streamMessages),
+            );
+
+            // Only paint into React state when the user is currently looking
+            // at the session that owns this stream. Otherwise keep streaming
+            // silently in the background.
+            if (sessionIdRef.current !== requestSessionId) {
+                return;
+            }
+
+            messagesRef.current =
+                streamMessages;
+
+            sessionStorage.setItem(
+                getChatMessagesStorageKey(),
+                JSON.stringify(streamMessages),
+            );
+
+            window.dispatchEvent(
+                new Event(CHAT_UPDATED_EVENT),
             );
 
             setMessages(
-                nextMessages
+                streamMessages
             );
         };
 
         // ── FORM AGENT: kiểm tra độc lập, tách biệt hoàn toàn khỏi
         // luồng chat/auth chính — lỗi ở đây không bao giờ ảnh hưởng
         // tới việc gửi/nhận tin nhắn bình thường.
-        const checkFormRelevance = async (
-            contextText: string,
-        ) => {
-            try {
-                const res = await fetch(
-                    `${API_URL}/api/v1/form-agent/detect`,
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ text: contextText }),
-                    }
-                );
-                if (!res.ok) return;
-                const data: { detected_form?: string | null } =
-                    await res.json();
-                if (data.detected_form) {
-                    setPendingSuggestedForm(data.detected_form);
-                    updateAssistantMessage(current => ({
-                        ...current,
-                        detectedForm: data.detected_form,
-                    }));
-                }
-            } catch {
-                // Im lặng bỏ qua — chỉ là gợi ý phụ.
-            }
-        };
+        const checkFormRelevance = async (_contextText: string) => { void _contextText; };
         // ── HẾT PHẦN FORM AGENT ────────────────────────────────────────
 
         const flushStreamBuffer = () => {
@@ -2271,6 +2472,9 @@ export default function RagChatPage() {
             runtime.__internovaChatStreamActive =
                 true;
 
+            runtime.__internovaChatStreamSessionId =
+                requestSessionId;
+
             const response =
                 await fetch(
                     `${API_URL}/api/v1/chat/stream`,
@@ -2280,7 +2484,7 @@ export default function RagChatPage() {
                         signal: requestController.signal,
                         body: JSON.stringify({
                             message,
-                            session_id: sessionIdRef.current,
+                            session_id: requestSessionId,
                             client_message_id: userMessage.id,
                             assistant_message_id: assistantMessageId,
                         }),
@@ -2415,10 +2619,14 @@ export default function RagChatPage() {
                         event.type ===
                         "final"
                     ) {
-                        if (event.session_id) {
+                        if (
+                            event.session_id
+                            &&
+                            sessionIdRef.current === requestSessionId
+                        ) {
                             sessionIdRef.current = event.session_id;
                             sessionStorage.setItem(
-                                CHAT_SESSION_KEY,
+                                getChatSessionStorageKey(),
                                 event.session_id,
                             );
                         }
@@ -2439,6 +2647,28 @@ export default function RagChatPage() {
                                 ?.needs_retrieval
                             === true;
 
+                        const isFormAgentResponse =
+                            event.form_agent != null
+                            || event.route_intent === "form_agent"
+                            || event.result?.route_intent === "form_agent";
+                        const formAgentSessionId =
+                            event.form_agent?.session_id
+                            ?? event.session_id
+                            ?? requestSessionId;
+                        const formAgentStatus =
+                            event.form_agent?.status
+                            ?? (isFormAgentResponse ? "collecting_info" : null);
+
+                        if (isFormAgentResponse && sessionIdRef.current === requestSessionId) {
+                            if (formAgentStatus === "approved" || formAgentStatus === "cancelled") {
+                                setActiveFormAgentSessionId(null);
+                                setActiveFormAgentStatus(null);
+                            } else {
+                                setActiveFormAgentSessionId(formAgentSessionId);
+                                setActiveFormAgentStatus(formAgentStatus);
+                            }
+                        }
+
 
                         updateAssistantMessage(
                             current => ({
@@ -2450,6 +2680,34 @@ export default function RagChatPage() {
                                     event.response
                                     ??
                                     current.content,
+                                isFormAgentMessage:
+                                    isFormAgentResponse
+                                        ? true
+                                        : current.isFormAgentMessage,
+                                formAgentPhase:
+                                    isFormAgentResponse
+                                        ? "working"
+                                        : current.formAgentPhase,
+                                formAgentSessionId:
+                                    isFormAgentResponse
+                                        ? formAgentSessionId
+                                        : current.formAgentSessionId,
+                                formAgentStatus:
+                                    isFormAgentResponse
+                                        ? formAgentStatus
+                                        : current.formAgentStatus,
+                                formAgentDetectedName:
+                                    isFormAgentResponse
+                                        ? (event.form_agent?.detected_form ?? current.formAgentDetectedName)
+                                        : current.formAgentDetectedName,
+                                formAgentDocxReady:
+                                    isFormAgentResponse
+                                        ? Boolean(event.form_agent?.docx_ready)
+                                        : current.formAgentDocxReady,
+                                formAgentLoading:
+                                    isFormAgentResponse
+                                        ? false
+                                        : current.formAgentLoading,
                                 sources:
                                     needsRetrieval
                                         ? (
@@ -2531,10 +2789,14 @@ export default function RagChatPage() {
                     event.type ===
                     "final"
                 ) {
-                    if (event.session_id) {
+                    if (
+                        event.session_id
+                        &&
+                        sessionIdRef.current === requestSessionId
+                    ) {
                         sessionIdRef.current = event.session_id;
                         sessionStorage.setItem(
-                            CHAT_SESSION_KEY,
+                            getChatSessionStorageKey(),
                             event.session_id,
                         );
                     }
@@ -2553,6 +2815,28 @@ export default function RagChatPage() {
                             ?.needs_retrieval
                         === true;
 
+                    const isFormAgentResponse =
+                        event.form_agent != null
+                        || event.route_intent === "form_agent"
+                        || event.result?.route_intent === "form_agent";
+                    const formAgentSessionId =
+                        event.form_agent?.session_id
+                        ?? event.session_id
+                        ?? requestSessionId;
+                    const formAgentStatus =
+                        event.form_agent?.status
+                        ?? (isFormAgentResponse ? "collecting_info" : null);
+
+                    if (isFormAgentResponse && sessionIdRef.current === requestSessionId) {
+                        if (formAgentStatus === "approved" || formAgentStatus === "cancelled") {
+                            setActiveFormAgentSessionId(null);
+                            setActiveFormAgentStatus(null);
+                        } else {
+                            setActiveFormAgentSessionId(formAgentSessionId);
+                            setActiveFormAgentStatus(formAgentStatus);
+                        }
+                    }
+
 
                     updateAssistantMessage(
                         current => ({
@@ -2564,6 +2848,34 @@ export default function RagChatPage() {
                                 event.response
                                 ??
                                 current.content,
+                            isFormAgentMessage:
+                                isFormAgentResponse
+                                    ? true
+                                    : current.isFormAgentMessage,
+                            formAgentPhase:
+                                isFormAgentResponse
+                                    ? "working"
+                                    : current.formAgentPhase,
+                            formAgentSessionId:
+                                isFormAgentResponse
+                                    ? formAgentSessionId
+                                    : current.formAgentSessionId,
+                            formAgentStatus:
+                                isFormAgentResponse
+                                    ? formAgentStatus
+                                    : current.formAgentStatus,
+                            formAgentDetectedName:
+                                isFormAgentResponse
+                                    ? (event.form_agent?.detected_form ?? current.formAgentDetectedName)
+                                    : current.formAgentDetectedName,
+                            formAgentDocxReady:
+                                isFormAgentResponse
+                                    ? Boolean(event.form_agent?.docx_ready)
+                                    : current.formAgentDocxReady,
+                            formAgentLoading:
+                                isFormAgentResponse
+                                    ? false
+                                    : current.formAgentLoading,
                             sources:
                                 needsRetrieval
                                     ? (
@@ -2693,6 +3005,9 @@ export default function RagChatPage() {
             runtime.__internovaChatStreamActive =
                 false;
 
+            runtime.__internovaChatStreamSessionId =
+                null;
+
             abortControllerRef.current = null;
 
             window.dispatchEvent(
@@ -2791,9 +3106,11 @@ export default function RagChatPage() {
 
 
                 <main
-                    className={
-                        styles.chatPage
-                    }
+                    className={`${styles.chatPage} ${
+                        isWelcomeState
+                            ? styles.chatPageWelcome
+                            : ""
+                    }`}
                 >
 
                     {/* =================================================
@@ -2811,13 +3128,44 @@ export default function RagChatPage() {
                                 styles.chatHeaderContent
                             }
                         >
+                            <div className={styles.assistantIdentity}>
+                                <span className={styles.assistantIdentityLogo}>
+                                    <Image
+                                        src="/intern.png"
+                                        alt="VinUniversity"
+                                        width={36}
+                                        height={36}
+                                        priority
+                                    />
+                                </span>
 
-                            <p>
-                                {locale === "en"
-                                    ? "AI assistant answers based on official university documents. If no information is found, the AI will let you know."
-                                    : "Trợ lý AI trả lời dựa trên tài liệu chính thức của nhà trường. Nếu không tìm thấy thông tin, AI sẽ cho bạn biết."}
-                            </p>
+                                <span className={styles.assistantIdentityCopy}>
+                                    <strong>Internova AI</strong>
+                                    <small>
+                                        {locale === "en"
+                                            ? "VinUni Internship Assistant"
+                                            : "Trợ lý thực tập VinUni"}
+                                    </small>
+                                </span>
+                            </div>
 
+                            <div className={styles.chatHeaderPolicy}>
+                                <p>
+                                    {locale === "en" ? (
+                                        <>
+                                            AI assistant answers based on official university documents.
+                                            <br />
+                                            If no information is found, the AI will let you know.
+                                        </>
+                                    ) : (
+                                        <>
+                                            Trợ lý AI trả lời dựa trên tài liệu chính thức của nhà trường.
+                                            <br />
+                                            Nếu không tìm thấy thông tin, AI sẽ cho bạn biết.
+                                        </>
+                                    )}
+                                </p>
+                            </div>
                         </div>
 
 
@@ -3119,7 +3467,6 @@ export default function RagChatPage() {
                                                     : message
                                             }
                                             locale={locale}
-                                            onFillRequest={(formName) => handleFormAgentRequest(formName)}
                                             onFormAgentApprove={handleFormAgentApprove}
                                             onFormAgentCancelSession={handleFormAgentCancelSession}
                                         />
@@ -3132,8 +3479,7 @@ export default function RagChatPage() {
                                 SUGGESTIONS
                             ================================================= */}
 
-                            {messages.length ===
-                                1 && (
+                            {isWelcomeState && (
 
                                     <div
                                         className={
@@ -3143,29 +3489,46 @@ export default function RagChatPage() {
                                     >
 
                                         {suggestions.map(
-                                            suggestion => (
+                                            (suggestion, index) => {
+                                                const SuggestionIcon =
+                                                    suggestionIcons[index] ?? CircleHelp;
 
-                                                <button
-                                                    key={
-                                                        suggestion
-                                                    }
-                                                    type="button"
-                                                    disabled={
-                                                        loading
-                                                    }
-                                                    onClick={
-                                                        () =>
-                                                            void sendMessage(
-                                                                suggestion
-                                                            )
-                                                    }
-                                                >
-                                                    {
-                                                        suggestion
-                                                    }
-                                                </button>
+                                                return (
+                                                    <button
+                                                        key={
+                                                            suggestion
+                                                        }
+                                                        type="button"
+                                                        disabled={
+                                                            loading
+                                                        }
+                                                        onClick={
+                                                            () =>
+                                                                void sendMessage(
+                                                                    suggestion
+                                                                )
+                                                        }
+                                                    >
+                                                        <span
+                                                            className={styles.suggestionIcon}
+                                                            aria-hidden="true"
+                                                        >
+                                                            <SuggestionIcon size={19} strokeWidth={1.9} />
+                                                        </span>
 
-                                            )
+                                                        <span className={styles.suggestionText}>
+                                                            {suggestion}
+                                                        </span>
+
+                                                        <ArrowRight
+                                                            className={styles.suggestionArrow}
+                                                            size={17}
+                                                            strokeWidth={1.8}
+                                                            aria-hidden="true"
+                                                        />
+                                                    </button>
+                                                );
+                                            }
                                         )}
 
                                     </div>
@@ -3306,15 +3669,11 @@ export default function RagChatPage() {
                                         }
                                         placeholder={
                                             activeFormAgentSessionId &&
-                                            (activeFormAgentStatus === "collecting_info" || activeFormAgentStatus === "awaiting_review")
+                                            isActiveFormAgentTurn(activeFormAgentStatus)
                                                 ? (locale === "en"
                                                     ? "Enter information for the form (or type 'cancel' to stop)..."
                                                     : "Nhập thông tin cho đơn (hoặc gõ 'hủy' để dừng)...")
-                                                : pendingSuggestedForm
-                                                    ? (locale === "en"
-                                                        ? `Type 'yes' to fill ${pendingSuggestedForm}, or ask another question...`
-                                                        : `Gõ 'có' để điền ${pendingSuggestedForm}, hoặc nhập câu hỏi tiếp theo...`)
-                                                    : (locale === "en"
+                                                : (locale === "en"
                                                         ? "Ask about internship policies, procedures, forms..."
                                                         : "Nhập câu hỏi của bạn về học vụ, quy định, thủ tục thực tập...")
                                         }
@@ -3344,6 +3703,15 @@ export default function RagChatPage() {
                                     )}
 
                                 </div>
+
+                                <p className={styles.inputDisclaimer}>
+                                    <ShieldCheck size={14} aria-hidden="true" />
+                                    <span>
+                                        {locale === "en"
+                                            ? "AI Internova can make mistakes. Please check important information."
+                                            : "AI Internova có thể mắc lỗi. Vui lòng kiểm tra lại thông tin quan trọng."}
+                                    </span>
+                                </p>
                             </div>
                         </div>
 
@@ -3475,28 +3843,11 @@ const MessageBubble = memo(function MessageBubble({
     return (
 
         <div
-            className={
-                isUser
-                    ? styles.userMessageRow
-                    : styles.aiMessageRow
-            }
+            className={`${isUser
+                ? styles.userMessageRow
+                : styles.aiMessageRow
+            } ${message.id === "welcome" ? styles.welcomeMessageRow : ""}`}
         >
-
-            {message.id !== "welcome" && (
-                <div
-                    className={
-                        isUser
-                            ? styles.userAvatar
-                            : styles.aiAvatar
-                    }
-                >
-                    {isUser ? (
-                        <User size={18} />
-                    ) : (
-                        <Bot size={20} strokeWidth={2} />
-                    )}
-                </div>
-            )}
 
             {isUser ? (
                 <div className={styles.userBubble}>
@@ -3596,22 +3947,11 @@ const MessageBubble = memo(function MessageBubble({
                                 />
                             )}
 
-                            {!formSource && message.detectedForm && (
+                            {!formSource && message.detectedForm && onFillRequest && (
                                 <button
                                     type="button"
                                     onClick={() => onFillRequest?.(message.detectedForm ?? undefined)}
-                                    style={{
-                                        marginTop: 10,
-                                        width: "100%",
-                                        padding: "8px 14px",
-                                        borderRadius: 8,
-                                        border: "1px solid #93c5fd",
-                                        background: "#eff6ff",
-                                        color: "#1d4ed8",
-                                        cursor: "pointer",
-                                        fontSize: 13,
-                                        fontWeight: 500,
-                                    }}
+                                    className={styles.formFillButton}
                                 >
                                     🤖 {locale === "en"
                                         ? `Need help filling ${message.detectedForm}?`
@@ -4379,18 +4719,7 @@ function FormResourceCard({
                 <button
                     type="button"
                     onClick={() => onFillRequest(source.document_name)}
-                    style={{
-                        marginTop: 10,
-                        width: "100%",
-                        padding: "8px 14px",
-                        borderRadius: 8,
-                        border: "1px solid #93c5fd",
-                        background: "#eff6ff",
-                        color: "#1d4ed8",
-                        cursor: "pointer",
-                        fontSize: 13,
-                        fontWeight: 500,
-                    }}
+                                    className={styles.formFillButton}
                 >
                     🤖 {locale === "en" 
                         ? `Need help filling ${source.document_name ?? "this form"}?`

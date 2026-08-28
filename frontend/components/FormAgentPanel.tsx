@@ -24,8 +24,6 @@ interface FormAgentPanelProps {
     docxReady?: boolean;
     sessionId?: string | null;
     locale?: "vi" | "en";
-    onConfirmYes?: () => void;
-    onConfirmNo?: () => void;
     onApprove?: () => void;
     onCancelSession?: () => void;
 }
@@ -40,8 +38,6 @@ export default function FormAgentPanel({
     docxReady,
     sessionId,
     locale = "vi",
-    onConfirmYes,
-    onConfirmNo,
     onApprove,
     onCancelSession,
 }: FormAgentPanelProps) {
@@ -85,7 +81,7 @@ export default function FormAgentPanel({
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-blue-900">
                     🤖 {locale === "en" ? "Form Agent" : "Agent điền đơn"}
-                    {status ? ` — ${status}` : ""}
+                    
                 </h3>
                 {sessionId && status !== "approved" && status !== "cancelled" && (
                     <button
@@ -93,7 +89,7 @@ export default function FormAgentPanel({
                         disabled={loading}
                         className="text-xs text-red-500 hover:underline disabled:opacity-50"
                     >
-                        {locale === "en" ? "Cancel session" : "Hủy phiên"}
+                        {locale === "en" ? "Stop" : "Dừng"}
                     </button>
                 )}
             </div>
@@ -131,7 +127,7 @@ export default function FormAgentPanel({
             )}
 
             {status === "cancelled" && (
-                <p className="text-sm text-gray-600">{locale === "en" ? "Form filling session cancelled." : "Đã hủy phiên điền đơn."}</p>
+                <p className="text-sm text-gray-600">{locale === "en" ? "Form filling stopped." : "Đã dừng điền đơn."}</p>
             )}
 
             {status === "awaiting_review" && (
@@ -144,9 +140,9 @@ export default function FormAgentPanel({
                 </button>
             )}
 
-            {status === "collecting_info" && !loading && (
+            {(status === "selecting_form" || status === "collecting_info") && !loading && (
                 <p className="text-xs text-gray-500 italic">
-                    {locale === "en" ? "Reply right in the chat input below 👇" : "Trả lời ngay trong ô nhập tin nhắn bên dưới nhé 👇"}
+                    {locale === "en" ? "Reply in the chat input below" : "Trả lời ngay trong ô nhập tin nhắn bên dưới nhé"}
                 </p>
             )}
         </div>

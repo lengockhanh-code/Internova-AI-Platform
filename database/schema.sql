@@ -427,7 +427,8 @@ CREATE TABLE IF NOT EXISTS weekly_reports (
         ),
 
     lecturer_feedback TEXT,
-    lecturer_score NUMERIC(5,2),
+    lecturer_score NUMERIC(4,2)
+        CHECK (lecturer_score BETWEEN 0 AND 10),
 
     due_at TIMESTAMP,
     submitted_at TIMESTAMP,
@@ -487,7 +488,8 @@ CREATE TABLE IF NOT EXISTS evaluations (
 
     evaluation_type VARCHAR(50),
 
-    total_score NUMERIC(5,2),
+    total_score NUMERIC(4,2)
+        CHECK (total_score BETWEEN 0 AND 10),
 
     feedback TEXT,
     strengths TEXT,
@@ -565,14 +567,43 @@ CREATE TABLE IF NOT EXISTS report_comments (
 
 
 -- ============================================================
--- 14. CHECKLIST ITEMS
+-- 14. CHECKLIST GROUPS + ITEMS
 -- ============================================================
+
+CREATE TABLE IF NOT EXISTS checklist_groups (
+    id BIGSERIAL PRIMARY KEY,
+
+    internship_id BIGINT NOT NULL
+        REFERENCES internships(id)
+        ON DELETE CASCADE,
+
+    title VARCHAR(255) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+
+    priority VARCHAR(20)
+        NOT NULL DEFAULT 'MEDIUM'
+        CHECK (
+            priority IN (
+                'HIGH',
+                'MEDIUM',
+                'LOW'
+            )
+        ),
+
+    due_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 
 CREATE TABLE IF NOT EXISTS checklist_items (
     id BIGSERIAL PRIMARY KEY,
 
     internship_id BIGINT NOT NULL
         REFERENCES internships(id)
+        ON DELETE CASCADE,
+
+    group_id BIGINT
+        REFERENCES checklist_groups(id)
         ON DELETE CASCADE,
 
     title VARCHAR(255) NOT NULL,
@@ -1138,4 +1169,343 @@ SET
     class_name = 'DS2026-A',
     updated_at = NOW()
 WHERE student_code = '2A202601003';
+COMMIT;
+
+BEGIN;
+
+-- Open internship positions used by the matching engine.
+CREATE TABLE IF NOT EXISTS internship_opportunities (
+    id BIGSERIAL PRIMARY KEY,
+    company_id BIGINT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    title VARCHAR(200) NOT NULL,
+    department VARCHAR(150),
+    description TEXT,
+    requirements TEXT,
+    skills_required TEXT[],
+    eligible_majors TEXT[],
+    work_mode VARCHAR(20) CHECK (work_mode IS NULL OR work_mode IN ('ONSITE','REMOTE','HYBRID')),
+    min_gpa NUMERIC(4,2),
+    start_date DATE,
+    end_date DATE,
+    application_deadline DATE,
+    status VARCHAR(20) NOT NULL DEFAULT 'OPEN'
+        CHECK (status IN ('DRAFT','OPEN','CLOSED','ARCHIVED')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE internship_opportunities
+ADD COLUMN IF NOT EXISTS eligible_majors TEXT[];
+
+CREATE INDEX IF NOT EXISTS idx_internship_opportunities_status_deadline
+ON internship_opportunities(status, application_deadline);
+
+CREATE INDEX IF NOT EXISTS idx_internship_opportunities_company
+ON internship_opportunities(company_id);
+
+-- Persistent daily/weekly progress evidence used for summaries and reflections.
+CREATE TABLE IF NOT EXISTS internship_progress_logs (
+    id BIGSERIAL PRIMARY KEY,
+    internship_id BIGINT NOT NULL REFERENCES internships(id) ON DELETE CASCADE,
+    student_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    log_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    week_number INTEGER CHECK (week_number IS NULL OR week_number > 0),
+    title VARCHAR(255),
+    description TEXT NOT NULL CHECK (LENGTH(BTRIM(description)) > 0),
+    hours NUMERIC(7,2) CHECK (hours IS NULL OR hours >= 0),
+    skills TEXT[],
+    blockers TEXT,
+    source_hash VARCHAR(64),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE internship_progress_logs
+ADD COLUMN IF NOT EXISTS source_hash VARCHAR(64);
+
+CREATE INDEX IF NOT EXISTS idx_internship_progress_logs_internship_date
+ON internship_progress_logs(internship_id, log_date DESC);
+
+CREATE INDEX IF NOT EXISTS idx_internship_progress_logs_student
+ON internship_progress_logs(student_id, created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_internship_progress_logs_idempotent
+ON internship_progress_logs(student_id, internship_id, log_date, source_hash);
+
+-- User-created scheduled reminders. A lightweight worker turns due rows into notifications.
+CREATE TABLE IF NOT EXISTS copilot_reminders (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    internship_id BIGINT REFERENCES internships(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    scheduled_at TIMESTAMPTZ NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING'
+        CHECK (status IN ('PENDING','DELIVERED','CANCELLED','FAILED')),
+    related_type VARCHAR(100),
+    related_id BIGINT,
+    dedupe_key VARCHAR(64),
+    delivered_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE copilot_reminders
+ADD COLUMN IF NOT EXISTS dedupe_key VARCHAR(64);
+
+CREATE INDEX IF NOT EXISTS idx_copilot_reminders_due
+ON copilot_reminders(status, scheduled_at);
+
+CREATE INDEX IF NOT EXISTS idx_copilot_reminders_user
+ON copilot_reminders(user_id, scheduled_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_copilot_reminders_dedupe
+ON copilot_reminders(user_id, dedupe_key);
+
+-- Auditable escalation queue. Ordinary issues can notify the assigned faculty mentor;
+-- serious/institutional issues can be routed to CAID_QUEUE for an admin-facing workflow.
+CREATE TABLE IF NOT EXISTS internship_escalations (
+    id BIGSERIAL PRIMARY KEY,
+    internship_id BIGINT NOT NULL REFERENCES internships(id) ON DELETE CASCADE,
+    student_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    lecturer_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    escalation_type VARCHAR(30) NOT NULL DEFAULT 'OTHER'
+        CHECK (escalation_type IN ('SAFETY','SUPERVISION','WORKLOAD','HARASSMENT','ROLE_MISMATCH','WITHDRAWAL','OTHER')),
+    severity VARCHAR(20) NOT NULL DEFAULT 'MEDIUM'
+        CHECK (severity IN ('LOW','MEDIUM','HIGH','CRITICAL')),
+    target VARCHAR(30) NOT NULL DEFAULT 'FACULTY_MENTOR'
+        CHECK (target IN ('FACULTY_MENTOR','CAID_QUEUE')),
+    subject VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'OPEN'
+        CHECK (status IN ('OPEN','ACKNOWLEDGED','IN_REVIEW','RESOLVED','CLOSED')),
+    acknowledged_at TIMESTAMPTZ,
+    resolved_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_internship_escalations_student
+ON internship_escalations(student_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_internship_escalations_target_status
+ON internship_escalations(target, status, created_at DESC);
+
+COMMIT;
+
+-- Database lịch sử chat
+BEGIN;
+
+-- Dùng để tự sinh UUID cho phiên trò chuyện
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+
+-- ============================================================
+-- 1. PHIÊN TRÒ CHUYỆN
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.chat_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_id BIGINT NOT NULL
+        REFERENCES public.users(id)
+        ON DELETE CASCADE,
+
+    title VARCHAR(255)
+        NOT NULL DEFAULT 'Cuộc trò chuyện mới',
+
+    status VARCHAR(20)
+        NOT NULL DEFAULT 'ACTIVE'
+        CHECK (
+            status IN (
+                'ACTIVE',
+                'ARCHIVED'
+            )
+        ),
+
+    created_at TIMESTAMPTZ
+        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMPTZ
+        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    last_message_at TIMESTAMPTZ
+        NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- ============================================================
+-- 2. TIN NHẮN TRONG PHIÊN TRÒ CHUYỆN
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.chat_messages (
+    id BIGSERIAL PRIMARY KEY,
+
+    session_id UUID NOT NULL
+        REFERENCES public.chat_sessions(id)
+        ON DELETE CASCADE,
+
+    -- UUID của tin nhắn phía frontend, giúp tránh lưu trùng
+    client_message_id UUID,
+
+    role VARCHAR(20) NOT NULL
+        CHECK (
+            role IN (
+                'USER',
+                'ASSISTANT',
+                'SYSTEM',
+                'TOOL'
+            )
+        ),
+
+    content TEXT NOT NULL
+        CHECK (
+            LENGTH(BTRIM(content)) > 0
+        ),
+
+    answer_status VARCHAR(40)
+        CHECK (
+            answer_status IS NULL
+            OR answer_status IN (
+                'answered',
+                'not_found',
+                'insufficient_evidence',
+                'out_of_scope'
+            )
+        ),
+
+    answer_language VARCHAR(10)
+        CHECK (
+            answer_language IS NULL
+            OR answer_language IN (
+                'vi',
+                'en'
+            )
+        ),
+
+    confidence NUMERIC(5,4)
+        CHECK (
+            confidence IS NULL
+            OR confidence BETWEEN 0 AND 1
+        ),
+
+    needs_retrieval BOOLEAN
+        NOT NULL DEFAULT FALSE,
+
+    route_intent VARCHAR(100),
+
+    route_scope VARCHAR(100),
+
+    -- Lưu danh sách tài liệu tham khảo của AI
+    sources JSONB
+        NOT NULL DEFAULT '[]'::JSONB
+        CHECK (
+            JSONB_TYPEOF(sources) = 'array'
+        ),
+
+    -- Dành cho dữ liệu mở rộng: model, token, latency...
+    metadata JSONB
+        NOT NULL DEFAULT '{}'::JSONB
+        CHECK (
+            JSONB_TYPEOF(metadata) = 'object'
+        ),
+
+    created_at TIMESTAMPTZ
+        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE (
+        session_id,
+        client_message_id
+    )
+);
+
+
+-- ============================================================
+-- 3. INDEX TỐI ƯU TRUY VẤN
+-- ============================================================
+
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_user
+ON public.chat_sessions(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_updated
+ON public.chat_sessions(
+    user_id,
+    updated_at DESC
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_last_message
+ON public.chat_sessions(last_message_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_session
+ON public.chat_messages(session_id);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_session_created
+ON public.chat_messages(
+    session_id,
+    created_at ASC,
+    id ASC
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_sources_gin
+ON public.chat_messages
+USING GIN(sources);
+
+
+-- ============================================================
+-- 4. TỰ ĐỘNG CẬP NHẬT THỜI GIAN PHIÊN CHAT
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.update_chat_session_timestamp()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE public.chat_sessions
+    SET
+        updated_at = CURRENT_TIMESTAMP,
+        last_message_at = NEW.created_at
+    WHERE id = NEW.session_id;
+
+    RETURN NEW;
+END;
+$$;
+
+
+DROP TRIGGER IF EXISTS trg_update_chat_session_timestamp
+ON public.chat_messages;
+
+
+CREATE TRIGGER trg_update_chat_session_timestamp
+AFTER INSERT
+ON public.chat_messages
+FOR EACH ROW
+EXECUTE FUNCTION public.update_chat_session_timestamp();
+
+
+-- ============================================================
+-- 5. TỰ ĐỘNG CẬP NHẬT updated_at KHI SỬA PHIÊN CHAT
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.set_chat_session_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$;
+
+
+DROP TRIGGER IF EXISTS trg_set_chat_session_updated_at
+ON public.chat_sessions;
+
+
+CREATE TRIGGER trg_set_chat_session_updated_at
+BEFORE UPDATE
+ON public.chat_sessions
+FOR EACH ROW
+EXECUTE FUNCTION public.set_chat_session_updated_at();
+
+
 COMMIT;

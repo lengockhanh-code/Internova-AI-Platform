@@ -50,6 +50,50 @@ def to_iso(
     return str(value)
 
 
+def _map_checklist_item(row):
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "description": row["description"],
+        "category": row["category"],
+        "status": row["status"],
+        "priority": row["priority"],
+        "dueAt": to_iso(row["due_at"]),
+        "completedAt": to_iso(row["completed_at"]),
+    }
+
+
+def _build_checklist_group(
+    *,
+    group_id: int | None,
+    client_id: str,
+    title: str,
+    subtitle: str,
+    rows,
+):
+    completed = sum(
+        1
+        for row in rows
+        if row["status"] == "COMPLETED"
+    )
+    progress = (
+        round(completed / len(rows) * 100)
+        if rows
+        else 0
+    )
+    return {
+        "id": client_id,
+        "groupId": group_id,
+        "title": title,
+        "subtitle": subtitle,
+        "progress": progress,
+        "tasks": [
+            _map_checklist_item(row)
+            for row in rows
+        ],
+    }
+
+
 # ============================================================
 # GET CURRENT STUDENT INTERNSHIP
 # ============================================================
@@ -147,6 +191,7 @@ def get_checklist(
             """
             SELECT
                 id,
+                group_id,
                 title,
                 description,
                 category,
@@ -183,6 +228,32 @@ def get_checklist(
         {
             "internship_id":
                 internship_id,
+        },
+    ).mappings().all()
+
+
+    group_rows = db.execute(
+        text(
+            """
+            SELECT
+                id,
+                title,
+                category
+            FROM checklist_groups
+            WHERE internship_id = :internship_id
+            ORDER BY
+                CASE category
+                    WHEN 'PROFILE' THEN 1
+                    WHEN 'WEEKLY' THEN 2
+                    WHEN 'FINAL' THEN 3
+                    ELSE 4
+                END,
+                due_at ASC NULLS LAST,
+                id ASC
+            """
+        ),
+        {
+            "internship_id": internship_id,
         },
     ).mappings().all()
 
@@ -227,93 +298,46 @@ def get_checklist(
 
     groups = []
 
-
-    for (
-        category,
-        config,
-    ) in CATEGORY_CONFIG.items():
-
-        category_rows = [
+    for group_row in group_rows:
+        current_group_rows = [
             row
             for row in rows
-            if row["category"]
-            == category
+            if row["group_id"] == group_row["id"]
         ]
-
-
-        if not category_rows:
-            continue
-
-
-        category_completed = sum(
-            1
-            for row
-            in category_rows
-
-            if row["status"]
-            == "COMPLETED"
+        config = CATEGORY_CONFIG.get(
+            group_row["category"],
+            {},
         )
-
-
-        category_progress = round(
-            category_completed
-            / len(category_rows)
-            * 100
-        )
-
-
         groups.append(
-            {
-                "id":
-                    category.lower(),
-
-                "title":
-                    config["title"],
-
-                "subtitle":
-                    config["subtitle"],
-
-                "progress":
-                    category_progress,
-
-                "tasks": [
-                    {
-                        "id":
-                            row["id"],
-
-                        "title":
-                            row["title"],
-
-                        "description":
-                            row["description"],
-
-                        "category":
-                            row["category"],
-
-                        "status":
-                            row["status"],
-
-                        "priority":
-                            row["priority"],
-
-                        "dueAt":
-                            to_iso(
-                                row["due_at"]
-                            ),
-
-                        "completedAt":
-                            to_iso(
-                                row[
-                                    "completed_at"
-                                ]
-                            ),
-                    }
-
-                    for row
-                    in category_rows
-                ],
-            }
+            _build_checklist_group(
+                group_id=int(group_row["id"]),
+                client_id=f"group-{group_row['id']}",
+                title=group_row["title"],
+                subtitle=config.get(
+                    "subtitle",
+                    "Danh sách công việc",
+                ),
+                rows=current_group_rows,
+            )
         )
+
+    for category, config in CATEGORY_CONFIG.items():
+        legacy_rows = [
+            row
+            for row in rows
+            if row["group_id"] is None
+            and row["category"] == category
+        ]
+        if legacy_rows:
+            groups.append(
+                _build_checklist_group(
+                    group_id=None,
+                    client_id=f"legacy-{category.lower()}",
+                    title=config["title"],
+                    subtitle=config["subtitle"],
+                    rows=legacy_rows,
+                )
+            )
 
 
     nearest = db.execute(
@@ -406,6 +430,29 @@ def create_checklist_item(
     due_at: datetime | None,
 ):
 
+    rows = create_checklist_items(
+        db=db,
+        student_id=student_id,
+        items=[
+            {
+                "title": title,
+                "description": description,
+                "category": category,
+                "priority": priority,
+                "due_at": due_at,
+            }
+        ],
+    )
+
+    return rows[0] if rows else None
+
+
+def create_checklist_items(
+    db: Session,
+    student_id: int,
+    items: list[dict],
+):
+
     internship_id = (
         get_student_internship_id(
             db,
@@ -417,60 +464,197 @@ def create_checklist_item(
     if internship_id is None:
         return None
 
+    try:
+        created_rows = _insert_checklist_items(
+            db=db,
+            internship_id=internship_id,
+            items=items,
+        )
+        db.commit()
+        return created_rows
+    except Exception:
+        db.rollback()
+        raise
 
-    row = db.execute(
+
+def _insert_checklist_items(
+    db: Session,
+    internship_id: int,
+    items: list[dict],
+):
+    created_rows = []
+
+    for item in items:
+        row = db.execute(
+            text(
+                """
+                INSERT INTO checklist_items
+                (
+                    internship_id,
+                    group_id,
+                    title,
+                    description,
+                    category,
+                    status,
+                    priority,
+                    due_at
+                )
+
+                VALUES
+                (
+                    :internship_id,
+                    :group_id,
+                    :title,
+                    :description,
+                    :category,
+                    'PENDING',
+                    :priority,
+                    :due_at
+                )
+
+                RETURNING id
+                """
+            ),
+            {
+                "internship_id": internship_id,
+                "group_id": item.get("group_id"),
+                "title": item["title"],
+                "description": item.get("description"),
+                "category": item["category"],
+                "priority": item["priority"],
+                "due_at": item.get("due_at"),
+            },
+        ).mappings().first()
+
+        if row is None:
+            raise RuntimeError(
+                "Không thể tạo công việc checklist."
+            )
+
+        created_rows.append(row)
+
+    return created_rows
+
+
+def create_checklist_group(
+    db: Session,
+    student_id: int,
+    title: str,
+    category: str,
+    priority: str,
+    due_at: datetime | None,
+    task_titles: list[str],
+):
+    internship_id = get_student_internship_id(
+        db,
+        student_id,
+    )
+    if internship_id is None:
+        return None
+
+    try:
+        group_id = db.execute(
+            text(
+                """
+                INSERT INTO checklist_groups (
+                    internship_id,
+                    title,
+                    category,
+                    priority,
+                    due_at
+                )
+                VALUES (
+                    :internship_id,
+                    :title,
+                    :category,
+                    :priority,
+                    :due_at
+                )
+                RETURNING id
+                """
+            ),
+            {
+                "internship_id": internship_id,
+                "title": title,
+                "category": category,
+                "priority": priority,
+                "due_at": due_at,
+            },
+        ).scalar_one()
+
+        rows = _insert_checklist_items(
+            db=db,
+            internship_id=internship_id,
+            items=[
+                {
+                    "group_id": group_id,
+                    "title": task_title,
+                    "description": None,
+                    "category": category,
+                    "priority": priority,
+                    "due_at": due_at,
+                }
+                for task_title in task_titles
+            ],
+        )
+        db.commit()
+        return int(group_id), rows
+    except Exception:
+        db.rollback()
+        raise
+
+
+def add_checklist_group_tasks(
+    db: Session,
+    student_id: int,
+    group_id: int,
+    task_titles: list[str],
+):
+    internship_id = get_student_internship_id(
+        db,
+        student_id,
+    )
+    if internship_id is None:
+        return None
+
+    group = db.execute(
         text(
             """
-            INSERT INTO checklist_items
-            (
-                internship_id,
-                title,
-                description,
-                category,
-                status,
-                priority,
-                due_at
-            )
-
-            VALUES
-            (
-                :internship_id,
-                :title,
-                :description,
-                :category,
-                'PENDING',
-                :priority,
-                :due_at
-            )
-
-            RETURNING id
+            SELECT category, priority, due_at
+            FROM checklist_groups
+            WHERE id = :group_id
+              AND internship_id = :internship_id
             """
         ),
         {
-            "internship_id":
-                internship_id,
-
-            "title":
-                title,
-
-            "description":
-                description,
-
-            "category":
-                category,
-
-            "priority":
-                priority,
-
-            "due_at":
-                due_at,
+            "group_id": group_id,
+            "internship_id": internship_id,
         },
     ).mappings().first()
+    if group is None:
+        return None
 
-
-    db.commit()
-
-    return row
+    try:
+        rows = _insert_checklist_items(
+            db=db,
+            internship_id=internship_id,
+            items=[
+                {
+                    "group_id": group_id,
+                    "title": title,
+                    "description": None,
+                    "category": group["category"],
+                    "priority": group["priority"],
+                    "due_at": group["due_at"],
+                }
+                for title in task_titles
+            ],
+        )
+        db.commit()
+        return rows
+    except Exception:
+        db.rollback()
+        raise
 
 
 # ============================================================
@@ -546,6 +730,80 @@ def update_checklist_status(
     return row
 
 
+def update_checklist_item(
+    db: Session,
+    student_id: int,
+    item_id: int,
+    title: str,
+):
+    internship_id = get_student_internship_id(
+        db,
+        student_id,
+    )
+    if internship_id is None:
+        return None
+
+    row = db.execute(
+        text(
+            """
+            UPDATE checklist_items
+            SET title = :title,
+                updated_at = NOW()
+            WHERE id = :item_id
+              AND internship_id = :internship_id
+            RETURNING id
+            """
+        ),
+        {
+            "title": title,
+            "item_id": item_id,
+            "internship_id": internship_id,
+        },
+    ).mappings().first()
+    if row is None:
+        return None
+
+    db.commit()
+    return row
+
+
+def update_checklist_group(
+    db: Session,
+    student_id: int,
+    group_id: int,
+    title: str,
+):
+    internship_id = get_student_internship_id(
+        db,
+        student_id,
+    )
+    if internship_id is None:
+        return None
+
+    row = db.execute(
+        text(
+            """
+            UPDATE checklist_groups
+            SET title = :title,
+                updated_at = NOW()
+            WHERE id = :group_id
+              AND internship_id = :internship_id
+            RETURNING id
+            """
+        ),
+        {
+            "title": title,
+            "group_id": group_id,
+            "internship_id": internship_id,
+        },
+    ).mappings().first()
+    if row is None:
+        return None
+
+    db.commit()
+    return row
+
+
 # ============================================================
 # DELETE
 # ============================================================
@@ -597,4 +855,37 @@ def delete_checklist_item(
 
     db.commit()
 
+    return True
+
+
+def delete_checklist_group(
+    db: Session,
+    student_id: int,
+    group_id: int,
+):
+    internship_id = get_student_internship_id(
+        db,
+        student_id,
+    )
+    if internship_id is None:
+        return False
+
+    row = db.execute(
+        text(
+            """
+            DELETE FROM checklist_groups
+            WHERE id = :group_id
+              AND internship_id = :internship_id
+            RETURNING id
+            """
+        ),
+        {
+            "group_id": group_id,
+            "internship_id": internship_id,
+        },
+    ).first()
+    if row is None:
+        return False
+
+    db.commit()
     return True

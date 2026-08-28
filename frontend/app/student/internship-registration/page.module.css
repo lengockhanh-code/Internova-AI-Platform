@@ -233,58 +233,69 @@
 
 
 /* ============================================================
-   STEP CARD
+   REGISTRATION STEPPER
+   Navy active + Green completed
 ============================================================ */
 
 .stepCard {
     position: relative;
 
-    overflow: hidden;
+    padding: 18px 20px 17px;
 
-    padding: 20px;
-
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
+    border: 1px solid #dce4ed;
+    border-radius: 9px;
 
     background: #ffffff;
 
     box-shadow:
-        0 4px 18px rgba(15, 23, 42, 0.04);
+        0 3px 14px rgba(20, 43, 72, 0.028);
 }
 
+/*
+ * One continuous rail behind all five steps.
+ * progress = 0 / 25 / 50 / 75 / 100 from the existing TSX logic.
+ */
 .stepProgress {
     position: absolute;
 
-    top: 0;
-    left: 0;
+    z-index: 0;
 
-    width: 100%;
-    height: 4px;
+    top: 39px;
+    left: 10%;
 
-    background: #e2e8f0;
+    width: 80%;
+    height: 2px;
+
+    overflow: hidden;
+
+    border-radius: 999px;
+
+    background: #dce3eb;
 }
 
 .stepProgressFill {
     height: 100%;
 
-    border-radius: 999px;
+    border-radius: inherit;
 
-    background:
-        linear-gradient(90deg,
-            #2563eb,
-            #60a5fa);
+    /* Completed rail: green progress */
+    background: #16a34a;
 
     transition:
-        width 0.35s ease;
+        width 0.3s ease;
 }
 
 .stepList {
+    position: relative;
+
+    z-index: 1;
+
     display: grid;
 
     grid-template-columns:
         repeat(5, minmax(0, 1fr));
 
-    gap: 10px;
+    gap: 0;
 }
 
 
@@ -298,47 +309,56 @@
     min-width: 0;
 
     align-items: center;
+    flex-direction: column;
 
-    gap: 10px;
+    gap: 8px;
 
-    padding: 10px;
+    padding: 0 7px 4px;
 
-    border: none;
-    border-radius: 12px;
+    border: 0;
+    border-radius: 8px;
 
     background: transparent;
-    color: #94a3b8;
+    color: #8593a6;
 
     font-family: inherit;
-    text-align: left;
+    text-align: center;
 
     cursor: pointer;
 
     transition:
-        background 0.2s ease,
-        color 0.2s ease;
+        color 0.16s ease;
 }
 
 .stepItem:hover {
-    background: #f8fafc;
-    color: #475569;
+    color: #43546b;
 }
 
 .stepIcon {
     display: flex;
 
-    width: 38px;
-    height: 38px;
+    width: 42px;
+    height: 42px;
 
     flex-shrink: 0;
 
     align-items: center;
     justify-content: center;
 
-    border: 1px solid #e2e8f0;
-    border-radius: 11px;
+    border: 1px solid #d8e1ea;
+    border-radius: 50%;
 
     background: #ffffff;
+    color: #8998aa;
+
+    box-shadow:
+        0 0 0 5px #ffffff;
+
+    transition:
+        background-color 0.16s ease,
+        border-color 0.16s ease,
+        color 0.16s ease,
+        box-shadow 0.16s ease;
 }
 
 .stepText {
@@ -346,6 +366,7 @@
 
     min-width: 0;
 
+    align-items: center;
     flex-direction: column;
 }
 
@@ -354,15 +375,22 @@
 
     font-size: 12px;
     font-weight: 700;
+
+    line-height: 1.25;
 }
 
 .stepText small {
-    margin-top: 2px;
+    max-width: 130px;
+
+    margin-top: 3px;
 
     overflow: hidden;
 
+    color: #95a2b3;
+
     font-size: 10px;
     font-weight: 500;
+    line-height: 1.3;
 
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -370,30 +398,47 @@
 
 
 /* ============================================================
-   STEP ACTIVE / COMPLETED
+   STEP STATES
 ============================================================ */
 
+/* Current step: VinUni navy */
 .stepActive {
-    background: #eff6ff;
-    color: #2563eb;
+    color: #0b2f5b;
 }
 
 .stepActive .stepIcon {
-    border-color: #bfdbfe;
+    border-color: #0b2f5b;
 
-    background: #ffffff;
+    background: #0b2f5b;
+    color: #ffffff;
+
+    box-shadow:
+        0 0 0 5px #ffffff,
+        0 0 0 6px rgba(11, 47, 91, 0.12);
 }
 
+.stepActive .stepText small {
+    color: #63758a;
+}
+
+/* Completed step: green */
 .stepCompleted {
-    color: #059669;
+    color: #15803d;
 }
 
 .stepCompleted .stepIcon {
-    border-color: #a7f3d0;
+    border-color: #4ade80;
 
-    background: #ecfdf5;
+    background: #f0fdf4;
+    color: #15803d;
+
+    box-shadow:
+        0 0 0 5px #ffffff;
 }
 
+.stepCompleted .stepText small {
+    color: #4b7d5d;
+}
 
 /* ============================================================
    MAIN FORM LAYOUT
@@ -981,7 +1026,8 @@
 
 
 /* ============================================================
-   STATUS TIMELINE
+   REGISTRATION STATUS TIMELINE
+   Connected milestones — same navy / green system
 ============================================================ */
 
 .statusTimeline {
@@ -989,66 +1035,132 @@
 
     flex-direction: column;
 
-    gap: 18px;
+    gap: 0;
 
     margin-top: 20px;
 }
 
 .timelineItem {
+    position: relative;
+
     display: grid;
 
-    grid-template-columns:
-        12px minmax(0, 1fr);
+    min-height: 58px;
 
-    gap: 10px;
+    grid-template-columns:
+        16px minmax(0, 1fr);
+
+    gap: 11px;
+
+    padding-bottom: 14px;
+}
+
+/*
+ * Vertical connector between milestones.
+ * The connector is intentionally neutral by default.
+ */
+.timelineItem:not(:last-child)::after {
+    content: "";
+
+    position: absolute;
+
+    z-index: 0;
+
+    top: 16px;
+    bottom: -1px;
+    left: 5px;
+
+    width: 2px;
+
+    background: #dce3eb;
+}
+
+/*
+ * When a milestone is completed, the rail leading to the
+ * next milestone becomes green.
+ */
+.timelineItemCompleted:not(:last-child)::after {
+    background: #22c55e;
+}
+
+.timelineItem > div,
+.timelineItem > span {
+    position: relative;
+
+    z-index: 1;
 }
 
 .timelineItem strong {
     display: block;
 
-    color: #334155;
+    color: #33465f;
 
     font-size: 12px;
+    font-weight: 700;
+    line-height: 1.35;
 }
 
 .timelineItem p {
-    margin: 3px 0 0;
+    margin: 4px 0 0;
 
-    color: #94a3b8;
+    color: #8997a8;
 
-    font-size: 11px;
-    line-height: 1.45;
+    font-size: 10.5px;
+    line-height: 1.5;
 }
+
+
+/* ---------- Status dots ---------- */
 
 .timelineDotCompleted,
 .timelineDotActive,
 .timelineDotPending {
-    width: 10px;
-    height: 10px;
+    display: block;
 
-    margin-top: 3px;
+    width: 12px;
+    height: 12px;
 
+    margin-top: 2px;
+
+    border: 2px solid #ffffff;
     border-radius: 50%;
 }
 
 .timelineDotCompleted {
-    background: #10b981;
+    background: #16a34a;
 
     box-shadow:
-        0 0 0 4px rgba(16, 185, 129, 0.1);
+        0 0 0 2px #bbf7d0;
 }
 
 .timelineDotActive {
-    background: #2563eb;
+    background: #0b2f5b;
 
     box-shadow:
-        0 0 0 4px rgba(37, 99, 235, 0.1);
+        0 0 0 2px #c6d4e2;
 }
 
 .timelineDotPending {
-    background: #cbd5e1;
+    background: #cfd7e1;
+
+    box-shadow:
+        0 0 0 1px #e4e9ef;
 }
 
+
+/* ---------- Status text ---------- */
+
+.timelineItemCompleted strong {
+    color: #15803d;
+}
+
+.timelineItemActive strong {
+    color: #0b2f5b;
+}
+
+.timelineItemPending strong {
+    color: #748397;
+}
 
 /* ============================================================
    REQUIRED DOCUMENTS
@@ -1669,3 +1781,499 @@
 :global(.dark) .submittedMessage p {
     color: #bbf7d0;
 }
+
+/* ============================================================
+   FINAL STEPPER RESPONSIVE + DARK OVERRIDES
+============================================================ */
+
+@media (max-width: 1180px) {
+    .stepText small {
+        display: block;
+    }
+}
+
+@media (max-width: 900px) {
+    .stepCard {
+        padding:
+            16px 10px 14px;
+    }
+
+    .stepProgress {
+        top: 37px;
+        left: 10%;
+
+        width: 80%;
+    }
+
+    .stepList {
+        grid-template-columns:
+            repeat(5, minmax(0, 1fr));
+
+        gap: 0;
+    }
+
+    .stepItem {
+        justify-content: flex-start;
+
+        padding:
+            0 2px 3px;
+    }
+
+    .stepText {
+        display: none;
+    }
+
+    .stepIcon {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+@media (max-width: 520px) {
+    .stepCard {
+        padding:
+            15px 5px 12px;
+    }
+
+    .stepProgress {
+        top: 33px;
+    }
+
+    .stepList {
+        grid-template-columns:
+            repeat(5, minmax(0, 1fr));
+    }
+
+    .stepIcon {
+        width: 36px;
+        height: 36px;
+
+        box-shadow:
+            0 0 0 4px #ffffff;
+    }
+
+    .stepActive .stepIcon {
+        box-shadow:
+            0 0 0 4px #ffffff,
+            0 0 0 5px rgba(11, 47, 91, 0.13);
+    }
+
+    .stepCompleted .stepIcon {
+        box-shadow:
+            0 0 0 4px #ffffff;
+    }
+}
+
+
+/* ---------- Dark mode ---------- */
+
+:global(.dark) .stepCard {
+    border-color: #2c4057;
+
+    background: #111f31;
+}
+
+:global(.dark) .stepProgress {
+    background: #35465a;
+}
+
+:global(.dark) .stepProgressFill {
+    background: #22c55e;
+}
+
+:global(.dark) .stepIcon {
+    border-color: #405268;
+
+    background: #111f31;
+    color: #9daabd;
+
+    box-shadow:
+        0 0 0 5px #111f31;
+}
+
+:global(.dark) .stepActive {
+    color: #d9e7f5;
+}
+
+:global(.dark) .stepActive .stepIcon {
+    border-color: #6f94bc;
+
+    background: #173f69;
+    color: #ffffff;
+
+    box-shadow:
+        0 0 0 5px #111f31,
+        0 0 0 6px rgba(122, 164, 207, 0.16);
+}
+
+:global(.dark) .stepCompleted {
+    color: #86efac;
+}
+
+:global(.dark) .stepCompleted .stepIcon {
+    border-color: #2f855a;
+
+    background: #123524;
+    color: #86efac;
+
+    box-shadow:
+        0 0 0 5px #111f31;
+}
+
+:global(.dark) .stepText small,
+:global(.dark) .stepActive .stepText small,
+:global(.dark) .stepCompleted .stepText small {
+    color: #8ea0b5;
+}
+
+:global(.dark) .timelineItem:not(:last-child)::after {
+    background: #36485c;
+}
+
+:global(.dark) .timelineItemCompleted:not(:last-child)::after {
+    background: #22c55e;
+}
+
+:global(.dark) .timelineDotCompleted {
+    border-color: #111f31;
+
+    background: #22c55e;
+
+    box-shadow:
+        0 0 0 2px #166534;
+}
+
+:global(.dark) .timelineDotActive {
+    border-color: #111f31;
+
+    background: #5e8fbd;
+
+    box-shadow:
+        0 0 0 2px #294967;
+}
+
+:global(.dark) .timelineDotPending {
+    border-color: #111f31;
+
+    background: #526176;
+
+    box-shadow:
+        0 0 0 1px #344458;
+}
+
+:global(.dark) .timelineItemCompleted strong {
+    color: #86efac;
+}
+
+:global(.dark) .timelineItemActive strong {
+    color: #d9e7f5;
+}
+
+:global(.dark) .timelineItemPending strong {
+    color: #8fa0b3;
+}
+
+@media (max-width: 520px) {
+    :global(.dark) .stepIcon {
+        box-shadow:
+            0 0 0 4px #111f31;
+    }
+
+    :global(.dark) .stepActive .stepIcon {
+        box-shadow:
+            0 0 0 4px #111f31,
+            0 0 0 5px rgba(122, 164, 207, 0.16);
+    }
+
+    :global(.dark) .stepCompleted .stepIcon {
+        box-shadow:
+            0 0 0 4px #111f31;
+    }
+}
+
+/* ============================================================
+   REGISTRATION STATUS — LARGER MILESTONES + NEUTRAL COLORS
+   Keep main progress green, but status timeline uses its own colors.
+============================================================ */
+
+/* Make each registration-status row more spacious */
+.timelineItem {
+    min-height: 72px;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 14px;
+    padding-bottom: 18px;
+}
+
+/* Bigger milestone dots */
+.timelineDotCompleted,
+.timelineDotActive,
+.timelineDotPending {
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    border-width: 3px;
+}
+
+/* Re-center vertical connector for the larger dots */
+.timelineItem:not(:last-child)::after {
+    top: 20px;
+    bottom: -2px;
+    left: 8px;
+    width: 2px;
+    background: #cbd5e1;
+}
+
+/* Completed connector is NOT green */
+.timelineItemCompleted:not(:last-child)::after {
+    background: #818cf8;
+}
+
+/* Milestones use distinct non-green colors */
+.timelineDotCompleted {
+    border-color: #ffffff;
+    background: #6366f1;
+    box-shadow: 0 0 0 3px #e0e7ff;
+}
+
+.timelineDotActive {
+    border-color: #ffffff;
+    background: #2563eb;
+    box-shadow: 0 0 0 3px #dbeafe;
+}
+
+.timelineDotPending {
+    border-color: #ffffff;
+    background: #94a3b8;
+    box-shadow: 0 0 0 3px #e2e8f0;
+}
+
+/* Text beside every status milestone: strong black and easier to read */
+.timelineItem strong,
+.timelineItemCompleted strong,
+.timelineItemActive strong,
+.timelineItemPending strong {
+    color: #111827;
+    font-size: 14px;
+    font-weight: 750;
+    line-height: 1.4;
+}
+
+.timelineItem p {
+    margin-top: 5px;
+    color: #334155;
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+/* Dark mode keeps contrast while preserving the same milestone colors */
+:global(.dark) .timelineItem:not(:last-child)::after {
+    background: #42566d;
+}
+
+:global(.dark) .timelineItemCompleted:not(:last-child)::after {
+    background: #818cf8;
+}
+
+:global(.dark) .timelineDotCompleted {
+    border-color: #111f31;
+    background: #818cf8;
+    box-shadow: 0 0 0 3px #3730a3;
+}
+
+:global(.dark) .timelineDotActive {
+    border-color: #111f31;
+    background: #60a5fa;
+    box-shadow: 0 0 0 3px #1e3a8a;
+}
+
+:global(.dark) .timelineDotPending {
+    border-color: #111f31;
+    background: #64748b;
+    box-shadow: 0 0 0 3px #334155;
+}
+
+/* Black text would be unreadable on dark surfaces, so use white here */
+:global(.dark) .timelineItem strong,
+:global(.dark) .timelineItemCompleted strong,
+:global(.dark) .timelineItemActive strong,
+:global(.dark) .timelineItemPending strong {
+    color: #f8fafc;
+}
+
+:global(.dark) .timelineItem p {
+    color: #cbd5e1;
+}
+
+/* ============================================================
+   FINAL REGISTRATION STATUS + NAVY ICON POLISH
+============================================================ */
+
+/* ---------- Registration status heading ---------- */
+.sideCardHeader {
+    color: #0b2f5b;
+}
+
+.sideCardHeader svg {
+    color: #0b2f5b;
+    stroke-width: 2.25;
+}
+
+.sideCardHeader h2 {
+    color: #111827;
+    font-size: 16px;
+    font-weight: 750;
+}
+
+/* ---------- Larger timeline milestones ---------- */
+.timelineItem {
+    min-height: 74px;
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 13px;
+    padding-bottom: 18px;
+}
+
+.timelineDotCompleted,
+.timelineDotActive,
+.timelineDotPending {
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    border: 4px solid #ffffff;
+}
+
+/* Connector aligned to the center of the 20px milestones */
+.timelineItem:not(:last-child)::after {
+    top: 21px;
+    bottom: -2px;
+    left: 9px;
+    width: 2px;
+    background: #cbd5e1;
+}
+
+/* No green in registration-status milestones */
+.timelineItemCompleted:not(:last-child)::after {
+    background: #6f8dab;
+}
+
+/* Finished = navy */
+.timelineDotCompleted {
+    background: #0b2f5b;
+    box-shadow: 0 0 0 3px #d8e4ef;
+}
+
+/* Current = medium blue, visually distinct from completed */
+.timelineDotActive {
+    background: #3b82f6;
+    box-shadow: 0 0 0 3px #dbeafe;
+}
+
+/* Pending = neutral slate */
+.timelineDotPending {
+    background: #94a3b8;
+    box-shadow: 0 0 0 3px #e2e8f0;
+}
+
+/* Main status text: black, larger, easier to scan */
+.timelineItem strong,
+.timelineItemCompleted strong,
+.timelineItemActive strong,
+.timelineItemPending strong {
+    color: #111827;
+    font-size: 14px;
+    font-weight: 750;
+    line-height: 1.4;
+}
+
+/* Description stays softer but still readable */
+.timelineItem p {
+    margin-top: 5px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+/* ---------- Make interface icons Navy ---------- */
+.titleIcon,
+.formSectionHeader > span,
+.uploadIcon {
+    border: 1px solid #dbe7f2;
+    background: #eef4fb;
+    color: #0b2f5b;
+    box-shadow: 0 7px 18px rgba(11, 47, 91, 0.08);
+}
+
+.titleIcon svg,
+.formSectionHeader > span svg,
+.uploadIcon svg {
+    color: #0b2f5b;
+    stroke-width: 2.15;
+}
+
+/* Icons inside right-side cards */
+.statusCard .sideCardHeader,
+.requirementCard .sideCardHeader {
+    color: #0b2f5b;
+}
+
+/* ---------- Dark mode ---------- */
+:global(.dark) .sideCardHeader h2 {
+    color: #f8fafc;
+}
+
+:global(.dark) .sideCardHeader,
+:global(.dark) .sideCardHeader svg {
+    color: #9fc0df;
+}
+
+:global(.dark) .timelineItem:not(:last-child)::after {
+    background: #42566d;
+}
+
+:global(.dark) .timelineItemCompleted:not(:last-child)::after {
+    background: #6f8dab;
+}
+
+:global(.dark) .timelineDotCompleted {
+    border-color: #111f31;
+    background: #315f8a;
+    box-shadow: 0 0 0 3px #23415f;
+}
+
+:global(.dark) .timelineDotActive {
+    border-color: #111f31;
+    background: #60a5fa;
+    box-shadow: 0 0 0 3px #1e3a8a;
+}
+
+:global(.dark) .timelineDotPending {
+    border-color: #111f31;
+    background: #64748b;
+    box-shadow: 0 0 0 3px #334155;
+}
+
+:global(.dark) .timelineItem strong,
+:global(.dark) .timelineItemCompleted strong,
+:global(.dark) .timelineItemActive strong,
+:global(.dark) .timelineItemPending strong {
+    color: #f8fafc;
+}
+
+:global(.dark) .timelineItem p {
+    color: #aebdce;
+}
+
+:global(.dark) .titleIcon,
+:global(.dark) .formSectionHeader > span,
+:global(.dark) .uploadIcon {
+    border-color: #31506e;
+    background: #102a43;
+    color: #b5d0e8;
+    box-shadow: none;
+}
+
+:global(.dark) .titleIcon svg,
+:global(.dark) .formSectionHeader > span svg,
+:global(.dark) .uploadIcon svg {
+    color: #b5d0e8;
+}
+

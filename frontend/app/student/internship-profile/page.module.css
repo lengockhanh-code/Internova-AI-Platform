@@ -2,7 +2,7 @@
     display: flex;
     width: 100%;
     min-height: 100vh;
-    background: #f5f7fb;
+    background: #f7f9fc;
 }
 
 .main {
@@ -14,11 +14,69 @@
 }
 
 .profilePage {
+    position: relative;
+    isolation: isolate;
+    font-family:
+        "Segoe UI",
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+    font-feature-settings: "kern" 1;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
     display: flex;
+    width: 100%;
+    max-width: 1320px;
+    margin: 0 auto;
     flex: 1;
     flex-direction: column;
-    gap: 20px;
-    padding: 28px 32px;
+    gap: 16px;
+    padding: 24px 28px 34px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* VinUni campus decorative background — large, cropped like the reference UI */
+.profilePage::before {
+    content: "";
+    position: absolute;
+    top: 42px;
+    right: -72px;
+    z-index: 0;
+
+    /* Large visual area so the campus does not look tiny */
+    width: 650px;
+    height: 500px;
+
+    background-image:
+        linear-gradient(
+            90deg,
+            rgba(247, 249, 252, 1) 0%,
+            rgba(247, 249, 252, 0.88) 14%,
+            rgba(247, 249, 252, 0.46) 32%,
+            rgba(247, 249, 252, 0.08) 58%,
+            rgba(247, 249, 252, 0) 100%
+        ),
+        url("/innova-profile.png");
+
+    background-repeat: no-repeat;
+    background-position: center, 72% center;
+
+    /* IMPORTANT: cover enlarges/crops the wide source image, making the building tall like the reference */
+    background-size: 100% 100%, cover;
+
+    opacity: 0.28;
+    pointer-events: none;
+    transform: scale(1.04);
+    transform-origin: right top;
+}
+
+.profilePage > * {
+    position: relative;
+    z-index: 1;
 }
 
 .pageHeader {
@@ -26,308 +84,450 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 24px;
+    padding: 2px 0 4px;
 }
 
 .pageHeader h1 {
     margin: 0;
-    color: #0f172a;
-    font-size: 30px;
+    color: #0b1736;
+    font-size: 28px;
     font-weight: 700;
+    line-height: 1.22;
+    letter-spacing: -0.018em;
 }
 
 .pageHeader p {
-    margin: 8px 0 0;
-    color: #64748b;
-    font-size: 14px;
-    line-height: 1.6;
+    max-width: 660px;
+    margin: 7px 0 0;
+    color: #66758f;
+    font-size: 13px;
+    line-height: 1.55;
 }
 
-.editButton {
-    min-height: 42px;
-    padding: 0 18px;
-    border: none;
-    border-radius: 10px;
-    background: #0f172a;
-    color: #ffffff;
+.headerActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.secondaryAction,
+.primaryAction,
+.checklistButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 36px;
+    padding: 0 13px;
+    border-radius: 7px;
     font-family: inherit;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 650;
     cursor: pointer;
-    transition:
-        background 0.2s ease,
-        transform 0.2s ease;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
-.editButton:hover {
-    background: #1e293b;
-    transform: translateY(-1px);
+.secondaryAction {
+    border: 1px solid #d4dce8;
+    background: #ffffff;
+    color: #22324d;
+}
+
+.secondaryAction:hover {
+    border-color: #b7c5d8;
+    background: #f8fafc;
+}
+
+.primaryAction {
+    border: 1px solid #0b2f6b;
+    background: #0b2f6b;
+    color: #ffffff;
+}
+
+.primaryAction:hover {
+    background: #082754;
+    border-color: #082754;
 }
 
 .profileGrid {
     display: grid;
-    grid-template-columns: 320px minmax(0, 1fr);
-    gap: 20px;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 14px;
+
+    /* Không kéo card Thông tin thực tập sát mép phải.
+       Chừa một dải riêng cho ảnh VinUni giống ảnh mẫu. */
+    width: calc(100% - 240px);
+    max-width: 980px;
 }
 
 .studentCard,
 .infoCard,
 .documentCard,
 .progressCard {
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
+    border: 1px solid #dfe5ee;
+    border-radius: 10px;
     background: #ffffff;
-    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.025);
 }
 
 .studentCard {
     display: flex;
+    min-width: 0;
     flex-direction: column;
     align-items: center;
-    padding: 28px 24px;
+    padding: 20px 18px;
     text-align: center;
 }
 
 .avatar {
     display: flex;
-    width: 106px;
-    height: 106px;
+    width: 76px;
+    height: 76px;
+    flex-shrink: 0;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
     border-radius: 50%;
-    background: #eff6ff;
-    color: #2563eb;
+    background: #081b44;
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .studentCard h2 {
-    margin: 18px 0 0;
-    color: #0f172a;
-    font-size: 22px;
-    font-weight: 700;
+    margin: 14px 0 0;
+    color: #101827;
+    font-size: 17px;
+    font-weight: 650;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
 }
 
 .studentCode {
-    margin: 6px 0 0;
-    color: #64748b;
-    font-size: 14px;
+    margin: 4px 0 0;
+    color: #667085;
+    font-size: 11.5px;
 }
 
 .statusPill {
-    margin-top: 16px;
-    padding: 6px 12px;
+    display: inline-flex;
+    align-items: center;
+    margin-top: 10px;
+    padding: 3px 8px;
     border-radius: 999px;
-    background: #ecfdf5;
-    color: #059669;
-    font-size: 13px;
-    font-weight: 600;
+    background: #eaf7ee;
+    color: #18753f;
+    font-size: 10.5px;
+    font-weight: 650;
 }
 
 .contactList {
     display: flex;
     width: 100%;
     flex-direction: column;
-    gap: 14px;
-    margin-top: 26px;
-    padding-top: 20px;
-    border-top: 1px solid #e2e8f0;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #edf0f4;
 }
 
 .contactList div {
     display: flex;
+    min-width: 0;
     align-items: center;
-    gap: 10px;
-    color: #475569;
-    font-size: 14px;
+    gap: 9px;
+    color: #46556f;
+    font-size: 11.5px;
+    line-height: 1.4;
     text-align: left;
+}
+
+.contactList span {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .contactList svg {
     flex-shrink: 0;
-    color: #2563eb;
+    color: #1e5aa8;
 }
 
 .infoCard {
-    padding: 24px;
+    padding: 20px;
 }
 
 .cardHeader {
     display: flex;
     align-items: center;
-    gap: 10px;
-    color: #2563eb;
+    gap: 9px;
+    color: #194f9b;
 }
 
 .cardHeader h2 {
     margin: 0;
-    color: #0f172a;
-    font-size: 18px;
-    font-weight: 700;
+    color: #182235;
+    font-size: 15px;
+    font-weight: 650;
+    line-height: 1.35;
+    letter-spacing: -0.008em;
 }
 
 .infoGrid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-    margin-top: 24px;
+    gap: 10px;
+    margin-top: 14px;
 }
 
 .infoItem {
     display: flex;
+    min-width: 0;
     align-items: center;
-    gap: 12px;
-    padding: 16px;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    background: #f8fafc;
+    gap: 10px;
+    min-height: 58px;
+    padding: 10px 12px;
+    border: 1px solid #e5e9f0;
+    border-radius: 8px;
+    background: #fbfcfe;
 }
 
 .infoIcon {
     display: flex;
-    width: 42px;
-    height: 42px;
+    width: 31px;
+    height: 31px;
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
-    background: #eff6ff;
-    color: #2563eb;
+    border-radius: 7px;
+    background: #f0f5fc;
+    color: #245fae;
 }
 
 .infoItem p {
     margin: 0;
-    color: #64748b;
-    font-size: 13px;
+    color: #748097;
+    font-size: 10.5px;
+    line-height: 1.25;
 }
 
 .infoItem strong {
     display: block;
-    margin-top: 4px;
-    color: #1e293b;
-    font-size: 14px;
-    font-weight: 600;
+    margin-top: 3px;
+    color: #182235;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.35;
 }
 
 .mentorBox {
     display: flex;
     align-items: center;
-    gap: 14px;
-    margin-top: 20px;
-    padding: 18px;
-    border: 1px solid #bfdbfe;
-    border-radius: 12px;
-    background: #eff6ff;
+    gap: 11px;
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid #d9e4f3;
+    border-radius: 8px;
+    background: #f8fbff;
 }
 
 .mentorAvatar {
     display: flex;
-    width: 52px;
-    height: 52px;
+    width: 38px;
+    height: 38px;
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
+    border: 1px solid #d8e4f2;
     border-radius: 50%;
     background: #ffffff;
-    color: #2563eb;
+    color: #1d5aa7;
 }
 
 .mentorBox p {
     margin: 0;
-    color: #64748b;
-    font-size: 13px;
+    color: #738098;
+    font-size: 10.5px;
 }
 
 .mentorBox strong {
     display: block;
-    margin-top: 3px;
-    color: #0f172a;
-    font-size: 15px;
+    margin-top: 2px;
+    color: #162136;
+    font-size: 11.5px;
+    font-weight: 700;
 }
 
 .mentorBox span {
     display: block;
-    margin-top: 3px;
-    color: #64748b;
-    font-size: 13px;
+    margin-top: 2px;
+    color: #748097;
+    font-size: 10.5px;
 }
 
 .bottomGrid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 20px;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 14px;
 }
 
 .documentCard {
-    padding: 24px;
+    padding: 18px;
+}
+
+.uploadHint {
+    margin: 4px 0 0;
+    color: #8a96aa;
+    font-size: 10.5px;
 }
 
 .documentList {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-top: 20px;
+    gap: 9px;
+    margin-top: 12px;
 }
 
 .documentItem {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    padding: 14px 16px;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    gap: 14px;
+    min-height: 58px;
+    padding: 10px 11px;
+    border: 1px solid #e1e6ed;
+    border-radius: 8px;
+    background: #ffffff;
 }
 
 .documentTitle {
     display: flex;
+    min-width: 0;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+}
+
+.documentTitle > div {
+    min-width: 0;
 }
 
 .documentTitle p {
     margin: 0;
-    color: #1e293b;
-    font-size: 14px;
-    font-weight: 600;
+    color: #1d2738;
+    font-size: 11.5px;
+    font-weight: 700;
 }
 
 .documentTitle span {
     display: block;
-    margin-top: 3px;
-    color: #64748b;
-    font-size: 12px;
+    margin-top: 2px;
+    color: #718096;
+    font-size: 10px;
+}
+
+.documentTitle small {
+    display: block;
+    max-width: 310px;
+    margin-top: 2px;
+    overflow: hidden;
+    color: #8b96a9;
+    font-size: 9.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .documentDone {
-    color: #10b981;
+    flex-shrink: 0;
+    color: #1fa65a;
 }
 
 .documentPending {
-    color: #94a3b8;
+    flex-shrink: 0;
+    color: #9aa6b7;
 }
 
-.documentItem button {
-    min-width: 76px;
-    padding: 8px 12px;
-    border: 1px solid #cbd5e1;
-    border-radius: 9px;
-    background: #ffffff;
-    color: #334155;
+.documentActions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 6px;
+}
+
+.viewButton,
+.uploadButton,
+.deleteButton {
+    display: inline-flex;
+    min-height: 30px;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border-radius: 6px;
     font-family: inherit;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 10.5px;
+    font-weight: 650;
     cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
-.documentItem button:hover {
-    border-color: #93c5fd;
-    background: #eff6ff;
-    color: #2563eb;
+.viewButton {
+    padding: 0 11px;
+    border: 1px solid #d8dee8;
+    background: #ffffff;
+    color: #263750;
+}
+
+.viewButton:hover {
+    background: #f8fafc;
+    border-color: #bbc7d8;
+}
+
+.uploadButton {
+    padding: 0 10px;
+    border: 1px solid #d8dee8;
+    background: #ffffff;
+    color: #263750;
+}
+
+.uploadButton:hover {
+    border-color: #9fb2ca;
+    background: #f8fafc;
+}
+
+.uploadButton:disabled {
+    opacity: 0.55;
+    cursor: wait;
+}
+
+.deleteButton {
+    width: 30px;
+    padding: 0;
+    border: 1px solid #e0e4ea;
+    background: #ffffff;
+    color: #69778d;
+}
+
+.deleteButton:hover {
+    border-color: #efc4c4;
+    background: #fffafa;
+    color: #b42318;
+}
+
+.deleteButton:disabled {
+    opacity: 0.5;
 }
 
 .progressCard {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 24px;
+    padding: 18px;
     text-align: center;
 }
 
@@ -337,76 +537,130 @@
 
 .progressCircle {
     display: flex;
-    width: 150px;
-    height: 150px;
+    width: 126px;
+    height: 126px;
     align-items: center;
     justify-content: center;
-    margin-top: 24px;
+    margin-top: 16px;
     border-radius: 50%;
-    background:
-        radial-gradient(circle at center, #ffffff 56%, transparent 57%),
-        conic-gradient(#2563eb 0deg 270deg, #e2e8f0 270deg 360deg);
 }
 
-.progressCircle div {
+.progressCircle > div {
     display: flex;
+    width: 94px;
+    height: 94px;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #ffffff;
 }
 
 .progressCircle strong {
-    color: #0f172a;
-    font-size: 30px;
-    font-weight: 700;
+    color: #101828;
+    font-size: 24px;
+    font-weight: 750;
+    line-height: 1;
 }
 
 .progressCircle span {
-    margin-top: 2px;
-    color: #64748b;
-    font-size: 13px;
+    margin-top: 5px;
+    color: #7a8699;
+    font-size: 10px;
 }
 
 .progressText {
-    margin: 18px 0 0;
-    color: #64748b;
-    font-size: 14px;
-    line-height: 1.6;
+    margin: 13px 0 0;
+    color: #66758d;
+    font-size: 10.5px;
+    line-height: 1.5;
 }
 
 .progressBar {
     width: 100%;
-    height: 8px;
-    margin-top: 18px;
+    height: 5px;
+    margin-top: 13px;
     overflow: hidden;
     border-radius: 999px;
-    background: #e2e8f0;
+    background: #e8ecf2;
 }
 
 .progressFill {
-    width: 75%;
     height: 100%;
     border-radius: 999px;
-    background: #2563eb;
+    background: #124a9a;
 }
 
-.completeButton {
+.checklistButton {
     width: 100%;
-    min-height: 42px;
-    margin-top: 22px;
-    border: none;
-    border-radius: 10px;
-    background: #2563eb;
-    color: #ffffff;
+    margin-top: 14px;
+    border: 1px solid #d7e0ec;
+    background: #f8fbff;
+    color: #0f3977;
+}
+
+.checklistButton:hover {
+    border-color: #b8cae0;
+    background: #f2f7fd;
+}
+
+.checklistButton span {
+    font-size: 15px;
+    line-height: 1;
+}
+
+.statePage {
+    display: flex;
+    flex: 1;
+    min-height: 520px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 32px;
+    color: #667085;
+    text-align: center;
+}
+
+.statePage h2 {
+    margin: 0;
+    color: #182235;
+    font-size: 20px;
+}
+
+.statePage p {
+    margin: 0;
+}
+
+.statePage button {
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid #d6dde8;
+    border-radius: 7px;
+    background: #ffffff;
+    color: #22324d;
     font-family: inherit;
-    font-size: 14px;
-    font-weight: 600;
+    font-weight: 650;
     cursor: pointer;
 }
 
-.completeButton:hover {
-    background: #1d4ed8;
+.spinner,
+.smallSpinner {
+    animation: documentSpin 0.8s linear infinite;
+}
+
+@keyframes documentSpin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @media (max-width: 1100px) {
+    .profileGrid {
+        width: 100%;
+        max-width: none;
+    }
+
 
     .profileGrid,
     .bottomGrid {
@@ -418,26 +672,37 @@
         text-align: left;
     }
 
+    .avatar {
+        width: 68px;
+        height: 68px;
+    }
+
     .contactList {
-        max-width: 520px;
+        max-width: 560px;
     }
 }
 
 @media (max-width: 768px) {
     .profilePage {
-        padding: 20px 18px;
+        padding: 18px 14px 26px;
     }
 
     .pageHeader {
         flex-direction: column;
+        gap: 14px;
     }
 
     .pageHeader h1 {
-        font-size: 26px;
+        font-size: 24px;
     }
 
-    .editButton {
+    .headerActions {
         width: 100%;
+    }
+
+    .secondaryAction,
+    .primaryAction {
+        flex: 1;
     }
 
     .infoGrid {
@@ -447,109 +712,6 @@
     .documentItem {
         align-items: flex-start;
         flex-direction: column;
-    }
-
-    .documentItem button {
-        width: 100%;
-    }
-}
-
-.uploadHint {
-    margin: -4px 0 16px;
-    color: #94a3b8;
-    font-size: 12px;
-}
-
-.documentTitle small {
-    display: block;
-    max-width: 260px;
-    margin-top: 4px;
-    overflow: hidden;
-    color: #94a3b8;
-    font-size: 10px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.documentActions {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    gap: 7px;
-}
-
-.viewButton,
-.uploadButton,
-.deleteButton {
-    display: flex;
-    min-height: 34px;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    border-radius: 8px;
-    font-family: inherit;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.viewButton {
-    padding: 0 11px;
-    border: 1px solid #bfdbfe;
-    background: #eff6ff;
-    color: #2563eb;
-}
-
-.viewButton:hover {
-    background: #dbeafe;
-}
-
-.uploadButton {
-    padding: 0 11px;
-    border: none;
-    background: #0f172a;
-    color: #ffffff;
-}
-
-.uploadButton:hover {
-    background: #1e293b;
-}
-
-.uploadButton:disabled {
-    opacity: 0.65;
-    cursor: wait;
-}
-
-.deleteButton {
-    width: 34px;
-    border: 1px solid #fecaca;
-    background: #fff;
-    color: #dc2626;
-}
-
-.deleteButton:hover {
-    background: #fef2f2;
-}
-
-.deleteButton:disabled {
-    opacity: 0.6;
-}
-
-.smallSpinner {
-    animation: documentSpin 0.8s linear infinite;
-}
-
-@keyframes documentSpin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-@media (max-width: 700px) {
-    .documentItem {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 12px;
     }
 
     .documentActions {
@@ -562,12 +724,41 @@
     }
 }
 
-:global(.dark) .layout,
-:global(.dark) .main,
-:global(.dark) .profilePage {
-    background: #0b1020;
-    color: #f8fafc;
+@media (max-width: 480px) {
+    .headerActions {
+        flex-direction: column;
+    }
+
+    .secondaryAction,
+    .primaryAction {
+        width: 100%;
+    }
 }
+
+@media (max-width: 768px) {
+    .profilePage::before {
+        top: 78px;
+        right: -180px;
+        width: 520px;
+        opacity: 0.18;
+    }
+}
+
+:global(.dark) .layout,
+:global(.dark) .main {
+    background: #07111f;
+    color: #eaf0f8;
+}
+
+:global(.dark) .profilePage {
+    background:
+        radial-gradient(circle at 88% 8%, rgba(41, 92, 150, 0.10), transparent 34%),
+        linear-gradient(180deg, #081320 0%, #091523 100%);
+    color: #eaf0f8;
+}
+
+/* Campus vẫn nhìn thấy ở dark mode nhưng chìm vào nền, không glow */
+/* Dark campus styling is defined in FINAL LIGHT / DARK THEME POLISH below. */
 
 :global(.dark) .pageHeader h1,
 :global(.dark) .studentCard h2,
@@ -577,7 +768,7 @@
 :global(.dark) .documentTitle p,
 :global(.dark) .progressCircle strong,
 :global(.dark) .statePage h2 {
-    color: #f8fafc;
+    color: #f4f7fb;
 }
 
 :global(.dark) .pageHeader p,
@@ -589,56 +780,885 @@
 :global(.dark) .uploadHint,
 :global(.dark) .documentTitle span,
 :global(.dark) .documentTitle small,
+:global(.dark) .progressCircle span,
 :global(.dark) .progressText,
 :global(.dark) .statePage {
-    color: #cbd5e1;
+    color: #91a1b8;
 }
 
 :global(.dark) .studentCard,
 :global(.dark) .infoCard,
 :global(.dark) .documentCard,
-:global(.dark) .progressCard,
+:global(.dark) .progressCard {
+    border-color: #24344b;
+    background: rgba(15, 27, 45, 0.94);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.025) inset,
+        0 10px 28px rgba(0, 0, 0, 0.10);
+}
+
 :global(.dark) .infoItem,
 :global(.dark) .documentItem {
-    border-color: #334155;
-    background: #1f2937;
-    color: #f8fafc;
+    border-color: #26364d;
+    background: #101d30;
+}
+
+:global(.dark) .infoItem:hover,
+:global(.dark) .documentItem:hover {
+    border-color: #36506f;
+    background: #122238;
 }
 
 :global(.dark) .contactList {
-    border-color: #334155;
+    border-color: #24344b;
 }
 
-:global(.dark) .avatar,
-:global(.dark) .infoIcon,
-:global(.dark) .mentorAvatar {
-    background: #0f2f5f;
-    color: #bfdbfe;
+:global(.dark) .contactList svg,
+:global(.dark) .cardHeader,
+:global(.dark) .documentDone {
+    color: #6fa8f6;
+}
+
+:global(.dark) .documentDone {
+    color: #52d68a;
+}
+
+:global(.dark) .documentPending {
+    color: #64748b;
+}
+
+:global(.dark) .infoIcon {
+    border: 1px solid #263d5d;
+    background: #102541;
+    color: #73aef8;
 }
 
 :global(.dark) .mentorBox {
-    border-color: #1d4ed8;
-    background: #0f2f5f;
+    border-color: #294565;
+    background: #0f2239;
+}
+
+:global(.dark) .mentorAvatar {
+    border-color: #315071;
+    background: #0b1b30;
+    color: #7db4fa;
+}
+
+:global(.dark) .avatar {
+    background: #0b2857;
+    color: #f8fbff;
+    box-shadow: 0 0 0 1px rgba(125, 180, 250, 0.14);
 }
 
 :global(.dark) .statusPill {
-    background: #064e3b;
-    color: #d1fae5;
+    border: 1px solid rgba(91, 214, 138, 0.14);
+    background: #123322;
+    color: #8ce0aa;
 }
 
+:global(.dark) .secondaryAction,
+:global(.dark) .viewButton,
 :global(.dark) .uploadButton,
-:global(.dark) .viewButton {
-    border-color: #475569;
-    background: #111827;
-    color: #dbeafe;
+:global(.dark) .statePage button {
+    border-color: #34465f;
+    background: #101d30;
+    color: #dce6f4;
+}
+
+:global(.dark) .secondaryAction:hover,
+:global(.dark) .viewButton:hover,
+:global(.dark) .uploadButton:hover,
+:global(.dark) .statePage button:hover {
+    border-color: #4d6787;
+    background: #14243a;
+    color: #ffffff;
+}
+
+:global(.dark) .primaryAction {
+    border-color: #2f69b3;
+    background: #1d4f91;
+    color: #ffffff;
+}
+
+:global(.dark) .primaryAction:hover {
+    border-color: #3d7ac4;
+    background: #255ea8;
 }
 
 :global(.dark) .deleteButton {
-    border-color: #7f1d1d;
-    background: #3f1518;
-    color: #fecaca;
+    border-color: #57353d;
+    background: #1a1d28;
+    color: #d98b95;
+}
+
+:global(.dark) .deleteButton:hover {
+    border-color: #7a414c;
+    background: #281a21;
+    color: #ffb4bd;
+}
+
+:global(.dark) .progressCircle {
+    box-shadow:
+        0 0 0 1px rgba(93, 144, 210, 0.08),
+        0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+:global(.dark) .progressCircle > div {
+    background: #0f1b2d;
+    box-shadow: 0 0 0 1px #24344b inset;
 }
 
 :global(.dark) .progressBar {
-    background: #334155;
+    background: #233249;
+}
+
+:global(.dark) .progressFill {
+    background: #4d8fe8;
+}
+
+:global(.dark) .checklistButton {
+    border-color: #315071;
+    background: #0f2239;
+    color: #b8d5fb;
+}
+
+:global(.dark) .checklistButton:hover {
+    border-color: #476b93;
+    background: #132b47;
+    color: #e4f0ff;
+}
+
+/* Chuyển theme mượt, không flash mạnh */
+.studentCard,
+.infoCard,
+.documentCard,
+.progressCard,
+.infoItem,
+.documentItem,
+.mentorBox,
+.infoIcon,
+.mentorAvatar,
+.progressCircle > div,
+.checklistButton,
+.viewButton,
+.uploadButton,
+.deleteButton {
+    transition:
+        background-color 180ms ease,
+        border-color 180ms ease,
+        color 180ms ease,
+        box-shadow 180ms ease,
+        transform 180ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .studentCard,
+    .infoCard,
+    .documentCard,
+    .progressCard,
+    .infoItem,
+    .documentItem,
+    .mentorBox,
+    .infoIcon,
+    .mentorAvatar,
+    .progressCircle > div,
+    .checklistButton,
+    .viewButton,
+    .uploadButton,
+    .deleteButton {
+        transition: none;
+    }
+}
+
+/* ==========================================================
+   FINAL LIGHT / DARK THEME POLISH
+   ========================================================== */
+
+/* LIGHT MODE */
+.layout,
+.main {
+    background: #f6f8fb;
+}
+
+.profilePage {
+    background:
+        radial-gradient(circle at 86% 5%, rgba(48, 105, 176, 0.055), transparent 31%),
+        linear-gradient(180deg, #f8fafc 0%, #f5f7fb 100%);
+}
+
+.profilePage::before {
+    top: 42px;
+    right: -34px;
+    width: 720px;
+    height: 520px;
+    opacity: 0.25;
+    filter: brightness(1.0) saturate(0.88) contrast(0.96);
+    background-image:
+        linear-gradient(
+            90deg,
+            rgba(248, 250, 252, 1) 0%,
+            rgba(248, 250, 252, 0.88) 13%,
+            rgba(248, 250, 252, 0.48) 31%,
+            rgba(248, 250, 252, 0.08) 61%,
+            rgba(248, 250, 252, 0) 100%
+        ),
+        url("/innova-profile.png");
+    background-position: center, 70% center;
+    background-size: 100% 100%, cover;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.30) 16%, #000 45%, #000 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.30) 16%, #000 45%, #000 100%);
+}
+
+.studentCard,
+.infoCard,
+.documentCard,
+.progressCard {
+    border-color: #dce4ee;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.025),
+        0 10px 30px rgba(15, 42, 82, 0.035);
+}
+
+.infoItem,
+.documentItem {
+    border-color: #dce4ee;
+    background: rgba(249, 251, 254, 0.88);
+}
+
+.mentorBox {
+    border-color: #d5e4f5;
+    background: rgba(244, 248, 253, 0.92);
+}
+
+/* DARK MODE */
+:global(.dark) .layout,
+:global(.dark) .main {
+    background: #071321;
+    color: #edf4fc;
+}
+
+:global(.dark) .profilePage {
+    background:
+        radial-gradient(circle at 86% 5%, rgba(70, 133, 214, 0.12), transparent 30%),
+        linear-gradient(180deg, #081523 0%, #0a1727 100%);
+    color: #edf4fc;
+}
+
+/* Keep the campus BRIGHT in dark mode, like dashboard reference. */
+:global(.dark) .profilePage::before {
+    top: 42px;
+    right: -34px;
+    width: 720px;
+    height: 520px;
+    opacity: 0.35;
+    filter: brightness(0.95) saturate(0.82) contrast(0.96);
+    mix-blend-mode: normal;
+    background-image:
+        linear-gradient(
+            90deg,
+            rgba(8, 21, 35, 1) 0%,
+            rgba(8, 21, 35, 0.78) 13%,
+            rgba(8, 21, 35, 0.34) 31%,
+            rgba(8, 21, 35, 0.06) 61%,
+            rgba(8, 21, 35, 0) 100%
+        ),
+        url("/innova-profile-dark.png");
+    background-position: center, 70% center;
+    background-size: 100% 100%, cover;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.34) 15%, #000 43%, #000 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.34) 15%, #000 43%, #000 100%);
+}
+
+:global(.dark) .studentCard,
+:global(.dark) .infoCard,
+:global(.dark) .documentCard,
+:global(.dark) .progressCard {
+    border-color: #29405e;
+    background: rgba(14, 31, 52, 0.93);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.035) inset,
+        0 14px 34px rgba(0, 0, 0, 0.14);
+}
+
+:global(.dark) .infoItem,
+:global(.dark) .documentItem {
+    border-color: #2b4361;
+    background: rgba(16, 36, 60, 0.92);
+}
+
+:global(.dark) .infoItem:hover,
+:global(.dark) .documentItem:hover {
+    border-color: #3a5b81;
+    background: rgba(19, 43, 71, 0.96);
+}
+
+:global(.dark) .mentorBox {
+    border-color: #31547a;
+    background: rgba(17, 42, 70, 0.92);
+}
+
+:global(.dark) .mentorAvatar,
+:global(.dark) .infoIcon {
+    border-color: #355b86;
+    background: #102b4b;
+    color: #83b8ff;
+}
+
+:global(.dark) .avatar {
+    background: linear-gradient(145deg, #164486 0%, #0a2f64 100%);
+    color: #ffffff;
+    box-shadow:
+        0 0 0 1px rgba(126, 181, 252, 0.18),
+        0 10px 22px rgba(0, 0, 0, 0.16);
+}
+
+:global(.dark) .pageHeader h1,
+:global(.dark) .studentCard h2,
+:global(.dark) .cardHeader h2,
+:global(.dark) .infoItem strong,
+:global(.dark) .mentorBox strong,
+:global(.dark) .documentTitle p,
+:global(.dark) .progressCircle strong,
+:global(.dark) .statePage h2 {
+    color: #f7fbff;
+}
+
+:global(.dark) .pageHeader p,
+:global(.dark) .studentCode,
+:global(.dark) .contactList div,
+:global(.dark) .infoItem p,
+:global(.dark) .mentorBox p,
+:global(.dark) .mentorBox span,
+:global(.dark) .uploadHint,
+:global(.dark) .documentTitle span,
+:global(.dark) .documentTitle small,
+:global(.dark) .progressCircle span,
+:global(.dark) .progressText,
+:global(.dark) .statePage {
+    color: #9dafc4;
+}
+
+:global(.dark) .contactList {
+    border-color: #29405e;
+}
+
+:global(.dark) .contactList svg,
+:global(.dark) .cardHeader {
+    color: #76adf5;
+}
+
+:global(.dark) .statusPill {
+    border: 1px solid rgba(84, 211, 134, 0.18);
+    background: rgba(22, 88, 52, 0.54);
+    color: #92e7af;
+}
+
+:global(.dark) .secondaryAction,
+:global(.dark) .viewButton,
+:global(.dark) .uploadButton,
+:global(.dark) .statePage button {
+    border-color: #35506f;
+    background: rgba(14, 33, 55, 0.92);
+    color: #e4edf8;
+}
+
+:global(.dark) .secondaryAction:hover,
+:global(.dark) .viewButton:hover,
+:global(.dark) .uploadButton:hover,
+:global(.dark) .statePage button:hover {
+    border-color: #52759d;
+    background: #17304d;
+    color: #ffffff;
+}
+
+:global(.dark) .progressCircle {
+    box-shadow:
+        0 0 0 1px rgba(102, 156, 224, 0.10),
+        0 12px 30px rgba(0, 0, 0, 0.16);
+}
+
+:global(.dark) .progressCircle > div {
+    background: #0d1f35;
+    box-shadow: 0 0 0 1px #29415f inset;
+}
+
+:global(.dark) .progressBar {
+    background: #263d59;
+}
+
+:global(.dark) .progressFill {
+    background: linear-gradient(90deg, #3f82d8, #69a9ff);
+}
+
+:global(.dark) .checklistButton {
+    border-color: #365a80;
+    background: rgba(15, 39, 65, 0.92);
+    color: #c3ddff;
+}
+
+:global(.dark) .checklistButton:hover {
+    border-color: #507aaa;
+    background: #15314f;
+    color: #ffffff;
+}
+/* =========================================================
+   DARK MODE — VINUNI RED ACCENTS
+   ========================================================= */
+
+:global(.dark) .profilePage::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+
+    pointer-events: none;
+
+    background:
+        radial-gradient(
+            circle at 82% 15%,
+            rgba(239, 68, 68, 0.20) 0 2px,
+            transparent 3px
+        ),
+        radial-gradient(
+            circle at 92% 31%,
+            rgba(239, 68, 68, 0.14) 0 2px,
+            transparent 3px
+        ),
+        radial-gradient(
+            circle at 74% 72%,
+            rgba(239, 68, 68, 0.12) 0 1.5px,
+            transparent 2.5px
+        ),
+        radial-gradient(
+            circle at 34% 88%,
+            rgba(239, 68, 68, 0.10) 0 1.5px,
+            transparent 2.5px
+        );
+}
+
+
+/* Chấm đỏ nhỏ cạnh tiêu đề */
+:global(.dark) .pageHeader h1::after {
+    content: "";
+
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+
+    margin-left: 10px;
+    margin-bottom: 5px;
+
+    border-radius: 50%;
+
+    background: #ef4444;
+
+    box-shadow:
+        0 0 0 4px rgba(239, 68, 68, 0.08),
+        0 0 12px rgba(239, 68, 68, 0.22);
+}
+
+
+/* Một chút đỏ ở card khi hover */
+:global(.dark) .studentCard:hover,
+:global(.dark) .infoCard:hover,
+:global(.dark) .documentCard:hover,
+:global(.dark) .progressCard:hover {
+    border-color: #36506f;
+
+    box-shadow:
+        0 12px 32px rgba(0, 0, 0, 0.16),
+        0 0 0 1px rgba(239, 68, 68, 0.035);
+}
+
+
+/* Document đã hoàn thành: xanh + chấm đỏ rất nhỏ */
+:global(.dark) .documentDone {
+    color: #4ade80;
+
+    filter:
+        drop-shadow(0 0 5px rgba(74, 222, 128, 0.16));
+}
+
+
+/* Nút checklist có điểm đỏ khi hover */
+:global(.dark) .completeButton:hover {
+    border-color: rgba(239, 68, 68, 0.45);
+
+    box-shadow:
+        0 0 0 3px rgba(239, 68, 68, 0.06);
+}
+@media (max-width: 768px) {
+    .profilePage::before,
+    :global(.dark) .profilePage::before {
+        right: -220px;
+        width: 560px;
+        height: 430px;
+        opacity: 0.28;
+    }
+}\n\n/* ==========================================================
+   INTERNSHIP PROFILE — FINAL BALANCED PRODUCTION OVERRIDES
+   Closer to the compact VinUni/VLearn reference.
+   ========================================================== */
+
+.profilePage {
+    max-width: 1260px;
+    gap: 14px;
+    padding: 22px 24px 30px;
+}
+
+.pageHeader {
+    padding: 0 0 2px;
+}
+
+.pageHeader h1 {
+    display: inline-block;
+    font-size: 27px;
+    font-weight: 760;
+    letter-spacing: -0.024em;
+    color: #0b2346;
+    text-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.18),
+        0 6px 16px rgba(15, 35, 66, 0.05);
+}
+
+.pageHeader p {
+    margin-top: 5px;
+    font-size: 12.5px;
+}
+
+/* Top row: compact profile + internship card, leaving room for campus visual. */
+.profileGrid {
+    grid-template-columns: 270px minmax(0, 1fr);
+    width: min(100%, 970px);
+    max-width: 970px;
+    gap: 14px;
+    align-items: stretch;
+}
+
+.studentCard,
+.infoCard,
+.documentCard,
+.progressCard {
+    border-radius: 8px;
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.025),
+        0 8px 24px rgba(15, 42, 82, 0.028);
+}
+
+.studentCard {
+    padding: 18px 17px;
+}
+
+.avatar {
+    width: 72px;
+    height: 72px;
+    font-size: 21px;
+}
+
+.studentCard h2 {
+    margin-top: 12px;
+    font-size: 16.5px;
+}
+
+.contactList {
+    gap: 9px;
+    margin-top: 14px;
+    padding-top: 13px;
+}
+
+.infoCard {
+    padding: 18px;
+}
+
+.cardHeader {
+    gap: 8px;
+}
+
+.cardHeader h2 {
+    font-size: 14.5px;
+}
+
+.infoGrid {
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.infoItem {
+    min-height: 54px;
+    padding: 9px 11px;
+    border-radius: 7px;
+}
+
+.infoIcon {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+}
+
+.mentorBox {
+    margin-top: 10px;
+    padding: 10px 11px;
+    border-radius: 7px;
+}
+
+/* Bottom row: wider documents card, slimmer progress card. */
+.bottomGrid {
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 14px;
+    align-items: stretch;
+}
+
+.documentCard {
+    padding: 16px;
+}
+
+.documentList {
+    gap: 7px;
+    margin-top: 10px;
+}
+
+.documentItem {
+    min-height: 54px;
+    padding: 9px 10px;
+    border-radius: 7px;
+}
+
+.documentTitle {
+    gap: 9px;
+}
+
+.progressCard {
+    padding: 16px;
+    justify-content: flex-start;
+}
+
+.progressCircle {
+    width: 118px;
+    height: 118px;
+    margin-top: 14px;
+}
+
+.progressCircle > div {
+    width: 88px;
+    height: 88px;
+}
+
+.progressCircle strong {
+    font-size: 23px;
+}
+
+.progressCircle span {
+    margin-top: 4px;
+    font-size: 9.5px;
+}
+
+.progressCircle small {
+    display: block;
+    margin-top: 2px;
+    color: #7b8798;
+    font-size: 9px;
+    font-weight: 650;
+    line-height: 1;
+}
+
+.progressText {
+    margin-top: 11px;
+    max-width: 230px;
+}
+
+.progressBar {
+    height: 4px;
+    margin-top: 11px;
+}
+
+.progressFill {
+    background: linear-gradient(90deg, #0b3559 0%, #178d8a 100%);
+}
+
+.progressNudge {
+    margin: 9px 0 0;
+    color: #26364d;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.checklistButton {
+    min-height: 34px;
+    margin-top: 11px;
+    border-radius: 6px;
+    background: #ffffff;
+}
+
+/* Keep the campus visual visible without competing with content. */
+.profilePage::before {
+    right: -52px;
+    width: 650px;
+    height: 470px;
+    opacity: 0.22;
+}
+
+/* Dark mode keeps the same metallic heading, slightly brighter. */
+:global(.dark) .pageHeader h1 {
+    background: linear-gradient(
+        180deg,
+        #fff3bf 0%,
+        #e2c56a 30%,
+        #a97b27 58%,
+        #f0d98c 82%,
+        #c89c42 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    text-shadow: 0 5px 18px rgba(214, 177, 83, 0.08);
+}
+
+:global(.dark) .progressCircle small {
+    color: #9dafc4;
+}
+
+:global(.dark) .progressNudge {
+    color: #cbd6e5;
+}
+
+:global(.dark) .progressFill {
+    background: linear-gradient(90deg, #284e72 0%, #2d8f8b 100%);
+}
+
+@media (max-width: 1100px) {
+    .profileGrid {
+        width: 100%;
+        max-width: none;
+    }
+
+    .bottomGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .progressCard {
+        min-height: 300px;
+    }
+}
+
+@media (max-width: 768px) {
+    .profilePage {
+        padding: 18px 14px 26px;
+    }
+
+    .pageHeader h1 {
+        font-size: 24px;
+    }
+
+    .profileGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================================================
+   GLOBAL TYPOGRAPHY — READABLE PRODUCTION FONT
+   Applies only typography; layout/colors remain unchanged.
+   ========================================================= */
+
+.layout,
+.profilePage {
+    font-family:
+        "Segoe UI Variable",
+        "Segoe UI",
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+    font-feature-settings: "kern" 1, "liga" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+.layout button,
+.layout input,
+.layout textarea,
+.layout select {
+    font: inherit;
+}
+
+.pageHeader h1 {
+    font-family:
+        "Segoe UI Variable Display",
+        "Segoe UI Variable",
+        "Segoe UI",
+        system-ui,
+        sans-serif;
+    font-weight: 720;
+    letter-spacing: -0.022em;
+}
+
+.studentCard h2,
+.cardHeader h2,
+.statePage h2 {
+    font-family:
+        "Segoe UI Variable Display",
+        "Segoe UI Variable",
+        "Segoe UI",
+        system-ui,
+        sans-serif;
+    font-weight: 680;
+    letter-spacing: -0.012em;
+}
+
+.infoItem strong,
+.mentorBox strong,
+.documentTitle p,
+.progressCircle strong {
+    font-family:
+        "Segoe UI Variable Text",
+        "Segoe UI Variable",
+        "Segoe UI",
+        system-ui,
+        sans-serif;
+    font-weight: 650;
+    letter-spacing: -0.006em;
+}
+
+.pageHeader p,
+.studentCode,
+.contactList div,
+.infoItem p,
+.mentorBox p,
+.mentorBox span,
+.uploadHint,
+.documentTitle span,
+.documentTitle small,
+.progressCircle span,
+.progressText {
+    font-family:
+        "Segoe UI Variable Text",
+        "Segoe UI Variable",
+        "Segoe UI",
+        system-ui,
+        sans-serif;
+    font-weight: 450;
+    letter-spacing: 0;
+}
+
+.secondaryAction,
+.primaryAction,
+.checklistButton,
+.viewButton,
+.uploadButton,
+.deleteButton,
+.statePage button {
+    font-family:
+        "Segoe UI Variable Text",
+        "Segoe UI Variable",
+        "Segoe UI",
+        system-ui,
+        sans-serif;
+    font-weight: 600;
+    letter-spacing: 0;
 }

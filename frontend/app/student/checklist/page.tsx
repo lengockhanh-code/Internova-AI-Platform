@@ -6,18 +6,19 @@ import Sidebar from "@/components/sidebar/sidebar";
 import {
     AlertTriangle,
     CalendarDays,
+    Check,
     CheckCircle2,
     ChevronDown,
-    Circle,
     ClipboardCheck,
     Clock3,
     Filter,
     Flag,
     ListChecks,
     LoaderCircle,
-    MoreHorizontal,
+    Pencil,
     Plus,
     Target,
+    Trash2,
     X,
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ import {
     FormEvent,
     useEffect,
     useMemo,
+    useRef,
     useState,
 } from "react";
 
@@ -91,8 +93,17 @@ type Task = {
 };
 
 
+type TaskDraft = {
+    id: number;
+
+    title: string;
+};
+
+
 type TaskGroup = {
     id: string;
+
+    groupId: number | null;
 
     title: string;
 
@@ -184,6 +195,16 @@ function getPriorityClass(
     }
 
     return styles.low;
+}
+
+
+function getCompletedTaskCount(
+    tasks: Task[]
+) {
+    return tasks.filter(
+        task =>
+            task.status === "COMPLETED"
+    ).length;
 }
 
 
@@ -295,6 +316,37 @@ export default function ChecklistPage() {
     ] = useState(false);
 
 
+    const nextTaskDraftId =
+        useRef(2);
+
+
+    const [
+        taskDrafts,
+        setTaskDrafts,
+    ] = useState<TaskDraft[]>([
+        {
+            id: 1,
+            title: "",
+        },
+    ]);
+
+
+    const [
+        targetGroup,
+        setTargetGroup,
+    ] = useState<TaskGroup | null>(
+        null
+    );
+
+
+    const [
+        updatingGroupId,
+        setUpdatingGroupId,
+    ] = useState<number | null>(
+        null
+    );
+
+
     const [
         updatingTaskId,
         setUpdatingTaskId,
@@ -346,9 +398,13 @@ export default function ChecklistPage() {
        LOAD CHECKLIST
     ======================================================== */
 
-    async function loadChecklist() {
+    async function loadChecklist(
+        showPageLoader = true
+    ) {
         try {
-            setLoading(true);
+            if (showPageLoader) {
+                setLoading(true);
+            }
             setError("");
 
 
@@ -415,7 +471,9 @@ export default function ChecklistPage() {
             );
 
         } finally {
-            setLoading(false);
+            if (showPageLoader) {
+                setLoading(false);
+            }
         }
     }
 
@@ -516,7 +574,11 @@ export default function ChecklistPage() {
                     ) =>
                         group.tasks
                             .length >
-                        0
+                        0 ||
+                        (
+                            filter === "ALL" &&
+                            group.groupId !== null
+                        )
                 );
         }, [
             data,
@@ -605,7 +667,7 @@ export default function ChecklistPage() {
             }
 
 
-            await loadChecklist();
+            await loadChecklist(false);
 
         } catch (err) {
             alert(
@@ -625,6 +687,90 @@ export default function ChecklistPage() {
     /* ========================================================
        CREATE TASK
     ======================================================== */
+
+    function openAddTaskModal() {
+        setTargetGroup(null);
+        setTaskDrafts([
+            {
+                id: nextTaskDraftId.current++,
+                title: "",
+            },
+        ]);
+        setShowAddModal(true);
+    }
+
+
+    function closeAddTaskModal() {
+        if (!submitting) {
+            setShowAddModal(false);
+            setTargetGroup(null);
+        }
+    }
+
+
+    function openAddGroupTasks(
+        group: TaskGroup,
+    ) {
+        if (group.groupId === null) {
+            return;
+        }
+
+        setTargetGroup(group);
+        setTaskDrafts([
+            {
+                id: nextTaskDraftId.current++,
+                title: "",
+            },
+        ]);
+        setShowAddModal(true);
+    }
+
+
+    function addTaskDraft() {
+        setTaskDrafts(
+            current => [
+                ...current,
+                {
+                    id: nextTaskDraftId.current++,
+                    title: "",
+                },
+            ]
+        );
+    }
+
+
+    function updateTaskDraft(
+        id: number,
+        title: string,
+    ) {
+        setTaskDrafts(
+            current =>
+                current.map(
+                    task =>
+                        task.id === id
+                            ? {
+                                ...task,
+                                title,
+                            }
+                            : task
+                )
+        );
+    }
+
+
+    function removeTaskDraft(
+        id: number,
+    ) {
+        setTaskDrafts(
+            current =>
+                current.length === 1
+                    ? current
+                    : current.filter(
+                        task =>
+                            task.id !== id
+                    )
+        );
+    }
 
     async function createTask(
         event:
@@ -650,18 +796,17 @@ export default function ChecklistPage() {
             );
 
 
-        const title =
-            String(
-                formData.get(
-                    "title"
-                ) ?? ""
-            ).trim();
+        const taskTitles =
+            taskDrafts.map(
+                task =>
+                    task.title.trim()
+            );
 
 
-        const description =
+        const groupTitle =
             String(
                 formData.get(
-                    "description"
+                    "groupTitle"
                 ) ?? ""
             ).trim();
 
@@ -690,7 +835,26 @@ export default function ChecklistPage() {
             );
 
 
-        if (!title) {
+        if (
+            taskTitles.length === 0 ||
+            taskTitles.some(
+                title => !title
+            )
+        ) {
+            alert(
+                "Vui lòng nhập đầy đủ hoặc xóa các ô công việc còn trống."
+            );
+            return;
+        }
+
+
+        if (
+            targetGroup === null &&
+            !groupTitle
+        ) {
+            alert(
+                "Vui lòng nhập tiêu đề cho nhóm công việc."
+            );
             return;
         }
 
@@ -703,7 +867,9 @@ export default function ChecklistPage() {
 
             const response =
                 await fetch(
-                    `${API_URL}/api/v1/checklist`,
+                    targetGroup?.groupId
+                        ? `${API_URL}/api/v1/checklist/groups/${targetGroup.groupId}/tasks`
+                        : `${API_URL}/api/v1/checklist/batch`,
                     {
                         method:
                             "POST",
@@ -719,22 +885,30 @@ export default function ChecklistPage() {
                         body:
                             JSON.stringify(
                                 {
-                                    title,
+                                    tasks:
+                                        taskTitles.map(
+                                            title => ({
+                                                title,
+                                            })
+                                        ),
 
-                                    description:
-                                        description ||
-                                        null,
+                                    ...(targetGroup
+                                        ? {}
+                                        : {
+                                            title:
+                                                groupTitle,
 
-                                    category,
+                                            category,
 
-                                    priority,
+                                            priority,
 
-                                    dueAt:
-                                        dueAtValue
-                                            ? new Date(
+                                            dueAt:
                                                 dueAtValue
-                                            ).toISOString()
-                                            : null,
+                                                    ? new Date(
+                                                        dueAtValue
+                                                    ).toISOString()
+                                                    : null,
+                                        }),
                                 }
                             ),
                     }
@@ -763,12 +937,11 @@ export default function ChecklistPage() {
             }
 
 
-            setShowAddModal(
-                false
-            );
+            setShowAddModal(false);
+            setTargetGroup(null);
 
 
-            await loadChecklist();
+            await loadChecklist(false);
 
         } catch (err) {
             alert(
@@ -781,6 +954,183 @@ export default function ChecklistPage() {
             setSubmitting(
                 false
             );
+        }
+    }
+
+
+    async function runChecklistMutation(
+        path: string,
+        method: "PATCH" | "DELETE",
+        body?: Record<string, unknown>,
+    ) {
+        const token = getToken();
+        if (!token) {
+            handleUnauthorized();
+            return false;
+        }
+
+        const response = await fetch(
+            `${API_URL}${path}`,
+            {
+                method,
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    ...(body
+                        ? {
+                            "Content-Type": "application/json",
+                        }
+                        : {}),
+                },
+                body: body
+                    ? JSON.stringify(body)
+                    : undefined,
+            }
+        );
+        const result = await response
+            .json()
+            .catch(() => null);
+
+        if (response.status === 401) {
+            handleUnauthorized();
+            return false;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                result?.detail ??
+                "Không thể cập nhật checklist."
+            );
+        }
+
+        return true;
+    }
+
+
+    async function editGroup(
+        group: TaskGroup,
+    ) {
+        if (group.groupId === null) {
+            return;
+        }
+
+        const title = window.prompt(
+            "Tiêu đề mới cho nhóm công việc:",
+            group.title,
+        )?.trim();
+        if (!title || title === group.title) {
+            return;
+        }
+
+        try {
+            setUpdatingGroupId(group.groupId);
+            if (await runChecklistMutation(
+                `/api/v1/checklist/groups/${group.groupId}`,
+                "PATCH",
+                { title },
+            )) {
+                await loadChecklist(false);
+            }
+        } catch (err) {
+            alert(
+                err instanceof Error
+                    ? err.message
+                    : "Không thể sửa nhóm công việc."
+            );
+        } finally {
+            setUpdatingGroupId(null);
+        }
+    }
+
+
+    async function removeGroup(
+        group: TaskGroup,
+    ) {
+        if (
+            group.groupId === null ||
+            !window.confirm(
+                `Xóa nhóm “${group.title}” và toàn bộ ${group.tasks.length} công việc bên trong?`
+            )
+        ) {
+            return;
+        }
+
+        try {
+            setUpdatingGroupId(group.groupId);
+            if (await runChecklistMutation(
+                `/api/v1/checklist/groups/${group.groupId}`,
+                "DELETE",
+            )) {
+                await loadChecklist(false);
+            }
+        } catch (err) {
+            alert(
+                err instanceof Error
+                    ? err.message
+                    : "Không thể xóa nhóm công việc."
+            );
+        } finally {
+            setUpdatingGroupId(null);
+        }
+    }
+
+
+    async function editTask(
+        task: Task,
+    ) {
+        const title = window.prompt(
+            "Tên mới cho công việc:",
+            task.title,
+        )?.trim();
+        if (!title || title === task.title) {
+            return;
+        }
+
+        try {
+            setUpdatingTaskId(task.id);
+            if (await runChecklistMutation(
+                `/api/v1/checklist/${task.id}`,
+                "PATCH",
+                { title },
+            )) {
+                await loadChecklist(false);
+            }
+        } catch (err) {
+            alert(
+                err instanceof Error
+                    ? err.message
+                    : "Không thể sửa công việc."
+            );
+        } finally {
+            setUpdatingTaskId(null);
+        }
+    }
+
+
+    async function removeTask(
+        task: Task,
+    ) {
+        if (!window.confirm(
+            `Xóa công việc “${task.title}”?`
+        )) {
+            return;
+        }
+
+        try {
+            setUpdatingTaskId(task.id);
+            if (await runChecklistMutation(
+                `/api/v1/checklist/${task.id}`,
+                "DELETE",
+            )) {
+                await loadChecklist(false);
+            }
+        } catch (err) {
+            alert(
+                err instanceof Error
+                    ? err.message
+                    : "Không thể xóa công việc."
+            );
+        } finally {
+            setUpdatingTaskId(null);
         }
     }
 
@@ -1045,10 +1395,8 @@ export default function ChecklistPage() {
                             className={
                                 styles.addButton
                             }
-                            onClick={() =>
-                                setShowAddModal(
-                                    true
-                                )
+                            onClick={
+                                openAddTaskModal
                             }
                         >
                             <Plus
@@ -1333,19 +1681,105 @@ export default function ChecklistPage() {
 
                                                 <div
                                                     className={
-                                                        styles.groupProgressInfo
+                                                        styles.groupHeaderRight
                                                     }
                                                 >
-                                                    <strong>
-                                                        {
-                                                            group.progress
-                                                        }
-                                                        %
-                                                    </strong>
+                                                    {group.groupId !== null && (
+                                                        <div
+                                                            className={
+                                                                styles.groupActions
+                                                            }
+                                                        >
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    openAddGroupTasks(
+                                                                        group
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    updatingGroupId === group.groupId
+                                                                }
+                                                                title="Thêm công việc"
+                                                                aria-label={`Thêm công việc vào ${group.title}`}
+                                                            >
+                                                                <Plus size={16} />
+                                                            </button>
 
-                                                    <span>
-                                                        Hoàn thành
-                                                    </span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    void editGroup(
+                                                                        group
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    updatingGroupId === group.groupId
+                                                                }
+                                                                title="Sửa tiêu đề"
+                                                                aria-label={`Sửa ${group.title}`}
+                                                            >
+                                                                <Pencil size={15} />
+                                                            </button>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    void removeGroup(
+                                                                        group
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    updatingGroupId === group.groupId
+                                                                }
+                                                                title="Xóa nhóm"
+                                                                aria-label={`Xóa ${group.title}`}
+                                                            >
+                                                                <Trash2 size={15} />
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    <div
+                                                        className={
+                                                            styles.groupCompletionSummary
+                                                        }
+                                                    >
+                                                        <span
+                                                            className={`${styles.groupCompletionCheck} ${group.progress === 100
+                                                                ? styles.groupCompletionCheckDone
+                                                                : ""
+                                                                }`}
+                                                            aria-hidden="true"
+                                                        >
+                                                            {group.progress === 100 && (
+                                                                <Check
+                                                                    size={15}
+                                                                />
+                                                            )}
+                                                        </span>
+
+                                                        <div
+                                                            className={
+                                                                styles.groupProgressInfo
+                                                            }
+                                                        >
+                                                            <strong>
+                                                                {
+                                                                    group.progress
+                                                                }
+                                                                %
+                                                            </strong>
+
+                                                            <span>
+                                                                {group.progress === 100
+                                                                    ? "Đã hoàn thành tất cả"
+                                                                    : `${getCompletedTaskCount(
+                                                                        group.tasks
+                                                                    )}/${group.tasks.length} công việc`}
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -1395,9 +1829,10 @@ export default function ChecklistPage() {
 
                                                             <button
                                                                 type="button"
-                                                                className={
-                                                                    styles.checkButton
-                                                                }
+                                                                className={`${styles.checkButton} ${task.status === "COMPLETED"
+                                                                    ? styles.checkButtonChecked
+                                                                    : ""
+                                                                    }`}
                                                                 disabled={
                                                                     updatingTaskId ===
                                                                     task.id
@@ -1407,7 +1842,16 @@ export default function ChecklistPage() {
                                                                         task
                                                                     )
                                                                 }
-                                                                aria-label={`Đánh dấu ${task.title}`}
+                                                                aria-label={
+                                                                    task.status === "COMPLETED"
+                                                                        ? `Bỏ đánh dấu hoàn thành ${task.title}`
+                                                                        : `Đánh dấu hoàn thành ${task.title}`
+                                                                }
+                                                                role="checkbox"
+                                                                aria-checked={
+                                                                    task.status ===
+                                                                    "COMPLETED"
+                                                                }
                                                             >
                                                                 {updatingTaskId ===
                                                                     task.id ? (
@@ -1421,24 +1865,12 @@ export default function ChecklistPage() {
                                                                     />
                                                                 ) : task.status ===
                                                                     "COMPLETED" ? (
-                                                                    <CheckCircle2
+                                                                    <Check
                                                                         size={
-                                                                            23
-                                                                        }
-                                                                        className={
-                                                                            styles.completedIcon
+                                                                            15
                                                                         }
                                                                     />
-                                                                ) : (
-                                                                    <Circle
-                                                                        size={
-                                                                            23
-                                                                        }
-                                                                        className={
-                                                                            styles.pendingIcon
-                                                                        }
-                                                                    />
-                                                                )}
+                                                                ) : null}
                                                             </button>
 
 
@@ -1479,10 +1911,11 @@ export default function ChecklistPage() {
                                                                 </div>
 
 
-                                                                <p>
-                                                                    {task.description ||
-                                                                        "Không có mô tả."}
-                                                                </p>
+                                                                {task.description && (
+                                                                    <p>
+                                                                        {task.description}
+                                                                    </p>
+                                                                )}
 
 
                                                                 <div
@@ -1514,22 +1947,48 @@ export default function ChecklistPage() {
                                                                         )}
                                                                     </span>
                                                                 </div>
+
+
                                                             </div>
 
 
-                                                            <button
-                                                                type="button"
+                                                            <div
                                                                 className={
-                                                                    styles.moreButton
+                                                                    styles.taskActions
                                                                 }
-                                                                aria-label={`Thao tác với ${task.title}`}
                                                             >
-                                                                <MoreHorizontal
-                                                                    size={
-                                                                        19
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        void editTask(
+                                                                            task
+                                                                        )
                                                                     }
-                                                                />
-                                                            </button>
+                                                                    disabled={
+                                                                        updatingTaskId === task.id
+                                                                    }
+                                                                    title="Sửa công việc"
+                                                                    aria-label={`Sửa ${task.title}`}
+                                                                >
+                                                                    <Pencil size={15} />
+                                                                </button>
+
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        void removeTask(
+                                                                            task
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        updatingTaskId === task.id
+                                                                    }
+                                                                    title="Xóa công việc"
+                                                                    aria-label={`Xóa ${task.title}`}
+                                                                >
+                                                                    <Trash2 size={15} />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     )
                                                 )}
@@ -1581,8 +2040,8 @@ export default function ChecklistPage() {
                                     style={{
                                         background:
                                             `conic-gradient(
-                                                #2563eb 0% ${data.stats.progressPercentage}%,
-                                                #e5e7eb ${data.stats.progressPercentage}% 100%
+                                                #2f6f9f 0% ${data.stats.progressPercentage}%,
+                                                #e4e9ef ${data.stats.progressPercentage}% 100%
                                             )`,
                                     }}
                                 >
@@ -1803,10 +2262,8 @@ export default function ChecklistPage() {
                     className={
                         styles.modalOverlay
                     }
-                    onMouseDown={() =>
-                        setShowAddModal(
-                            false
-                        )
+                    onMouseDown={
+                        closeAddTaskModal
                     }
                 >
                     <div
@@ -1826,24 +2283,23 @@ export default function ChecklistPage() {
                         >
                             <div>
                                 <h2>
-                                    Thêm công
-                                    việc
+                                    {targetGroup
+                                        ? `Thêm việc vào ${targetGroup.title}`
+                                        : "Tạo nhóm công việc"}
                                 </h2>
 
                                 <p>
-                                    Tạo nhiệm vụ
-                                    mới cho kỳ
-                                    thực tập.
+                                    {targetGroup
+                                        ? "Các việc mới sẽ nằm chung trong nhóm này."
+                                        : "Đặt tiêu đề rõ ràng rồi thêm các công việc bên trong."}
                                 </p>
                             </div>
 
 
                             <button
                                 type="button"
-                                onClick={() =>
-                                    setShowAddModal(
-                                        false
-                                    )
+                                onClick={
+                                    closeAddTaskModal
                                 }
                             >
                                 <X
@@ -1862,52 +2318,148 @@ export default function ChecklistPage() {
                             }
                         >
 
+                            {targetGroup === null && (
+                                <div
+                                    className={
+                                        styles.formGroup
+                                    }
+                                >
+                                    <label
+                                        htmlFor="groupTitle"
+                                    >
+                                        Tiêu đề nhóm công việc
+                                    </label>
+
+                                    <input
+                                        id="groupTitle"
+                                        name="groupTitle"
+                                        placeholder="Ví dụ: Công việc tuần 5"
+                                        maxLength={255}
+                                        required
+                                        autoFocus
+                                    />
+                                </div>
+                            )}
+
                             <div
                                 className={
-                                    styles.formGroup
+                                    styles.taskDraftSection
                                 }
                             >
-                                <label
-                                    htmlFor="title"
+                                <div
+                                    className={
+                                        styles.taskDraftHeader
+                                    }
                                 >
-                                    Tên công
-                                    việc
-                                </label>
+                                    <label>
+                                        Các công việc
+                                    </label>
 
-                                <input
-                                    id="title"
-                                    name="title"
-                                    placeholder="Ví dụ: Nộp báo cáo tuần 7"
-                                    required
-                                />
+                                    <span>
+                                        {taskDrafts.length} ô
+                                    </span>
+                                </div>
+
+
+                                <div
+                                    className={
+                                        styles.taskDraftList
+                                    }
+                                >
+                                    {taskDrafts.map(
+                                        (
+                                            task,
+                                            index,
+                                        ) => (
+                                            <div
+                                                key={
+                                                    task.id
+                                                }
+                                                className={
+                                                    styles.taskDraftRow
+                                                }
+                                            >
+                                                <span
+                                                    className={
+                                                        styles.taskDraftNumber
+                                                    }
+                                                >
+                                                    {index + 1}
+                                                </span>
+
+                                                <input
+                                                    value={
+                                                        task.title
+                                                    }
+                                                    onChange={event =>
+                                                        updateTaskDraft(
+                                                            task.id,
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                    maxLength={255}
+                                                    placeholder={`Công việc ${index + 1}`}
+                                                    aria-label={`Công việc ${index + 1}`}
+                                                    required
+                                                    autoFocus={
+                                                        targetGroup !== null &&
+                                                        index === 0
+                                                    }
+                                                />
+
+                                                <button
+                                                    type="button"
+                                                    className={
+                                                        styles.removeTaskDraftButton
+                                                    }
+                                                    onClick={() =>
+                                                        removeTaskDraft(
+                                                            task.id
+                                                        )
+                                                    }
+                                                    disabled={
+                                                        taskDrafts.length === 1
+                                                    }
+                                                    aria-label={`Xóa ô công việc ${index + 1}`}
+                                                >
+                                                    <X
+                                                        size={16}
+                                                    />
+                                                </button>
+                                            </div>
+                                        )
+                                    )}
+                                </div>
+
+
+                                <button
+                                    type="button"
+                                    className={
+                                        styles.addTaskDraftButton
+                                    }
+                                    onClick={
+                                        addTaskDraft
+                                    }
+                                    disabled={
+                                        taskDrafts.length >= 50
+                                    }
+                                >
+                                    <Plus
+                                        size={16}
+                                    />
+
+                                    Thêm một ô công việc
+                                </button>
                             </div>
 
 
-                            <div
-                                className={
-                                    styles.formGroup
-                                }
-                            >
-                                <label
-                                    htmlFor="description"
-                                >
-                                    Mô tả
-                                </label>
-
-                                <textarea
-                                    id="description"
-                                    name="description"
-                                    rows={4}
-                                    placeholder="Mô tả công việc..."
-                                />
-                            </div>
-
-
-                            <div
-                                className={
-                                    styles.formRow
-                                }
-                            >
+                            {targetGroup === null && (
+                                <>
+                                    <div
+                                        className={
+                                            styles.formRow
+                                        }
+                                    >
                                 <div
                                     className={
                                         styles.formGroup
@@ -1972,14 +2524,14 @@ export default function ChecklistPage() {
                                         </option>
                                     </select>
                                 </div>
-                            </div>
+                                    </div>
 
 
-                            <div
-                                className={
-                                    styles.formGroup
-                                }
-                            >
+                                    <div
+                                        className={
+                                            styles.formGroup
+                                        }
+                                    >
                                 <label
                                     htmlFor="dueAt"
                                 >
@@ -1991,7 +2543,9 @@ export default function ChecklistPage() {
                                     name="dueAt"
                                     type="datetime-local"
                                 />
-                            </div>
+                                    </div>
+                                </>
+                            )}
 
 
                             <div
@@ -2004,10 +2558,8 @@ export default function ChecklistPage() {
                                     className={
                                         styles.cancelButton
                                     }
-                                    onClick={() =>
-                                        setShowAddModal(
-                                            false
-                                        )
+                                    onClick={
+                                        closeAddTaskModal
                                     }
                                 >
                                     Hủy
@@ -2044,8 +2596,9 @@ export default function ChecklistPage() {
                                                 }
                                             />
 
-                                            Thêm công
-                                            việc
+                                            {targetGroup
+                                                ? `Thêm ${taskDrafts.length} công việc`
+                                                : `Tạo nhóm với ${taskDrafts.length} công việc`}
                                         </>
                                     )}
                                 </button>

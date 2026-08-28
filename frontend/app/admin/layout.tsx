@@ -4,6 +4,17 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import AdminSidebar from "@/components/admin-sidebar/admin-sidebar";
 
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "http://127.0.0.1:8000"
+).replace(/\/$/, "");
+
+function clearAdminSession() {
+  localStorage.removeItem("internova_access_token");
+  localStorage.removeItem("internova_user");
+}
+
 export default function AdminLayout({
   children,
 }: {
@@ -11,55 +22,96 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [authorized, setAuthorized] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [authorizedPath, setAuthorizedPath] = useState<string | null>(null);
 
   useEffect(() => {
-    const checkAuth = () => {
-      const isLoginPage = pathname === "/admin/login";
-      const token = localStorage.getItem("internova_access_token");
-      const userStr = localStorage.getItem("internova_user");
+    const controller = new AbortController();
 
-      if (isLoginPage) {
-        if (token && userStr) {
-          try {
-            const user = JSON.parse(userStr);
-            if (user.role === "ADMIN") {
-             router.replace("/admin/ai-monitoring");
-              return;
-            }
-          } catch (e) {
-            // Ignored
-          }
-        }
-        setAuthorized(true);
-        setLoading(false);
+    async function verifyAdminSession() {
+      if (pathname === "/admin/login") {
+        setAuthorizedPath(pathname);
         return;
       }
 
+      setAuthorizedPath(null);
+
+      const token = localStorage.getItem("internova_access_token");
+      const userStr = localStorage.getItem("internova_user");
+
       if (!token || !userStr) {
+        clearAdminSession();
         router.replace(`/admin/login?next=${encodeURIComponent(pathname)}`);
         return;
       }
 
       try {
-        const user = JSON.parse(userStr);
-        if (user.role !== "ADMIN") {
+        const storedUser = JSON.parse(userStr) as { role?: string };
+        if (storedUser.role !== "ADMIN") {
+          clearAdminSession();
           router.replace(`/admin/login?next=${encodeURIComponent(pathname)}`);
           return;
         }
-        setAuthorized(true);
-      } catch (e) {
+
+        const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+          cache: "no-store",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const currentUser = await response.json() as {
+          id: number;
+          email: string;
+          fullName: string;
+          role: string;
+          avatarUrl?: string | null;
+        };
+
+        if (currentUser.role !== "ADMIN") {
+          throw new Error("Admin role is required");
+        }
+
+        if (localStorage.getItem("internova_access_token") !== token) {
+          return;
+        }
+
+        localStorage.setItem("internova_user", JSON.stringify(currentUser));
+        setAuthorizedPath(pathname);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        clearAdminSession();
         router.replace(`/admin/login?next=${encodeURIComponent(pathname)}`);
-      } finally {
-        setLoading(false);
+      }
+    }
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (
+        event.key === "internova_access_token" ||
+        event.key === "internova_user"
+      ) {
+        void verifyAdminSession();
       }
     };
 
-    checkAuth();
+    void verifyAdminSession();
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      controller.abort();
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, [pathname, router]);
 
-  if (loading) {
+  if (authorizedPath !== pathname) {
     return (
       <div style={{
         display: "flex",
@@ -84,10 +136,6 @@ export default function AdminLayout({
         </div>
       </div>
     );
-  }
-
-  if (!authorized) {
-    return null;
   }
 
   if (pathname === "/admin/login") {

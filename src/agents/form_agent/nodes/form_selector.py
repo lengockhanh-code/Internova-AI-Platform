@@ -203,10 +203,9 @@ def form_selector_node(state: FormAgentState) -> FormAgentState:
             **state,
             "status": "selecting_form",
             "ask_message": (
-                "Mình chưa xác định được bạn cần dùng biểu mẫu nào. "
-                "Bạn có thể mô tả rõ hơn tình huống của mình không "
-                "(vd: đăng ký thực tập, sự cố/khiếu nại, đánh giá cuối kỳ, "
-                "thực tập quốc tế)?"
+                "Mình chưa xác định được bạn muốn điền form nào. "
+                "Bạn muốn mình điền Form 1, Form 2, Form 3 hay Form 4.3?\n\n"
+                "Ví dụ: 'điền Form 1 đăng ký thực tập' hoặc 'điền Form 2 thực tập quốc tế'."
             ),
         }
 

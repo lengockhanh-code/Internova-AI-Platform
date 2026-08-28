@@ -12,7 +12,6 @@
     display: flex;
     flex: 1;
     min-width: 0;
-    max-width: 100%;
     height: 100vh;
     max-height: 100vh;
     flex-direction: column;
@@ -30,7 +29,7 @@
     box-sizing: border-box;
     flex-direction: column;
     gap: 12px;
-    padding: 20px 32px 14px;
+    padding: 20px 32px 4px;
     overflow: hidden;
 }
 
@@ -171,7 +170,7 @@
     position: relative;
     flex-shrink: 0;
     width: 100%;
-    padding-top: 10px;
+    padding-top: 4px;
     display: flex;
     flex-direction: column;
 }
@@ -180,6 +179,24 @@
     position: relative;
     width: 85%;
     margin: 0 auto;
+}
+
+.inputDisclaimer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 10px 0 0;
+    color: #7a8799;
+    font-size: 11.5px;
+    font-weight: 500;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.inputDisclaimer svg {
+    flex: 0 0 auto;
+    color: #6f8198;
 }
 
 .chatComposer {
@@ -939,7 +956,7 @@
 }
 
 .sourceQuote {
-    margin: 8px 0 0;
+    margin: 14px 0 0;
     padding-left: 9px;
     border-left: 2px solid #dbeafe;
     color: #64748b;
@@ -1341,6 +1358,10 @@
 }
 
 @media (max-width: 1024px) {
+    .layout {
+        grid-template-columns: 230px minmax(0, 1fr);
+    }
+
     .chatComposerWrapper {
         width: 85%;
     }
@@ -1364,6 +1385,15 @@
 }
 
 @media (max-width: 768px) {
+    .layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .layout > :global(aside),
+    .main {
+        grid-column: 1;
+    }
+
     .chatComposerWrapper {
         width: 100%;
     }
@@ -1589,6 +1619,39 @@
 .formDownloadButton:hover {
     background: #1d4ed8;
     border-color: #1d4ed8;
+    transform: translateY(-1px);
+}
+
+.formFillButton {
+    display: inline-flex;
+    width: 100%;
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    margin-top: 10px;
+    padding: 8px 14px;
+    border: 1px solid #0b2f5b;
+    border-radius: 8px;
+    background: #0b2f5b;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.35;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(11, 47, 91, 0.16);
+    transition:
+        background 0.18s ease,
+        border-color 0.18s ease,
+        box-shadow 0.18s ease,
+        transform 0.18s ease;
+}
+
+.formFillButton:hover {
+    border-color: #082747;
+    background: #082747;
+    box-shadow: 0 8px 18px rgba(11, 47, 91, 0.22);
     transform: translateY(-1px);
 }
 
@@ -2047,6 +2110,18 @@
     color: #dbeafe;
 }
 
+:global(.dark) .formFillButton {
+    border-color: #5d8bb7;
+    background: #123a61;
+    color: #f8fafc;
+    box-shadow: none;
+}
+
+:global(.dark) .formFillButton:hover {
+    border-color: #78a7cf;
+    background: #174c78;
+}
+
 :global(.dark) .userBubble {
     background: #2563eb;
     color: #ffffff;
@@ -2057,4 +2132,756 @@
 :global(.dark) .formPreviewWrapper {
     border-color: #334155;
     background: #111827;
+}
+
+/* =========================================================
+   SAFE CHAT VISUAL FIX
+   - Keeps existing flex/scroll/history/composer behavior
+   - Removes chat avatars
+   - Welcome screen follows the supplied reference
+   ========================================================= */
+
+.chatPage {
+    font-family:
+        "Segoe UI",
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+    background: #f8fafc;
+}
+
+/*
+ * Put the campus directly on the chat page background.
+ * No ::before / z-index layer, so it cannot cover or hide messages.
+ */
+.chatPageWelcome {
+    background:
+        radial-gradient(circle at 82% 12%, rgba(31, 91, 170, 0.055), transparent 30%),
+        linear-gradient(180deg, #f9fbfe 0%, #f6f8fc 100%);
+}
+
+/* Explicitly keep the core chat layout visible. */
+.chatContainer {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    visibility: visible;
+    opacity: 1;
+}
+
+.messageList {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    visibility: visible;
+    opacity: 1;
+}
+
+.chatFooter {
+    display: flex;
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Avatars restored to fix layout misalignment */
+
+.aiMessageRow {
+    justify-content: flex-start;
+}
+
+.userMessageRow {
+    flex-direction: row;
+    justify-content: flex-end;
+}
+
+.aiResponseColumn {
+    width: min(760px, 100%);
+}
+
+.streamingOnly {
+    width: min(760px, 100%);
+}
+
+.aiBubble {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 15px;
+    border-color: #e0e6ee;
+    background: #ffffff;
+    box-shadow: 0 5px 18px rgba(15, 36, 68, 0.045);
+}
+
+.userBubble {
+    max-width: 70%;
+    border-radius: 15px 15px 5px 15px;
+    background: #0b4a94;
+    box-shadow: 0 4px 14px rgba(11, 74, 148, 0.15);
+}
+
+/* Initial assistant card: large, centered-left like the reference. */
+.welcomeMessageRow {
+    margin-top: 20px;
+}
+
+.welcomeMessageRow .aiResponseColumn {
+    width: min(660px, 64%);
+}
+
+.welcomeMessageRow .aiBubble {
+    min-height: 238px;
+    padding: 28px 30px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow:
+        0 2px 5px rgba(15, 23, 42, 0.025),
+        0 14px 34px rgba(23, 51, 88, 0.07);
+}
+
+.welcomeMessageRow .markdownContent {
+    color: #2c3d58;
+    font-size: 14px;
+    line-height: 1.78;
+}
+
+/* Suggestion cards under the welcome card. */
+.suggestionList {
+    max-width: 1000px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin: 18px 0 14px;
+    padding: 0;
+}
+
+.suggestionList button {
+    min-height: 92px;
+    padding: 17px 18px;
+    border-radius: 14px;
+    border-color: #dde5ef;
+    background: rgba(255, 255, 255, 0.96);
+    color: #263750;
+    font-weight: 500;
+    box-shadow: 0 5px 16px rgba(24, 49, 83, 0.04);
+}
+
+.suggestionList button:first-child {
+    border-color: #77a6ef;
+    color: #0b4a94;
+}
+
+.suggestionList button:hover {
+    transform: translateY(-1px);
+    border-color: #9cb8e2;
+    background: #fbfdff;
+    color: #0b4a94;
+}
+
+/* Reference-like composer, but keep original sizing/scroll behavior. */
+.chatComposer {
+    border-radius: 16px;
+    border-color: #d9e2ed;
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow:
+        0 3px 8px rgba(15, 23, 42, 0.025),
+        0 12px 30px rgba(28, 54, 88, 0.05);
+}
+
+.sendButton {
+    background: #0b3d7c;
+}
+
+.sendButton:hover {
+    background: #082f63;
+}
+
+/* Dark mode uses the dedicated campus asset. */
+:global(.dark) .chatPage {
+    background: #081522;
+}
+
+:global(.dark) .chatPageWelcome {
+    background:
+        radial-gradient(circle at 82% 10%, rgba(77, 138, 214, 0.09), transparent 28%),
+        linear-gradient(180deg, #081522 0%, #091827 100%);
+}
+
+:global(.dark) .welcomeMessageRow .aiBubble,
+:global(.dark) .aiBubble {
+    border-color: #2c415a;
+    background: rgba(15, 31, 51, 0.96);
+}
+
+:global(.dark) .suggestionList button {
+    border-color: #2d425d;
+    background: rgba(15, 31, 51, 0.95);
+    color: #dce7f5;
+}
+
+:global(.dark) .suggestionList button:first-child {
+    border-color: #4d80c1;
+    color: #bcd8ff;
+}
+
+:global(.dark) .chatComposer {
+    border-color: #30455f;
+    background: rgba(14, 30, 49, 0.98);
+}
+
+@media (max-width: 1024px) {
+    .welcomeMessageRow .aiResponseColumn {
+        width: min(660px, 82%);
+    }
+
+    .suggestionList {
+        grid-template-columns: 1fr;
+        max-width: 680px;
+    }
+}
+
+@media (max-width: 768px) {
+    .welcomeMessageRow .aiResponseColumn,
+    .aiResponseColumn,
+    .streamingOnly {
+        width: 100%;
+    }
+
+    .welcomeMessageRow .aiBubble {
+        min-height: 0;
+        padding: 17px;
+    }
+
+    .userBubble {
+        max-width: 88%;
+    }
+}
+
+/* =========================================================
+   FINAL PATCH — PERSISTENT CAMPUS + WIDER WELCOME CARD
+   ========================================================= */
+
+/*
+ * Keep chatbot-campus visible for the entire chat session,
+ * not only while messages.length === 1.
+ */
+.chatPage {
+    background-color: #f8fafc;
+    background-image:
+        linear-gradient(
+            90deg,
+            rgba(248, 250, 252, 1) 0%,
+            rgba(248, 250, 252, 0.98) 49%,
+            rgba(248, 250, 252, 0.82) 63%,
+            rgba(248, 250, 252, 0.42) 79%,
+            rgba(248, 250, 252, 0.08) 97%
+        ),
+        url("/chatbot-campus.png");
+    background-repeat: no-repeat, no-repeat;
+    background-position: center, right -22px top 54px;
+    background-size: 100% 100%, 620px auto;
+}
+
+/* Welcome state uses the same background, so no visual jump. */
+.chatPageWelcome {
+    background-color: #f8fafc;
+    background-image:
+        linear-gradient(
+            90deg,
+            rgba(248, 250, 252, 1) 0%,
+            rgba(248, 250, 252, 0.98) 49%,
+            rgba(248, 250, 252, 0.82) 63%,
+            rgba(248, 250, 252, 0.42) 79%,
+            rgba(248, 250, 252, 0.08) 97%
+        ),
+        url("/chatbot-campus.png");
+    background-repeat: no-repeat, no-repeat;
+    background-position: center, right -22px top 54px;
+    background-size: 100% 100%, 620px auto;
+}
+
+/* Make the greeting card long again while keeping its current content. */
+.welcomeMessageRow .aiResponseColumn {
+    width: min(760px, 72%);
+    max-width: 72%;
+}
+
+.welcomeMessageRow .aiBubble {
+    width: 100%;
+}
+
+/* Header must visibly stay as two separate sentences/lines. */
+.chatHeader p {
+    white-space: normal;
+}
+
+/* Keep the same campus visible in dark mode too. */
+:global(.dark) .chatPage,
+:global(.dark) .chatPageWelcome {
+    background-color: #081522;
+    background-image:
+        linear-gradient(
+            90deg,
+            rgba(8, 21, 34, 1) 0%,
+            rgba(8, 21, 34, 0.97) 49%,
+            rgba(8, 21, 34, 0.80) 64%,
+            rgba(8, 21, 34, 0.45) 80%,
+            rgba(8, 21, 34, 0.12) 100%
+        ),
+        url("/chatbot-campus.png");
+    background-repeat: no-repeat, no-repeat;
+    background-position: center, right -22px top 54px;
+    background-size: 100% 100%, 620px auto;
+}
+
+@media (max-width: 1100px) {
+    .welcomeMessageRow .aiResponseColumn {
+        width: min(720px, 78%);
+        max-width: 78%;
+    }
+}
+
+@media (max-width: 900px) {
+    .chatPage,
+    .chatPageWelcome,
+    :global(.dark) .chatPage,
+    :global(.dark) .chatPageWelcome {
+        background-position: center, right -118px top 76px;
+        background-size: 100% 100%, 560px auto;
+    }
+
+    .welcomeMessageRow .aiResponseColumn {
+        width: 86%;
+        max-width: 86%;
+    }
+}
+
+@media (max-width: 768px) {
+    .welcomeMessageRow .aiResponseColumn {
+        width: 100%;
+        max-width: 100%;
+    }
+}
+
+/* =========================================================
+   FINAL PATCH — VINUNI CHAT HEADER + ICON SUGGESTIONS
+   2026-08-27
+   ========================================================= */
+
+/* Header: VinUni mark + Internova AI identity + trust/policy copy. */
+.chatHeaderContent {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: center;
+    gap: 18px;
+}
+
+.assistantIdentity {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 10px;
+}
+
+.assistantIdentityLogo {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    place-items: center;
+}
+
+.assistantIdentityLogo img {
+    display: block;
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+}
+
+.assistantIdentityCopy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.15;
+}
+
+.assistantIdentityCopy strong {
+    color: #0b2f62;
+    font-size: 14px;
+    font-weight: 760;
+    letter-spacing: -0.015em;
+    white-space: nowrap;
+}
+
+.assistantIdentityCopy small {
+    color: #718096;
+    font-size: 10.5px;
+    font-weight: 520;
+    white-space: nowrap;
+}
+
+.chatHeaderPolicy {
+    min-width: 0;
+    padding-left: 18px;
+    border-left: 2px solid #cbd6e4;
+}
+
+.chatHeaderPolicy p {
+    max-width: 520px;
+    margin: 0;
+    color: #66758d;
+    font-size: 13px;
+    font-weight: 450;
+    line-height: 1.5;
+}
+
+/* Make the initial assistant greeting narrower and more balanced. */
+.welcomeMessageRow .aiResponseColumn {
+    width: min(640px, 62%);
+    max-width: 640px;
+}
+
+.welcomeMessageRow .aiBubble {
+    min-height: 170px;
+    padding: 22px 27px;
+}
+
+/* Three quick questions: icon + question + arrow. */
+.suggestionList {
+    max-width: 960px;
+    gap: 14px;
+}
+
+.suggestionList button {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) 18px;
+    min-height: 84px;
+    align-items: center;
+    column-gap: 12px;
+    padding: 13px 15px;
+    border-radius: 12px;
+    text-align: left;
+}
+
+.suggestionIcon {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid #e1e8f1;
+    border-radius: 50%;
+    background: #f4f7fb;
+    color: #0b3d7c;
+    transition:
+        border-color 0.18s ease,
+        background-color 0.18s ease,
+        color 0.18s ease,
+        transform 0.18s ease;
+}
+
+.suggestionText {
+    min-width: 0;
+    color: #22324d;
+    font-size: 12.75px;
+    font-weight: 570;
+    line-height: 1.45;
+}
+
+.suggestionArrow {
+    color: #6b7d96;
+    transition:
+        color 0.18s ease,
+        transform 0.18s ease;
+}
+
+.suggestionList button:hover .suggestionIcon {
+    border-color: #c8d7ea;
+    background: #edf4fc;
+    color: #082f63;
+    transform: translateY(-1px);
+}
+
+.suggestionList button:hover .suggestionText {
+    color: #0b3d7c;
+}
+
+.suggestionList button:hover .suggestionArrow {
+    color: #0b3d7c;
+    transform: translateX(2px);
+}
+
+/* Dark mode for the newly added identity/suggestion UI. */
+:global(.dark) .assistantIdentityCopy strong {
+    color: #f4f7fb;
+}
+
+:global(.dark) .assistantIdentityCopy small,
+:global(.dark) .chatHeaderPolicy p {
+    color: #9eafc4;
+}
+
+:global(.dark) .chatHeaderPolicy {
+    border-left-color: #49627f;
+}
+
+:global(.dark) .suggestionIcon {
+    border-color: #334a66;
+    background: #13263d;
+    color: #b9d7fb;
+}
+
+:global(.dark) .suggestionText {
+    color: #e0e8f3;
+}
+
+:global(.dark) .suggestionArrow {
+    color: #8fa3bd;
+}
+
+:global(.dark) .suggestionList button:hover .suggestionIcon {
+    border-color: #496888;
+    background: #17304d;
+    color: #d7e9ff;
+}
+
+:global(.dark) .suggestionList button:hover .suggestionText,
+:global(.dark) .suggestionList button:hover .suggestionArrow {
+    color: #d7e9ff;
+}
+
+@media (max-width: 1100px) {
+    .welcomeMessageRow .aiResponseColumn {
+        width: min(640px, 70%);
+        max-width: 70%;
+    }
+
+    .chatHeaderContent {
+        gap: 14px;
+    }
+
+    .chatHeaderPolicy {
+        padding-left: 14px;
+    }
+}
+
+@media (max-width: 900px) {
+    .welcomeMessageRow .aiResponseColumn {
+        width: min(640px, 80%);
+        max-width: 80%;
+    }
+
+    .chatHeaderPolicy p {
+        max-width: 390px;
+        font-size: 11.75px;
+    }
+}
+
+@media (max-width: 768px) {
+    /* User request: hide the explanatory policy copy on mobile. */
+    .chatHeaderPolicy {
+        display: none;
+    }
+
+    .chatHeaderContent {
+        width: auto;
+        flex: 0 1 auto;
+    }
+
+    .assistantIdentityLogo {
+        width: 34px;
+        height: 34px;
+        flex-basis: 34px;
+    }
+
+    .assistantIdentityLogo img {
+        width: 32px;
+        height: 32px;
+    }
+
+    .assistantIdentityCopy strong {
+        font-size: 13.5px;
+    }
+
+    .assistantIdentityCopy small {
+        font-size: 10px;
+    }
+
+    .welcomeMessageRow .aiResponseColumn {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .welcomeMessageRow .aiBubble {
+        min-height: 0;
+        padding: 17px;
+    }
+
+    .suggestionList {
+        grid-template-columns: 1fr;
+        max-width: 100%;
+        gap: 9px;
+    }
+
+    .suggestionList button {
+        min-height: 66px;
+        grid-template-columns: 36px minmax(0, 1fr) 16px;
+        column-gap: 10px;
+        padding: 10px 12px;
+    }
+
+    .suggestionIcon {
+        width: 36px;
+        height: 36px;
+    }
+}
+
+
+/* =========================================================
+   CORE CHAT LAYOUT CONTRACT
+   Keep the three horizontal rails in sync:
+   messages, suggestions, and composer.
+   ========================================================= */
+
+.chatPage {
+    --chat-page-padding-x: clamp(16px, 2.15vw, 32px);
+    --chat-content-width: min(100%, 1060px);
+    --chat-assistant-width: min(760px, 100%);
+    --chat-welcome-width: min(640px, 62%);
+    --chat-user-width: min(70%, 720px);
+
+    padding-right: var(--chat-page-padding-x);
+    padding-left: var(--chat-page-padding-x);
+}
+
+.messageList,
+.chatComposerWrapper {
+    width: var(--chat-content-width);
+    max-width: 100%;
+    margin-right: auto;
+    margin-left: auto;
+    box-sizing: border-box;
+}
+
+.messageList {
+    padding-right: 4px;
+    padding-left: 4px;
+}
+
+.suggestionList {
+    width: 100%;
+    max-width: 100%;
+    margin-right: 0;
+    margin-left: 0;
+    box-sizing: border-box;
+}
+
+.aiResponseColumn,
+.streamingOnly {
+    width: var(--chat-assistant-width);
+    max-width: 100%;
+    min-width: 0;
+}
+
+.welcomeMessageRow .aiResponseColumn {
+    width: var(--chat-welcome-width);
+    max-width: var(--chat-welcome-width);
+}
+
+.aiBubble,
+.userBubble,
+.chatComposer,
+.suggestionList button {
+    box-sizing: border-box;
+}
+
+.userBubble {
+    max-width: var(--chat-user-width);
+}
+
+.chatHeader {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    margin-right: 0;
+    margin-left: 0;
+    box-sizing: border-box;
+}
+
+.chatHeaderContent,
+.chatHeaderActions {
+    min-width: 0;
+}
+
+.chatHeaderActions {
+    flex-shrink: 0;
+}
+
+@media (max-width: 1100px) {
+    .chatPage {
+        --chat-welcome-width: min(640px, 70%);
+        --chat-user-width: min(78%, 680px);
+    }
+}
+
+@media (max-width: 900px) {
+    .chatPage {
+        --chat-welcome-width: min(640px, 80%);
+        --chat-user-width: min(84%, 620px);
+    }
+}
+
+@media (max-width: 768px) {
+    .chatPage {
+        --chat-page-padding-x: 14px;
+        --chat-welcome-width: 100%;
+        --chat-user-width: 88%;
+    }
+
+    .chatHeader {
+        gap: 12px;
+    }
+}
+/* =========================================================
+   SOURCE NUMBERS + FORM FILL OUTLINE
+   ========================================================= */
+
+.sourceNumber {
+    border: 1px solid #0b2f5b;
+    background: #0b2f5b;
+    color: #ffffff;
+}
+
+.formFillButton {
+    border-color: #0b2f5b;
+    background: transparent;
+    color: #0b2f5b;
+    box-shadow: none;
+}
+
+.formFillButton:hover {
+    border-color: #082747;
+    background: #f3f6f9;
+    color: #082747;
+    box-shadow: none;
+}
+
+:global(.dark) .sourceNumber {
+    border-color: #8dbbe6;
+    background: #8dbbe6;
+    color: #071524;
+}
+
+:global(.dark) .formFillButton {
+    border-color: #8dbbe6;
+    background: transparent;
+    color: #dbeafe;
+    box-shadow: none;
+}
+
+:global(.dark) .formFillButton:hover {
+    border-color: #b8d8f3;
+    background: rgba(141, 187, 230, 0.1);
+    color: #f8fafc;
 }

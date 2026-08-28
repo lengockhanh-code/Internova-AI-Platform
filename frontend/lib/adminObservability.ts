@@ -50,12 +50,29 @@ export class ApiError extends Error {
 
 function authHeaders(): HeadersInit {
   if (typeof window === "undefined") return {};
-  const token =
-    window.localStorage.getItem("internova_access_token") ||
-    window.localStorage.getItem("access_token") ||
-    window.localStorage.getItem("token") ||
-    window.localStorage.getItem("auth_token");
+  const token = window.localStorage.getItem("internova_access_token");
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+let redirectingToAdminLogin = false;
+
+function handleAdminAuthFailure(status: number): void {
+  if (
+    typeof window === "undefined" ||
+    (status !== 401 && status !== 403) ||
+    redirectingToAdminLogin
+  ) {
+    return;
+  }
+
+  redirectingToAdminLogin = true;
+  window.localStorage.removeItem("internova_access_token");
+  window.localStorage.removeItem("internova_user");
+
+  const next = `${window.location.pathname}${window.location.search}`;
+  window.location.replace(
+    `/admin/login?next=${encodeURIComponent(next)}`,
+  );
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -71,6 +88,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
+    handleAdminAuthFailure(response.status);
+
     let message = `HTTP ${response.status}`;
     let retryAfterSeconds: number | null = null;
 

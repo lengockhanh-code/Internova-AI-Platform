@@ -101,14 +101,14 @@
     position: absolute;
     top: -8px;
     right: -18px;
-    background: #f59e0b;
+    background: #315f93;
     color: #ffffff;
     font-size: 11px;
     font-weight: 600;
     padding: 3px 8px;
     border-radius: 999px;
     white-space: nowrap;
-    box-shadow: 0 8px 18px rgba(245, 158, 11, 0.22);
+    box-shadow: 0 8px 18px rgba(49, 95, 147, 0.22);
 }
 
 .featureCard h3 {
@@ -534,4 +534,568 @@
 
 :global(.dark) .tipBanner p {
     color: #dbeafe;
+}
+/* ==========================================================
+   REFERENCE UI OVERRIDES — Student dashboard
+   Visual-only layer; all existing API/data/navigation logic stays intact.
+========================================================== */
+.layout {
+    min-height: 100vh;
+    background: #f8fbff;
+    color: #10264d;
+}
+
+.main {
+    min-width: 0;
+    background:
+        radial-gradient(circle at 88% 8%, rgba(216, 232, 252, .34), transparent 28%),
+        #fbfdff;
+}
+
+.dashboard {
+    position: relative;
+    gap: 16px;
+    padding: 28px 44px 24px;
+    background:
+        linear-gradient(180deg, rgba(244, 249, 255, .72), rgba(255, 255, 255, .96) 170px),
+        #ffffff;
+}
+
+.dashboardWelcome {
+    position: relative;
+    min-height: 102px;
+    margin: 0;
+    padding: 8px 430px 10px 0;
+    overflow: hidden;
+}
+
+.dashboardWelcome::after {
+    content: "";
+    position: absolute;
+    top: -5px;
+    right: -8px;
+    width: 470px;
+    height: 135px;
+    pointer-events: none;
+    background-image: url("/vinuni-dashboard-campus.png");
+    background-repeat: no-repeat;
+    background-position: right top;
+    background-size: contain;
+    opacity: .96;
+}
+
+.dashboardWelcome h1 {
+    position: relative;
+    z-index: 1;
+    gap: 9px;
+    margin: 0;
+    color: #0d2145;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(28px, 2.2vw, 34px);
+    font-weight: 700;
+    line-height: 1.18;
+    letter-spacing: -0.025em;
+}
+
+.dashboardWelcome p {
+    position: relative;
+    z-index: 1;
+    max-width: 700px;
+    margin: 10px 0 0;
+    color: #607393;
+    font-size: 13.5px;
+    line-height: 1.6;
+}
+
+.dashboardPanel {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.featureGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.featureCard {
+    position: relative;
+    display: grid;
+    min-height: 196px;
+    grid-template-columns: 76px minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    align-items: start;
+    gap: 8px 20px;
+    padding: 26px 24px;
+    overflow: hidden;
+    border: 1px solid #dbe4f0;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .96);
+    text-align: left;
+    box-shadow: 0 8px 22px rgba(39, 77, 126, .045);
+}
+
+.featureCard::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgba(232, 242, 255, .3), transparent 48%);
+}
+
+.featureIcon,
+.featureIconWrapper {
+    position: relative;
+    z-index: 1;
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    align-self: start;
+}
+
+.featureIcon {
+    width: 68px;
+    height: 68px;
+    margin: 0;
+    border-radius: 50%;
+    background: #edf4fd;
+    color: #1257ba;
+}
+
+.featureIconWrapper {
+    display: flex;
+    width: 68px;
+    margin: 0;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.featureIconWrapper .featureIcon {
+    background: #f3edff;
+    color: #6d3fd1;
+}
+
+.devBadge {
+    top: -2px;
+    right: auto;
+    left: 96px;
+    padding: 4px 9px;
+    border-radius: 7px;
+    background: #f3edff;
+    color: #6d3fd1;
+    font-size: 10px;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.featureCard h3,
+.featureCard p,
+.featureCta {
+    position: relative;
+    z-index: 1;
+    grid-column: 2;
+}
+
+.featureCard h3 {
+    grid-row: 1;
+    margin: 8px 0 0;
+    color: #0e2347;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.featureCard:nth-child(2) h3 {
+    margin-top: 36px;
+}
+
+.featureCard p {
+    grid-row: 2;
+    max-width: 520px;
+    margin: 0;
+    color: #5d6f8e;
+    font-size: 12.5px;
+    line-height: 1.55;
+}
+
+.featureCta {
+    width: 170px;
+    min-height: 38px;
+    grid-row: 3;
+    align-self: end;
+    justify-self: start;
+    margin: 8px 0 0;
+    padding: 9px 16px;
+    border: 1px solid #0e3978;
+    border-radius: 8px;
+    background: #0e3978;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.featureCta:hover {
+    background: #0a2f67;
+}
+
+.featureCtaDisabled {
+    border-color: #8d64dd !important;
+    background: #ffffff !important;
+    color: #7043c8 !important;
+    opacity: 1;
+}
+
+.statusGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.statusCard {
+    min-height: 260px;
+    padding: 20px 23px 18px;
+    border: 1px solid #dbe4f0;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 5px 18px rgba(39, 77, 126, .035);
+}
+
+.statusCardHeader {
+    gap: 11px;
+    margin-bottom: 15px;
+    color: #153f7c;
+}
+
+.statusCardHeader h4 {
+    color: #10264d;
+    font-size: 13.5px;
+    font-weight: 700;
+}
+
+.statusPill {
+    margin-bottom: 15px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #edf8f0;
+    color: #267643;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.statusList {
+    gap: 10px;
+}
+
+.statusRow {
+    gap: 10px;
+    font-size: 11.5px;
+}
+
+.statusRow dt {
+    color: #73829a;
+}
+
+.statusRow dd {
+    color: #10264d;
+    font-weight: 500;
+}
+
+.statusCta {
+    display: flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    margin-top: 18px;
+    padding: 8px 12px;
+    border: 1px solid #d7e0ed;
+    border-radius: 7px;
+    background: #ffffff;
+    color: #10264d;
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+.statusCta:hover {
+    border-color: #b8c9df;
+    background: #f7faff;
+}
+
+.deadlineList {
+    gap: 13px;
+}
+
+.deadlineList li {
+    gap: 11px;
+}
+
+.deadlineDot {
+    width: 6px;
+    height: 6px;
+    margin-top: 7px;
+    background: #3b88b2;
+}
+
+.deadlineList li:nth-child(2) .deadlineDot {
+    background: #b9a86d;
+}
+
+.deadlineList li:nth-child(3) .deadlineDot {
+    background: #efb13f;
+}
+
+.deadlineTitle {
+    color: #213758;
+    font-size: 11.5px;
+    font-weight: 500;
+}
+
+.deadlineSubtitle {
+    display: none;
+}
+
+.deadlineDate p:first-child {
+    color: #203657;
+    font-size: 10.5px;
+    font-weight: 500;
+}
+
+.deadlineDate p:last-child {
+    margin-top: 2px;
+    color: #8a97aa;
+    font-size: 9.5px;
+}
+
+.progressVisual {
+    display: flex;
+    flex: 1;
+    min-height: 150px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-top: 0;
+    text-align: center;
+}
+
+.progressRing {
+    display: grid;
+    width: 108px;
+    height: 108px;
+    place-items: center;
+    border-radius: 50%;
+}
+
+.progressRingInner {
+    display: grid;
+    width: 88px;
+    height: 88px;
+    place-items: center;
+    border-radius: 50%;
+    background: #ffffff;
+}
+
+.progressRingInner strong {
+    color: #10264d;
+    font-size: 19px;
+    font-weight: 750;
+}
+
+.progressCaption {
+    margin: 10px 0 0;
+    color: #667793;
+    font-size: 10.5px;
+    line-height: 1.45;
+}
+
+.progressWeekMeta {
+    margin: 3px 0 0;
+    color: #9aa7b9;
+    font-size: 9.5px;
+}
+
+/* Keep the weekly task data in the DOM, but the reference card is a compact circular summary. */
+.statusCard > .checklist,
+.statusCard .progressHeader,
+.statusCard .progressBar {
+    display: none;
+}
+
+.emptyCard {
+    color: #75849b;
+    font-size: 12px;
+}
+
+.tipBanner {
+    margin-top: 0;
+    padding: 11px 14px;
+    border-color: #e1e9f3;
+    border-radius: 9px;
+    background: #f7faff;
+}
+
+.tipBanner svg {
+    color: #4c75a8;
+}
+
+.tipBanner p {
+    color: #526986;
+    font-size: 10.5px;
+}
+
+.dashboardFooter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-top: -2px;
+    padding-top: 13px;
+    border-top: 1px solid #edf1f6;
+    color: #71839f;
+    font-size: 10px;
+}
+
+.dashboardFooter div {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.dashboardFooter button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #4d76ac;
+    font: inherit;
+    cursor: default;
+}
+
+.statePage {
+    background: #fbfdff;
+}
+
+.spinner {
+    color: #1b5fb6;
+}
+
+:global(.dark) .layout,
+:global(.dark) .main,
+:global(.dark) .dashboard {
+    background: #0b1728;
+}
+
+:global(.dark) .featureCard,
+:global(.dark) .statusCard,
+:global(.dark) .progressRingInner {
+    border-color: #2b405e;
+    background: #122238;
+}
+
+:global(.dark) .dashboardWelcome h1,
+:global(.dark) .featureCard h3,
+:global(.dark) .statusCardHeader h4,
+:global(.dark) .statusRow dd,
+:global(.dark) .progressRingInner strong {
+    color: #eef4ff;
+}
+
+@media (max-width: 1180px) {
+    .dashboard {
+        padding: 24px 26px;
+    }
+
+    .dashboardWelcome {
+        padding-right: 330px;
+    }
+
+    .dashboardWelcome::after {
+        width: 380px;
+    }
+
+    .featureCard {
+        grid-template-columns: 62px minmax(0, 1fr);
+        gap: 8px 16px;
+        padding: 22px 20px;
+    }
+
+    .featureIcon,
+    .featureIconWrapper {
+        width: 58px;
+        height: 58px;
+    }
+
+    .devBadge {
+        left: 78px;
+    }
+}
+
+@media (max-width: 960px) {
+    .featureGrid,
+    .statusGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboardWelcome {
+        min-height: 115px;
+        padding-right: 260px;
+    }
+
+    .dashboardWelcome::after {
+        width: 300px;
+        opacity: .76;
+    }
+}
+
+@media (max-width: 680px) {
+    .dashboard {
+        gap: 14px;
+        padding: 20px 14px;
+    }
+
+    .dashboardWelcome {
+        min-height: auto;
+        padding: 2px 0 10px;
+    }
+
+    .dashboardWelcome::after {
+        display: none;
+    }
+
+    .dashboardWelcome h1 {
+        font-size: 26px;
+    }
+
+    .featureCard {
+        min-height: 0;
+        grid-template-columns: 52px minmax(0, 1fr);
+        padding: 20px 16px;
+    }
+
+    .featureIcon,
+    .featureIconWrapper {
+        width: 48px;
+        height: 48px;
+    }
+
+    .featureIcon svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .devBadge {
+        position: static;
+        margin-top: 55px;
+        transform: translateX(12px);
+    }
+
+    .featureCard:nth-child(2) h3 {
+        margin-top: 8px;
+    }
+
+    .featureCta {
+        width: 100%;
+    }
+
+    .dashboardFooter {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }
