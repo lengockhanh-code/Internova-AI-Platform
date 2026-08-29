@@ -21,7 +21,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./page.module.css";
 
 type NavItem = {
@@ -115,6 +115,7 @@ export default function InternovaLandingPage() {
   const [activeSection, setActiveSection] = useState("overview");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const backgroundVideoRef = useRef<HTMLVideoElement>(null);
 
   const observedIds = useMemo(
     () => ["overview", "features", "ai-assistant", "journey", "dashboard", "users", "trust"],
@@ -190,17 +191,28 @@ export default function InternovaLandingPage() {
     };
   }, [mobileOpen]);
 
+  useEffect(() => {
+    const video = backgroundVideoRef.current;
+    if (!video) return;
+
+    video.load();
+    void video.play().catch(() => {
+      // Autoplay can still be deferred by the browser on slow connections.
+    });
+  }, []);
+
   return (
     <main className={styles.pageShell}>
       <div className={styles.videoLayer} aria-hidden="true">
         <video
+          ref={backgroundVideoRef}
           className={styles.backgroundVideo}
           src="/videos/internova-scroll.mp4"
           autoPlay
           muted
           loop
           playsInline
-          preload="metadata"
+          preload="auto"
         />
         <div className={styles.videoOverlay} />
         <div className={styles.videoTexture} />
