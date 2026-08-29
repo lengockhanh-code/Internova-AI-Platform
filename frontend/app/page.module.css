@@ -60,10 +60,30 @@
 }
 
 .backgroundVideo {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center;
+  opacity: 1;
+  transition: opacity 420ms ease;
+}
+
+.mainVideo {
+  opacity: 0;
+}
+
+.introVideo {
+  opacity: 1;
+}
+
+.videoReady {
+  opacity: 1;
+}
+
+.videoHidden {
+  opacity: 0;
 }
 
 .videoOverlay {
