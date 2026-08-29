@@ -102,6 +102,110 @@ const journeySteps = [
 const trustItems = [
   ["Controlled knowledge sources", "Chỉ sử dụng các nguồn dữ liệu được quản trị và phê duyệt trong hệ thống."],
   ["Source attribution", "Mỗi câu trả lời quan trọng có thể đi kèm nguồn tham chiếu rõ ràng."],
+"use client";
+
+import Image from "next/image";
+import {
+  ArrowRight,
+  Bell,
+  BookOpen,
+  BriefcaseBusiness,
+  ChevronRight,
+  CircleCheck,
+  FileText,
+  GraduationCap,
+  Menu,
+  MessageSquareText,
+  Radar,
+  Search,
+  ShieldCheck,
+  Target,
+  UserRoundCheck,
+  UsersRound,
+  X,
+  type LucideIcon,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import styles from "./page.module.css";
+
+type NavItem = {
+  label: string;
+  id: string;
+};
+
+type SupportFeature = {
+  index: string;
+  title: string;
+  description: string;
+  items: string[];
+  icon: LucideIcon;
+};
+
+const navItems: NavItem[] = [
+  { label: "Tổng quan", id: "overview" },
+  { label: "Tính năng", id: "features" },
+  { label: "AI Assistant", id: "ai-assistant" },
+  { label: "Quy trình", id: "journey" },
+  { label: "Dành cho ai", id: "users" },
+];
+
+const supportFeatures: SupportFeature[] = [
+  {
+    index: "01",
+    title: "AI Student Assistant",
+    description: "Một điểm hỏi đáp thống nhất cho những câu hỏi sinh viên cần xử lý ngay.",
+    items: ["Hỏi đáp quy định", "Tra cứu thông tin", "Hỗ trợ theo ngữ cảnh"],
+    icon: MessageSquareText,
+  },
+  {
+    index: "02",
+    title: "Internship Support",
+    description: "Theo dõi kỳ thực tập từ khâu chuẩn bị đến báo cáo hoàn thành.",
+    items: ["Quản lý kỳ thực tập", "Theo dõi deadline", "Báo cáo tiến độ"],
+    icon: BriefcaseBusiness,
+  },
+  {
+    index: "03",
+    title: "CV & Career Matching",
+    description: "Biến CV và mô tả công việc thành tín hiệu rõ ràng để ra quyết định tốt hơn.",
+    items: ["CV - JD matching", "Đánh giá mức độ phù hợp", "Đề xuất cải thiện CV"],
+    icon: Target,
+  },
+  {
+    index: "04",
+    title: "Student Progress",
+    description: "Giữ toàn bộ nhiệm vụ, milestone và việc cần làm ở đúng một nơi.",
+    items: ["Checklist", "Nhiệm vụ", "Milestone & deadline"],
+    icon: Radar,
+  },
+  {
+    index: "05",
+    title: "Documents",
+    description: "Quản lý hồ sơ học tập và thực tập theo trạng thái thay vì theo thư mục rời rạc.",
+    items: ["Quản lý tài liệu", "Hồ sơ", "Báo cáo"],
+    icon: FileText,
+  },
+  {
+    index: "06",
+    title: "Smart Notifications",
+    description: "Ưu tiên đúng thông tin cần hành động thay vì thêm một luồng thông báo gây nhiễu.",
+    items: ["Nhắc deadline", "Cảnh báo việc còn thiếu"],
+    icon: Bell,
+  },
+];
+
+const journeySteps = [
+  "Hoàn thiện hồ sơ",
+  "Chuẩn bị CV",
+  "Tìm cơ hội phù hợp",
+  "Nhận hỗ trợ từ AI",
+  "Theo dõi kỳ thực tập",
+  "Hoàn thành báo cáo",
+];
+
+const trustItems = [
+  ["Controlled knowledge sources", "Chỉ sử dụng các nguồn dữ liệu được quản trị và phê duyệt trong hệ thống."],
+  ["Source attribution", "Mỗi câu trả lời quan trọng có thể đi kèm nguồn tham chiếu rõ ràng."],
   ["Role-based access", "Quyền truy cập được phân tách theo sinh viên, giảng viên và quản trị viên."],
   ["Student data protection", "Dữ liệu cá nhân được xử lý theo đúng ngữ cảnh và phạm vi cần thiết."],
   ["Auditability", "Các thay đổi và tương tác quan trọng có thể được theo dõi để phục vụ quản trị."],
@@ -117,11 +221,23 @@ export default function InternovaLandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [introVideoStarted, setIntroVideoStarted] = useState(false);
   const [mainVideoReady, setMainVideoReady] = useState(false);
+  const introVideoRef = useRef<HTMLVideoElement>(null);
 
   const observedIds = useMemo(
     () => ["overview", "features", "ai-assistant", "journey", "dashboard", "users", "trust"],
     [],
   );
+
+  useEffect(() => {
+    if (mainVideoReady && introVideoRef.current) {
+      const timer = setTimeout(() => {
+        if (introVideoRef.current) {
+          introVideoRef.current.pause();
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [mainVideoReady]);
 
   useEffect(() => {
     const sectionObserver = new IntersectionObserver(
@@ -192,12 +308,21 @@ export default function InternovaLandingPage() {
     };
   }, [mobileOpen]);
 
+  useEffect(() => {
+    const mainVideoTimer = window.setTimeout(() => {
+      setIntroVideoStarted(true);
+    }, 700);
+
+    return () => window.clearTimeout(mainVideoTimer);
+  }, []);
+
   return (
     <main className={styles.pageShell}>
       <link rel="preload" href="/videos/internova-poster.jpg" as="image" />
       <link rel="preload" href="/videos/internova-intro.mp4" as="video" type="video/mp4" />
       <div className={styles.videoLayer} aria-hidden="true">
         <video
+          ref={introVideoRef}
           className={`${styles.backgroundVideo} ${styles.introVideo} ${mainVideoReady ? styles.videoHidden : ""}`}
           src="/videos/internova-intro.mp4"
           poster="/videos/internova-poster.jpg"
@@ -208,11 +333,12 @@ export default function InternovaLandingPage() {
           preload="auto"
           onCanPlay={() => setIntroVideoStarted(true)}
           onPlaying={() => setIntroVideoStarted(true)}
+          onError={() => setIntroVideoStarted(true)}
         />
         {introVideoStarted && (
           <video
             className={`${styles.backgroundVideo} ${styles.mainVideo} ${mainVideoReady ? styles.videoReady : ""}`}
-            src="/videos/internova-scroll.mp4"
+            src="/videos/internova-scroll-small.mp4"
             poster="/videos/internova-poster.jpg"
             autoPlay
             muted
