@@ -115,6 +115,7 @@ export default function InternovaLandingPage() {
   const [activeSection, setActiveSection] = useState("overview");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [introVideoStarted, setIntroVideoStarted] = useState(false);
   const [mainVideoReady, setMainVideoReady] = useState(false);
 
   const observedIds = useMemo(
@@ -194,7 +195,6 @@ export default function InternovaLandingPage() {
   return (
     <main className={styles.pageShell}>
       <link rel="preload" href="/videos/internova-intro.mp4" as="video" type="video/mp4" />
-      <link rel="preload" href="/videos/internova-scroll.mp4" as="video" type="video/mp4" />
       <div className={styles.videoLayer} aria-hidden="true">
         <video
           className={`${styles.backgroundVideo} ${styles.introVideo} ${mainVideoReady ? styles.videoHidden : ""}`}
@@ -204,17 +204,22 @@ export default function InternovaLandingPage() {
           loop
           playsInline
           preload="auto"
+          onCanPlay={() => setIntroVideoStarted(true)}
+          onPlaying={() => setIntroVideoStarted(true)}
         />
-        <video
-          className={`${styles.backgroundVideo} ${styles.mainVideo} ${mainVideoReady ? styles.videoReady : ""}`}
-          src="/videos/internova-scroll.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-          onCanPlay={() => setMainVideoReady(true)}
-        />
+        {introVideoStarted && (
+          <video
+            className={`${styles.backgroundVideo} ${styles.mainVideo} ${mainVideoReady ? styles.videoReady : ""}`}
+            src="/videos/internova-scroll.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            onLoadedData={() => setMainVideoReady(true)}
+            onCanPlayThrough={() => setMainVideoReady(true)}
+          />
+        )}
         <div className={styles.videoOverlay} />
         <div className={styles.videoTexture} />
       </div>
