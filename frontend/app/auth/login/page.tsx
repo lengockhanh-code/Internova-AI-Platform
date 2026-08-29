@@ -1,136 +1,78 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-
+import { useRouter } from "next/navigation";
+import { type FormEvent, useState } from "react";
 import {
     ArrowLeft,
     ArrowRight,
-    BotMessageSquare,
-    CheckCircle2,
     Eye,
     EyeOff,
     LockKeyhole,
     Mail,
-    Sparkles,
+    ShieldCheck,
 } from "lucide-react";
 
-import {
-    FormEvent,
-    useState,
-} from "react";
-
-import {
-    useRouter,
-} from "next/navigation";
-
 import styles from "./page.module.css";
-
 
 const API_URL =
     process.env.NEXT_PUBLIC_API_URL ||
     "http://localhost:8000";
 
-
-
 export default function LoginPage() {
-    const router =
-        useRouter();
+    const router = useRouter();
 
-
-    const [
-        showPassword,
-        setShowPassword,
-    ] =
-        useState(false);
-
-
-
-    const [
-        isLoading,
-        setIsLoading,
-    ] =
-        useState(false);
-
-
-    const [
-        error,
-        setError,
-    ] =
-        useState("");
-
+    const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState("");
 
     async function handleSubmit(
-        event:
-            FormEvent<HTMLFormElement>
+        event: FormEvent<HTMLFormElement>
     ) {
         event.preventDefault();
 
         setIsLoading(true);
-
         setError("");
 
+        const formData = new FormData(
+            event.currentTarget
+        );
 
-        const formData =
-            new FormData(
-                event.currentTarget
-            );
+        const email = String(
+            formData.get("email") ?? ""
+        ).trim();
 
-
-        const email =
-            String(
-                formData.get(
-                    "email"
-                ) ?? ""
-            ).trim();
-
-
-        const password =
-            String(
-                formData.get(
-                    "password"
-                ) ?? ""
-            );
-
+        const password = String(
+            formData.get("password") ?? ""
+        );
 
         try {
+            const response = await fetch(
+                `${API_URL}/api/v1/auth/login`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                    }),
+                }
+            );
 
-            const response =
-                await fetch(
-                    `${API_URL}/api/v1/auth/login`,
-                    {
-                        method:
-                            "POST",
-
-                        headers: {
-                            "Content-Type":
-                                "application/json",
-                        },
-
-                        body:
-                            JSON.stringify({
-                                email,
-                                password,
-                            }),
-                    }
-                );
-
-
-            const data =
-                await response.json();
-
+            const data = await response.json();
 
             if (!response.ok) {
-
                 throw new Error(
                     data.detail ??
                     "Đăng nhập thất bại."
                 );
             }
 
-
             if (
-                data.user?.role !== "STUDENT"
-                &&
+                data.user?.role !== "STUDENT" &&
                 data.user?.role !== "LECTURER"
             ) {
                 throw new Error(
@@ -143,12 +85,9 @@ export default function LoginPage() {
                 data.accessToken
             );
 
-
             localStorage.setItem(
                 "internova_user",
-                JSON.stringify(
-                    data.user
-                )
+                JSON.stringify(data.user)
             );
 
             localStorage.setItem(
@@ -159,16 +98,12 @@ export default function LoginPage() {
                 "dark"
             );
 
-
             const requestedPath =
                 new URLSearchParams(
                     window.location.search
                 ).get("next");
 
-            if (
-                data.user.role ===
-                "LECTURER"
-            ) {
+            if (data.user.role === "LECTURER") {
                 router.push(
                     requestedPath?.startsWith(
                         "/lecturer/"
@@ -187,469 +122,269 @@ export default function LoginPage() {
                     ? requestedPath
                     : "/student/dashboard"
             );
-
-
         } catch (err) {
-
             setError(
                 err instanceof Error
                     ? err.message
                     : "Đăng nhập thất bại."
             );
-
-
         } finally {
-
             setIsLoading(false);
         }
     }
 
-
     return (
-        <main
-            className={
-                styles.authPage
-            }
-        >
-            <Link
-                href="/"
-                className={styles.backHome}
-            >
-                <ArrowLeft size={16} />
-                Về trang chủ
-            </Link>
-
-            <div
-                className={
-                    styles.backgroundGlowOne
-                }
-            />
-
-            <div
-                className={
-                    styles.backgroundGlowTwo
-                }
-            />
-
-            <div
-                className={
-                    styles.backgroundGrid
-                }
-            />
-
-
+        <main className={styles.authPage}>
             <section
-                className={
-                    styles.authCard
-                }
+                className={styles.visualPanel}
+                aria-label="Internova university access experience"
             >
-                {/* ==========================================
-                    LEFT
-                ========================================== */}
-
-                <div
-                    className={
-                        styles.authLeft
-                    }
+                <video
+                    className={styles.campusVideo}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    aria-hidden="true"
                 >
-                    <div
-                        className={
-                            styles.brand
-                        }
-                    >
-                        <span
-                            className={
-                                styles.brandIcon
-                            }
-                        >
-                            <BotMessageSquare
-                                size={30}
-                                strokeWidth={1.8}
-                            />
-                        </span>
+                    <source
+                        src="/videos/university_video.mp4"
+                        type="video/mp4"
+                    />
+                </video>
 
-                        <div>
-                            <strong>
-                                Internova
-                            </strong>
+                <div className={styles.videoOverlay} />
+                <div className={styles.videoTexture} aria-hidden="true" />
+                <div className={styles.edgeLine} aria-hidden="true" />
 
-                            <span>
-                                AI Internship Assistant
-                            </span>
-                        </div>
-                    </div>
+                <header className={styles.brand}>
+                    <span className={styles.brandMark}>
+                        <Image
+                            src="/intern.png"
+                            alt="Internova"
+                            width={48}
+                            height={48}
+                            priority
+                            className={styles.brandLogo}
+                        />
+                    </span>
 
+                    <span className={styles.brandText}>
+                        <strong>Internova</strong>
+                        <span>AI Student Support Platform</span>
+                    </span>
+                </header>
 
-                    <div
-                        className={
-                            styles.heroContent
-                        }
-                    >
-                        <span
-                            className={
-                                styles.heroBadge
-                            }
-                        >
-                            <Sparkles
-                                size={15}
-                            />
+                <div className={styles.visualStatus} aria-hidden="true">
+                    <span className={styles.statusDot} />
+                    <span>UNIVERSITY ACCESS · ONLINE</span>
+                </div>
 
-                            Nền tảng hỗ trợ thực tập
-                            bằng AI
-                        </span>
+                <div className={styles.visualContent}>
+                    <p className={styles.eyebrow}>
+                        INTERNOVA · DIGITAL UNIVERSITY GATEWAY
+                    </p>
 
+                    <h1>
+                        Hành trình đại học,
+                        <span>được kết nối thông minh.</span>
+                    </h1>
 
-                        <h1>
-                            Bắt đầu hành trình
+                    <p className={styles.visualDescription}>
+                        Một điểm truy cập duy nhất cho thông tin,
+                        hồ sơ, thực tập và trợ lý AI trong suốt
+                        hành trình sinh viên.
+                    </p>
+                </div>
 
-                            <span>
-                                {" "}
-                                thực tập thông minh
-                            </span>
-                        </h1>
+                <div className={styles.visualMeta}>
+                    <span>AI STUDENT SUPPORT</span>
+                    <span>ACCESS PORTAL / 2026</span>
+                </div>
+            </section>
 
+            <section className={styles.authPanel}>
+                <div className={styles.authAmbient} aria-hidden="true" />
 
-                        <p
-                            className={
-                                styles.authDesc
-                            }
-                        >
-                            Internova hỗ trợ sinh viên
-                            quản lý quá trình thực tập
-                            và giúp giảng viên theo dõi,
-                            đánh giá sinh viên.
-                        </p>
+                <Link href="/" className={styles.backHome}>
+                    <ArrowLeft size={16} />
+                    Quay lại Internova
+                </Link>
 
-
-                        <div
-                            className={
-                                styles.featureList
-                            }
-                        >
-                            <div>
-                                <CheckCircle2
-                                    size={18}
-                                />
-
-                                <span>
-                                    Tư vấn học vụ bằng RAG
-                                </span>
-                            </div>
-
-
-                            <div>
-                                <CheckCircle2
-                                    size={18}
-                                />
-
-                                <span>
-                                    Quản lý hồ sơ thực tập
-                                </span>
-                            </div>
-
-
-                            <div>
-                                <CheckCircle2
-                                    size={18}
-                                />
-
-                                <span>
-                                    Theo dõi báo cáo và
-                                    tiến độ
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <div
-                        className={
-                            styles.decorativeCard
-                        }
-                    >
-                        <div
-                            className={
-                                styles.decorativeIcon
-                            }
-                        >
-                            <CheckCircle2
-                                size={22}
-                            />
-                        </div>
-
-
-                        <div>
-                            <strong>
-                                Một cổng đăng nhập duy nhất
-                            </strong>
-
-                            <p>
-                                Internova tự nhận diện tài khoản sinh viên hoặc giảng viên sau khi xác thực.
-                            </p>
-                        </div>
+                <div className={styles.mobileBrand}>
+                    <Image
+                        src="/intern.png"
+                        alt="Internova"
+                        width={42}
+                        height={42}
+                        priority
+                        className={styles.mobileBrandLogo}
+                    />
+                    <div>
+                        <strong>Internova</strong>
+                        <span>AI Student Support Platform</span>
                     </div>
                 </div>
 
+                <div className={styles.authInner}>
+                    <div className={styles.portalTag}>
+                        <span className={styles.portalTagDot} />
+                        STUDENT &amp; LECTURER PORTAL
+                    </div>
 
-                {/* ==========================================
-                    RIGHT
-                ========================================== */}
-
-                <div
-                    className={
-                        styles.authRight
-                    }
-                >
-                    <div
-                        className={
-                            styles.formHeader
-                        }
-                    >
-                        <span
-                            className={
-                                styles.mobileLogo
-                            }
-                        >
-                            <BotMessageSquare
-                                size={24}
-                            />
-                        </span>
-
-
-                        <p
-                            className={
-                                styles.welcomeText
-                            }
-                        >
-                            Chào mừng trở lại
-                        </p>
-
-
-                        <h2>
-                            Đăng nhập Internova
-                        </h2>
-
-
+                    <div className={styles.formHeader}>
+                        <h2>Chào mừng trở lại.</h2>
                         <p>
-                            Nhập email và mật khẩu. Hệ thống sẽ tự động nhận diện vai trò của tài khoản.
+                            Đăng nhập để tiếp tục hành trình học tập,
+                            thực tập và các nhiệm vụ của bạn trên Internova.
                         </p>
                     </div>
 
-
                     <form
-                        className={
-                            styles.loginForm
-                        }
-                        onSubmit={
-                            handleSubmit
-                        }
+                        className={styles.loginForm}
+                        onSubmit={handleSubmit}
                     >
-                        {/* EMAIL */}
-
-                        <div
-                            className={
-                                styles.formGroup
-                            }
-                        >
-                            <label
-                                htmlFor="email"
-                            >
+                        <div className={styles.formGroup}>
+                            <label htmlFor="email">
                                 Địa chỉ email
                             </label>
 
-
-                            <div
-                                className={
-                                    styles.inputWrapper
-                                }
-                            >
-                                <Mail
-                                    size={19}
-                                />
-
+                            <div className={styles.inputWrapper}>
+                                <Mail size={18} aria-hidden="true" />
                                 <input
                                     id="email"
                                     name="email"
                                     type="email"
-                                    placeholder="Nhập email"
+                                    placeholder="name@university.edu"
                                     autoComplete="email"
                                     required
                                 />
                             </div>
                         </div>
 
-
-                        {/* PASSWORD */}
-
-                        <div
-                            className={
-                                styles.formGroup
-                            }
-                        >
-                            <div
-                                className={
-                                    styles.passwordLabel
-                                }
-                            >
-                                <label
-                                    htmlFor="password"
-                                >
+                        <div className={styles.formGroup}>
+                            <div className={styles.passwordLabel}>
+                                <label htmlFor="password">
                                     Mật khẩu
                                 </label>
 
-
-                                <Link
-                                    href="/auth/forgot-password"
-                                >
+                                <Link href="/auth/forgot-password">
                                     Quên mật khẩu?
                                 </Link>
                             </div>
 
-
-                            <div
-                                className={
-                                    styles.inputWrapper
-                                }
-                            >
-                                <LockKeyhole
-                                    size={19}
-                                />
-
+                            <div className={styles.inputWrapper}>
+                                <LockKeyhole size={18} aria-hidden="true" />
                                 <input
                                     id="password"
                                     name="password"
-
                                     type={
                                         showPassword
                                             ? "text"
                                             : "password"
                                     }
-
                                     placeholder="Nhập mật khẩu"
-
                                     autoComplete="current-password"
-
                                     required
                                 />
 
-
                                 <button
                                     type="button"
-
-                                    className={
-                                        styles.passwordToggle
-                                    }
-
+                                    className={styles.passwordToggle}
                                     onClick={() =>
                                         setShowPassword(
-                                            current =>
-                                                !current
+                                            current => !current
                                         )
                                     }
+                                    aria-label={
+                                        showPassword
+                                            ? "Ẩn mật khẩu"
+                                            : "Hiện mật khẩu"
+                                    }
+                                    aria-pressed={showPassword}
                                 >
                                     {showPassword ? (
-                                        <EyeOff
-                                            size={18}
-                                        />
+                                        <EyeOff size={18} />
                                     ) : (
-                                        <Eye
-                                            size={18}
-                                        />
+                                        <Eye size={18} />
                                     )}
                                 </button>
                             </div>
                         </div>
 
-
                         {error && (
                             <div
-                                className={
-                                    styles.errorMessage
-                                }
+                                className={styles.errorMessage}
+                                role="alert"
+                                aria-live="polite"
                             >
                                 {error}
                             </div>
                         )}
 
-
-                        <label
-                            className={
-                                styles.rememberRow
-                            }
-                        >
-                            <input
-                                type="checkbox"
-                                name="remember"
-                            />
-
-                            <span>
-                                Ghi nhớ đăng nhập
-                            </span>
-                        </label>
-
+                        <div className={styles.formUtilities}>
+                            <label className={styles.rememberRow}>
+                                <input
+                                    type="checkbox"
+                                    name="remember"
+                                />
+                                <span>Ghi nhớ đăng nhập</span>
+                            </label>
+                        </div>
 
                         <button
                             type="submit"
-
-                            className={
-                                styles.loginButton
-                            }
-
-                            disabled={
-                                isLoading
-                            }
+                            className={styles.loginButton}
+                            disabled={isLoading}
                         >
                             {isLoading ? (
                                 <>
                                     <span
-                                        className={
-                                            styles.loadingSpinner
-                                        }
+                                        className={styles.loadingSpinner}
+                                        aria-hidden="true"
                                     />
-
                                     Đang đăng nhập...
                                 </>
                             ) : (
                                 <>
                                     Đăng nhập
-
-                                    <ArrowRight
-                                        size={18}
-                                    />
+                                    <ArrowRight size={18} />
                                 </>
                             )}
                         </button>
                     </form>
 
-
-                    {/* Không còn Google */}
-
-
-                    <div
-                        className={
-                            styles.authSwitch
-                        }
-                    >
-                        Chưa có tài khoản sinh viên?
-
-                        <Link
-                            href="/auth/register"
-                        >
-                            Đăng ký ngay
+                    <div className={styles.authSwitch}>
+                        <span>Chưa có tài khoản?</span>
+                        <Link href="/auth/register">
+                            Đăng ký
                         </Link>
                     </div>
 
+                    <div className={styles.securityNote}>
+                        <span className={styles.securityIcon}>
+                            <ShieldCheck size={17} />
+                        </span>
+                        <div>
+                            <strong>Secure university access</strong>
+                            <p>
+                                Phiên đăng nhập được bảo vệ và phân quyền
+                                theo tài khoản của bạn.
+                            </p>
+                        </div>
+                    </div>
 
-                    <p
-                        className={
-                            styles.terms
-                        }
-                    >
-                        Trang đăng ký công khai chỉ
-                        dành cho sinh viên. Tài khoản
-                        giảng viên do hệ thống cấp.
+                    <p className={styles.terms}>
+                        Trang đăng ký công khai chỉ dành cho sinh viên.
+                        Tài khoản giảng viên do hệ thống cấp.
                     </p>
                 </div>
+
+                <footer className={styles.authFooter}>
+                    <span>© 2026 Internova</span>
+                    <span>Protected access</span>
+                </footer>
             </section>
         </main>
     );

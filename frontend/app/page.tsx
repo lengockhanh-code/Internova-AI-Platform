@@ -1,163 +1,149 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import type { MouseEvent } from "react";
 import {
   ArrowRight,
-  BarChart3,
-  BookOpenCheck,
-  BotMessageSquare,
+  Bell,
+  BookOpen,
   BriefcaseBusiness,
-  Check,
-  CheckCircle2,
-  ClipboardCheck,
-  FileSearch,
+  ChevronRight,
+  CircleCheck,
   FileText,
   GraduationCap,
   Menu,
   MessageSquareText,
+  Radar,
+  Search,
   ShieldCheck,
-  Sparkles,
   Target,
-  TrendingUp,
-  UploadCloud,
   UserRoundCheck,
-  WandSparkles,
+  UsersRound,
   X,
-  Zap,
+  type LucideIcon,
 } from "lucide-react";
-
+import { useEffect, useMemo, useState } from "react";
 import styles from "./page.module.css";
 
-const features = [
+type NavItem = {
+  label: string;
+  id: string;
+};
+
+type SupportFeature = {
+  index: string;
+  title: string;
+  description: string;
+  items: string[];
+  icon: LucideIcon;
+};
+
+const navItems: NavItem[] = [
+  { label: "Tổng quan", id: "overview" },
+  { label: "Tính năng", id: "features" },
+  { label: "AI Assistant", id: "ai-assistant" },
+  { label: "Quy trình", id: "journey" },
+  { label: "Dành cho ai", id: "users" },
+];
+
+const supportFeatures: SupportFeature[] = [
   {
-    icon: BotMessageSquare,
-    title: "Tư vấn học vụ bằng AI",
-    description:
-      "Tra cứu thông tin từ bộ tài liệu thực tập VinUni được đưa vào hệ thống, kèm nguồn tham khảo rõ ràng.",
-    highlight: "RAG Assistant",
+    index: "01",
+    title: "AI Student Assistant",
+    description: "Một điểm hỏi đáp thống nhất cho những câu hỏi sinh viên cần xử lý ngay.",
+    items: ["Hỏi đáp quy định", "Tra cứu thông tin", "Hỗ trợ theo ngữ cảnh"],
+    icon: MessageSquareText,
   },
   {
-    icon: FileSearch,
-    title: "CV - JD Matching",
-    description:
-      "Phân tích mức độ phù hợp giữa CV và mô tả công việc, đồng thời đề xuất nội dung cần cải thiện.",
-    highlight: "Smart Matching",
-  },
-  {
-    icon: FileText,
-    title: "Quản lý báo cáo",
-    description:
-      "Tạo, theo dõi và nộp các loại báo cáo theo cấu hình của chương trình thực tập VinUni trong một không gian thống nhất.",
-    highlight: "Report Center",
-  },
-  {
-    icon: ClipboardCheck,
-    title: "Checklist thông minh",
-    description:
-      "Theo dõi nhiệm vụ, mốc thời gian và yêu cầu hồ sơ được cấu hình cho từng đợt thực tập tại VinUni.",
-    highlight: "Progress Tracking",
-  },
-  {
+    index: "02",
+    title: "Internship Support",
+    description: "Theo dõi kỳ thực tập từ khâu chuẩn bị đến báo cáo hoàn thành.",
+    items: ["Quản lý kỳ thực tập", "Theo dõi deadline", "Báo cáo tiến độ"],
     icon: BriefcaseBusiness,
-    title: "Hồ sơ thực tập tập trung",
-    description:
-      "Quản lý thông tin doanh nghiệp, mentor, giảng viên hướng dẫn, thời gian và tài liệu thực tập một cách trực quan.",
-    highlight: "Internship Profile",
   },
   {
-    icon: TrendingUp,
-    title: "Theo dõi tiến độ",
-    description:
-      "Dashboard tổng quan giúp sinh viên chủ động nhận biết công việc, deadline và mức độ hoàn thành.",
-    highlight: "Live Dashboard",
-  },
-];
-
-const steps = [
-  {
-    number: "01",
-    icon: UserRoundCheck,
-    title: "Tạo hồ sơ",
-    description:
-      "Cập nhật thông tin cá nhân, doanh nghiệp và vị trí thực tập.",
-  },
-  {
-    number: "02",
-    icon: UploadCloud,
-    title: "Tải CV và tài liệu",
-    description:
-      "Lưu trữ CV, đơn đăng ký, kế hoạch và các tài liệu cần thiết.",
-  },
-  {
-    number: "03",
-    icon: WandSparkles,
-    title: "Nhận hỗ trợ từ AI",
-    description:
-      "Tra cứu quy định, phân tích CV và nhận gợi ý cá nhân hóa.",
-  },
-  {
-    number: "04",
+    index: "03",
+    title: "CV & Career Matching",
+    description: "Biến CV và mô tả công việc thành tín hiệu rõ ràng để ra quyết định tốt hơn.",
+    items: ["CV - JD matching", "Đánh giá mức độ phù hợp", "Đề xuất cải thiện CV"],
     icon: Target,
-    title: "Hoàn thành kỳ thực tập",
-    description:
-      "Theo dõi tiến độ, nộp báo cáo và hoàn thiện mọi đầu việc.",
+  },
+  {
+    index: "04",
+    title: "Student Progress",
+    description: "Giữ toàn bộ nhiệm vụ, milestone và việc cần làm ở đúng một nơi.",
+    items: ["Checklist", "Nhiệm vụ", "Milestone & deadline"],
+    icon: Radar,
+  },
+  {
+    index: "05",
+    title: "Documents",
+    description: "Quản lý hồ sơ học tập và thực tập theo trạng thái thay vì theo thư mục rời rạc.",
+    items: ["Quản lý tài liệu", "Hồ sơ", "Báo cáo"],
+    icon: FileText,
+  },
+  {
+    index: "06",
+    title: "Smart Notifications",
+    description: "Ưu tiên đúng thông tin cần hành động thay vì thêm một luồng thông báo gây nhiễu.",
+    items: ["Nhắc deadline", "Cảnh báo việc còn thiếu"],
+    icon: Bell,
   },
 ];
 
-const stats = [
-  {
-    value: "24/7",
-    label: "Trợ lý AI sẵn sàng",
-  },
-  {
-    value: "01",
-    label: "Nền tảng tập trung",
-  },
-  {
-    value: "100%",
-    label: "Theo sát tiến độ",
-  },
-  {
-    value: "< 3s",
-    label: "Trải nghiệm phản hồi",
-  },
+const journeySteps = [
+  "Hoàn thiện hồ sơ",
+  "Chuẩn bị CV",
+  "Tìm cơ hội phù hợp",
+  "Nhận hỗ trợ từ AI",
+  "Theo dõi kỳ thực tập",
+  "Hoàn thành báo cáo",
 ];
 
-const testimonials = [
-  {
-    content:
-      "Internova giúp mình không còn bỏ sót deadline và dễ dàng tra cứu những quy định thực tập mà trước đây phải tìm trong rất nhiều tài liệu.",
-    name: "Sinh viên VinUni",
-    role: "Phản hồi minh hoạ",
-    initials: "VU",
-  },
-  {
-    content:
-      "Tính năng CV - JD Matching cho mình thấy rõ điểm mạnh và những phần cần sửa trước khi ứng tuyển vào doanh nghiệp.",
-    name: "Sinh viên VinUni",
-    role: "Phản hồi minh hoạ",
-    initials: "VU",
-  },
-  {
-    content:
-      "Dashboard rất trực quan. Mình có thể theo dõi hồ sơ, báo cáo và tiến độ thực tập trong cùng một hệ thống.",
-    name: "Sinh viên VinUni",
-    role: "Phản hồi minh hoạ",
-    initials: "VU",
-  },
+const trustItems = [
+  ["Controlled knowledge sources", "Chỉ sử dụng các nguồn dữ liệu được quản trị và phê duyệt trong hệ thống."],
+  ["Source attribution", "Mỗi câu trả lời quan trọng có thể đi kèm nguồn tham chiếu rõ ràng."],
+  ["Role-based access", "Quyền truy cập được phân tách theo sinh viên, giảng viên và quản trị viên."],
+  ["Student data protection", "Dữ liệu cá nhân được xử lý theo đúng ngữ cảnh và phạm vi cần thiết."],
+  ["Auditability", "Các thay đổi và tương tác quan trọng có thể được theo dõi để phục vụ quản trị."],
 ];
 
-export default function HomePage() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState("features");
+function scrollToSection(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+export default function InternovaLandingPage() {
+  const [activeSection, setActiveSection] = useState("overview");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  const observedIds = useMemo(
+    () => ["overview", "features", "ai-assistant", "journey", "dashboard", "users", "trust"],
+    [],
+  );
 
   useEffect(() => {
-    const revealElements = Array.from(
-      document.querySelectorAll<HTMLElement>("[data-reveal]")
+    const sectionObserver = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (!visible) return;
+
+        const id = visible.target.id;
+        if (id === "dashboard" || id === "trust") return;
+        setActiveSection(id);
+      },
+      {
+        rootMargin: "-28% 0px -55% 0px",
+        threshold: [0.08, 0.2, 0.35, 0.55],
+      },
     );
+
+    observedIds.forEach((id) => {
+      const element = document.getElementById(id);
+      if (element) sectionObserver.observe(element);
+    });
 
     const revealObserver = new IntersectionObserver(
       (entries) => {
@@ -168,772 +154,512 @@ export default function HomePage() {
           }
         });
       },
-      {
-        threshold: 0.12,
-        rootMargin: "0px 0px -70px 0px",
-      }
+      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
     );
 
-    revealElements.forEach((element) => {
-      element.classList.add(styles.reveal);
+    document.querySelectorAll(`.${styles.reveal}`).forEach((element) => {
       revealObserver.observe(element);
     });
 
-    const sectionIds = ["features", "ai", "workflow", "reviews"];
-    const sectionElements = sectionIds
-      .map((id) => document.getElementById(id))
-      .filter((section): section is HTMLElement => Boolean(section));
-
-    const sectionObserver = new IntersectionObserver(
-      (entries) => {
-        const visibleEntry = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((first, second) => second.intersectionRatio - first.intersectionRatio)[0];
-
-        if (visibleEntry?.target.id) {
-          setActiveSection(visibleEntry.target.id);
-        }
-      },
-      {
-        threshold: [0.2, 0.35, 0.55],
-        rootMargin: "-20% 0px -55% 0px",
-      }
-    );
-
-    sectionElements.forEach((section) => sectionObserver.observe(section));
-
     return () => {
-      revealObserver.disconnect();
       sectionObserver.disconnect();
+      revealObserver.disconnect();
     };
+  }, [observedIds]);
+
+  useEffect(() => {
+    let lastValue = window.scrollY > 24;
+    setIsScrolled(lastValue);
+
+    const onScroll = () => {
+      const nextValue = window.scrollY > 24;
+      if (nextValue === lastValue) return;
+      lastValue = nextValue;
+      setIsScrolled(nextValue);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const handleNavClick = (
-    event: MouseEvent<HTMLAnchorElement>,
-    sectionId: string
-  ) => {
-    event.preventDefault();
 
-    const target = document.getElementById(sectionId);
-
-    if (!target) {
-      return;
-    }
-
-    setActiveSection(sectionId);
-    setMenuOpen(false);
-
-    target.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-
-    window.history.replaceState(null, "", `#${sectionId}`);
-  };
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
 
   return (
-    <main className={styles.page}>
-      <div className={styles.backgroundGrid} />
-      <div className={styles.glowOne} />
-      <div className={styles.glowTwo} />
-      <div className={styles.glowThree} />
+    <main className={styles.pageShell}>
+      <div className={styles.videoLayer} aria-hidden="true">
+        <video
+          className={styles.backgroundVideo}
+          src="/videos/internova-scroll.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+        />
+        <div className={styles.videoOverlay} />
+        <div className={styles.videoTexture} />
+      </div>
 
-      <header className={styles.header}>
-        <nav className={styles.navbar}>
-          <Link href="/" className={styles.logo}>
-            <span className={styles.logoIcon}>
-              <Image
-                src="/vinuni-internship-logo.svg"
-                alt="Internova for VinUni logo"
-                width={48}
-                height={48}
-                loading="eager"
-              />
+      <header className={`${styles.header} ${isScrolled ? styles.headerScrolled : ""}`}>
+        <div className={styles.headerInner}>
+          <button className={styles.brand} type="button" onClick={() => scrollToSection("overview")}>
+            <span className={styles.brandMark}>
+              <Image src="/intern.png" alt="Internova" width={38} height={38} priority />
             </span>
-
-            <span className={styles.logoText}>
+            <span className={styles.brandTextGroup}>
               <strong>Internova</strong>
-              <small>for VinUni students</small>
+              <small>AI Student Support Platform</small>
             </span>
-          </Link>
-
-          <div className={styles.desktopNav}>
-            <a
-              href="#features"
-              className={activeSection === "features" ? styles.navActive : ""}
-              onClick={(event) => handleNavClick(event, "features")}
-            >
-              Tính năng
-            </a>
-            <a
-              href="#ai"
-              className={activeSection === "ai" ? styles.navActive : ""}
-              onClick={(event) => handleNavClick(event, "ai")}
-            >
-              Internship AI
-            </a>
-            <a
-              href="#workflow"
-              className={activeSection === "workflow" ? styles.navActive : ""}
-              onClick={(event) => handleNavClick(event, "workflow")}
-            >
-              Quy trình
-            </a>
-            <a
-              href="#reviews"
-              className={activeSection === "reviews" ? styles.navActive : ""}
-              onClick={(event) => handleNavClick(event, "reviews")}
-            >
-              Đánh giá
-            </a>
-          </div>
-
-          <div className={styles.navActions}>
-            <Link
-              href="/auth/login"
-              className={styles.loginLink}
-            >
-              Đăng nhập
-            </Link>
-
-            <Link
-              href="/auth/register"
-              className={styles.registerLink}
-            >
-              Đăng ký
-              <ArrowRight size={16} />
-            </Link>
-          </div>
-
-          <button
-            type="button"
-            className={styles.menuButton}
-            aria-label="Mở menu"
-            onClick={() => setMenuOpen((current) => !current)}
-          >
-            {menuOpen ? <X size={23} /> : <Menu size={23} />}
           </button>
-        </nav>
 
-        {menuOpen && (
-          <div className={styles.mobileMenu}>
-            <a
-              href="#features"
-              className={activeSection === "features" ? styles.mobileNavActive : ""}
-              onClick={(event) => handleNavClick(event, "features")}
-            >
-              Tính năng
+          <nav className={styles.desktopNav} aria-label="Primary navigation">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`${styles.navLink} ${activeSection === item.id ? styles.navLinkActive : ""}`}
+                onClick={() => scrollToSection(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className={styles.headerActions}>
+            <a className={styles.loginLink} href="/auth/login">
+              Đăng nhập
             </a>
-
-            <a
-              href="#ai"
-              className={activeSection === "ai" ? styles.mobileNavActive : ""}
-              onClick={(event) => handleNavClick(event, "ai")}
-            >
-              VinUni Internship AI
+            <a className={styles.loginLink} href="/auth/register">
+              Đăng ký
             </a>
-
-            <a
-              href="#workflow"
-              className={activeSection === "workflow" ? styles.mobileNavActive : ""}
-              onClick={(event) => handleNavClick(event, "workflow")}
+            <button
+              className={styles.menuButton}
+              type="button"
+              aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
+              aria-expanded={mobileOpen}
+              onClick={() => setMobileOpen((value) => !value)}
             >
-              Quy trình
-            </a>
+              {mobileOpen ? <X size={23} /> : <Menu size={23} />}
+            </button>
+          </div>
+        </div>
 
-            <a
-              href="#reviews"
-              className={activeSection === "reviews" ? styles.mobileNavActive : ""}
-              onClick={(event) => handleNavClick(event, "reviews")}
-            >
-              Đánh giá
-            </a>
-
-            <div className={styles.mobileActions}>
-              <Link href="/auth/login">Đăng nhập</Link>
-              <Link href="/auth/register">Đăng ký</Link>
+        <div className={`${styles.mobileMenu} ${mobileOpen ? styles.mobileMenuOpen : ""}`}>
+          <div className={styles.mobileMenuInner}>
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`${styles.mobileNavLink} ${activeSection === item.id ? styles.mobileNavLinkActive : ""}`}
+                onClick={() => {
+                  scrollToSection(item.id);
+                  setMobileOpen(false);
+                }}
+              >
+                {item.label}
+                <ChevronRight size={17} />
+              </button>
+            ))}
+            <div className={styles.mobileMenuActions}>
+              <a href="/auth/login" onClick={() => setMobileOpen(false)}>
+                Đăng nhập
+              </a>
+              <a href="/auth/register" onClick={() => setMobileOpen(false)}>
+                Đăng ký
+              </a>
             </div>
           </div>
-        )}
+        </div>
       </header>
 
-      <section className={styles.hero}>
-        <div className={styles.heroContent}>
-          <div className={styles.heroBadge}>
-            <Sparkles size={16} />
-            Nền tảng hỗ trợ thực tập dành cho sinh viên VinUni
-          </div>
-
-          <div className={styles.universityIdentity}>
-            <span className={styles.universityMark}>V</span>
-            <div>
-              <strong>Internova for VinUni</strong>
-              <small>Student Internship Support Platform</small>
-            </div>
-          </div>
-
-          <h1>
-            Biến hành trình thực tập thành một trải nghiệm
-            <span> thông minh hơn.</span>
-          </h1>
-
-          <p className={styles.heroDescription}>
-            Một không gian số tập trung cho sinh viên VinUni: quản lý hồ sơ, báo cáo, tiến độ và nhận hỗ trợ từ AI dựa trên tài liệu thực tập được cung cấp trong hệ thống.
-          </p>
-
-          <div className={styles.heroActions}>
-    <Link
-        href="/auth/register"
-        className={styles.primaryButton}
-    >
-        Bắt đầu với VinUni
-        <ArrowRight size={18} />
-    </Link>
-</div>
-
-          <div className={styles.trustRow}>
-            <div className={styles.avatarGroup}>
-              <span>NA</span>
-              <span>TH</span>
-              <span>ML</span>
-              <span>+</span>
-            </div>
-
-            <div>
-              <div className={styles.rating}>
-                ★ ★ ★ ★ ★
+      <section id="overview" className={`${styles.heroSection} ${styles.snapSection}`}>
+        <div className={styles.sectionFrame}>
+          <div className={styles.heroGrid}>
+            <div className={styles.heroCopy}>
+              <div className={`${styles.eyebrow} ${styles.heroFadeOne}`}>
+                <span className={styles.eyebrowLine} />
+                AI-powered student support platform
               </div>
-              <p>Được thiết kế theo hành trình thực tập của sinh viên VinUni</p>
+
+              <h1 className={`${styles.heroTitle} ${styles.heroFadeTwo}`}>
+                Đồng hành cùng sinh viên
+                <span> trong từng bước của hành trình đại học.</span>
+              </h1>
+
+              <p className={`${styles.heroLead} ${styles.heroFadeThree}`}>
+                Internova kết nối thông tin, học tập, thực tập, hồ sơ và trợ lý AI trong một trải nghiệm thống nhất để
+                sinh viên luôn biết mình cần làm gì tiếp theo.
+              </p>
+
+
+              <div className={`${styles.trustStrip} ${styles.heroFadeFive}`}>
+                <div>
+                  <ShieldCheck size={16} />
+                  <span>Dữ liệu có kiểm soát</span>
+                </div>
+                <div>
+                  <BookOpen size={16} />
+                  <span>AI trả lời có căn cứ</span>
+                </div>
+                <div>
+                  <CircleCheck size={16} />
+                  <span>Hỗ trợ xuyên suốt</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <section id="features" className={`${styles.contentSection} ${styles.snapSection}`}>
+        <div className={styles.sectionFrame}>
+          <div className={`${styles.sectionIntro} ${styles.reveal}`}>
+            <div className={styles.sectionKicker}>01 — STUDENT SUPPORT</div>
+            <div className={styles.sectionIntroGrid}>
+              <h2>Một nơi cho những việc sinh viên thực sự cần.</h2>
+              <p>
+                Thay vì chia nhỏ trải nghiệm thành nhiều cổng và công cụ rời rạc, Internova gom những tác vụ quan trọng
+                vào một không gian thống nhất với ngữ cảnh rõ ràng.
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.editorialFeatureGrid}>
+            {supportFeatures.map((feature, featureIndex) => {
+              const Icon = feature.icon;
+              return (
+                <article key={feature.index} className={`${styles.featureRow} ${styles.reveal}`}
+                  style={{ "--item": featureIndex } as React.CSSProperties}>
+                  <div className={styles.featureIndex}>{feature.index}</div>
+                  <div className={styles.featureIcon}><Icon size={20} strokeWidth={1.65} /></div>
+                  <div className={styles.featureMain}>
+                    <h3>{feature.title}</h3>
+                    <p>{feature.description}</p>
+                  </div>
+                  <ul className={styles.featureList}>
+                    {feature.items.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section id="ai-assistant" className={`${styles.aiSection} ${styles.snapSection}`}>
+        <div className={styles.sectionFrame}>
+          <div className={styles.aiSectionGrid}>
+            <div className={`${styles.aiCopy} ${styles.reveal}`}>
+              <div className={styles.sectionKicker}>02 — INTERNOVA AI</div>
+              <h2>
+                AI biết câu trả lời
+                <span> đến từ đâu.</span>
+              </h2>
+              <p>
+                Câu trả lời dựa trên dữ liệu được quản lý, có nguồn tham chiếu và đúng ngữ cảnh sinh viên.
+              </p>
+
+              <div className={styles.aiPrinciples}>
+                {[
+                  [ShieldCheck, "Có căn cứ"],
+                  [BookOpen, "Có nguồn"],
+                  [UserRoundCheck, "Đúng ngữ cảnh"],
+                ].map(([Icon, label], principleIndex) => {
+                  const TypedIcon = Icon as LucideIcon;
+                  return (
+                    <div key={label as string} style={{ "--item": principleIndex } as React.CSSProperties}>
+                      <TypedIcon size={17} strokeWidth={1.7} />
+                      <span>{label as string}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
+      </section>
 
-        <div className={styles.heroVisual}>
-          <div className={styles.visualOrbitOne} />
-          <div className={styles.visualOrbitTwo} />
-
-          <div className={styles.dashboardMockup}>
-            <div className={styles.mockupTopbar}>
-              <div className={styles.mockupLogo}>
-                <Image
-                  src="/vinuni-internship-logo.svg"
-                  alt="Internova for VinUni logo"
-                  width={32}
-                  height={32}
-                  loading="eager"
-                />
-                <span>Internova × VinUni</span>
-              </div>
-
-              <div className={styles.mockupUser}>
-                <span />
-                Hoàng
-              </div>
+      <section id="journey" className={`${styles.contentSection} ${styles.snapSection}`}>
+        <div className={styles.sectionFrame}>
+          <div className={`${styles.sectionIntro} ${styles.reveal}`}>
+            <div className={styles.sectionKicker}>03 — STUDENT JOURNEY</div>
+            <div className={styles.sectionIntroGrid}>
+              <h2>Từ chuẩn bị hồ sơ đến hoàn thành kỳ thực tập.</h2>
+              <p>
+                Một quy trình rõ ràng giúp sinh viên biết mình đang ở đâu, việc nào đang chờ và đâu là bước tiếp theo.
+              </p>
             </div>
+          </div>
 
-            <div className={styles.mockupContent}>
-              <div className={styles.mockupWelcome}>
-                <div>
-                  <small>Chào buổi sáng</small>
-                  <strong>Hành trình của bạn</strong>
-                </div>
-
-                <span className={styles.liveBadge}>
-                  <i />
-                  Đang hoạt động
-                </span>
-              </div>
-
-              <div className={styles.mockupStats}>
-                <div>
-                  <span className={styles.miniIcon}>
-                    <CheckCircle2 size={17} />
-                  </span>
-                  <small>Tiến độ</small>
-                  <strong>75%</strong>
-                </div>
-
-                <div>
-                  <span className={styles.miniIcon}>
-                    <FileText size={17} />
-                  </span>
-                  <small>Báo cáo</small>
-                  <strong>06</strong>
-                </div>
-
-                <div>
-                  <span className={styles.miniIcon}>
-                    <Target size={17} />
-                  </span>
-                  <small>Deadline</small>
-                  <strong>03</strong>
-                </div>
-              </div>
-
-              <div className={styles.mockupMainGrid}>
-                <div className={styles.progressPanel}>
-                  <div className={styles.panelTitle}>
-                    <span>Tiến độ thực tập</span>
-                    <strong>Tuần 6</strong>
-                  </div>
-
-                  <div className={styles.chartBars}>
-                    <span style={{ height: "36%" }} />
-                    <span style={{ height: "54%" }} />
-                    <span style={{ height: "46%" }} />
-                    <span style={{ height: "72%" }} />
-                    <span style={{ height: "64%" }} />
-                    <span style={{ height: "88%" }} />
-                    <span style={{ height: "76%" }} />
-                  </div>
-
-                  <div className={styles.chartLabels}>
-                    <span>T2</span>
-                    <span>T3</span>
-                    <span>T4</span>
-                    <span>T5</span>
-                    <span>T6</span>
-                    <span>T7</span>
-                    <span>CN</span>
-                  </div>
-                </div>
-
-                <div className={styles.aiPanel}>
-                  <span className={styles.aiPanelIcon}>
-                    <Sparkles size={21} />
-                  </span>
-
-                  <strong>VinUni Internship AI</strong>
-
+          <div className={`${styles.timeline} ${styles.reveal}`}>
+            <div className={styles.timelineTrack}>
+              <div className={styles.timelineProgress} />
+            </div>
+            {journeySteps.map((step, index) => (
+              <div key={step} className={styles.timelineStep} style={{ "--step": index } as React.CSSProperties}>
+                <div className={styles.timelineNumber}>{String(index + 1).padStart(2, "0")}</div>
+                <div className={styles.timelineMarker} />
+                <div className={styles.timelineContent}>
+                  <h3>{step}</h3>
                   <p>
-                    Tôi có thể hỗ trợ bạn tra cứu quy định
-                    và chuẩn bị hồ sơ.
+                    {index === 0 && "Hoàn thiện thông tin cá nhân, điều kiện và hồ sơ cần thiết."}
+                    {index === 1 && "Chuẩn hóa CV theo mục tiêu nghề nghiệp và vị trí ứng tuyển."}
+                    {index === 2 && "Đối chiếu hồ sơ với cơ hội phù hợp dựa trên kỹ năng và yêu cầu."}
+                    {index === 3 && "Nhận hướng dẫn có căn cứ theo dữ liệu và bối cảnh của sinh viên."}
+                    {index === 4 && "Theo dõi nhiệm vụ, mốc thời gian và báo cáo tiến độ thực tập."}
+                    {index === 5 && "Hoàn tất báo cáo, tài liệu và các yêu cầu kết thúc kỳ thực tập."}
                   </p>
-
-                  <button type="button">
-                    Bắt đầu trò chuyện
-                  </button>
                 </div>
               </div>
-
-              <div className={styles.taskPanel}>
-                <div className={styles.panelTitle}>
-                  <span>Nhiệm vụ gần đây</span>
-                  <small>Xem tất cả</small>
-                </div>
-
-                <div className={styles.taskItem}>
-                  <span className={styles.taskCheck}>
-                    <Check size={14} />
-                  </span>
-                  <div>
-                    <strong>Nộp báo cáo tuần 6</strong>
-                    <small>Hoàn thành đúng hạn</small>
-                  </div>
-                  <span className={styles.doneBadge}>
-                    Hoàn thành
-                  </span>
-                </div>
-
-                <div className={styles.taskItem}>
-                  <span className={styles.taskPending}>
-                    <FileText size={14} />
-                  </span>
-                  <div>
-                    <strong>Hoàn thiện hồ sơ thực tập</strong>
-                    <small>Còn thiếu 1 tài liệu</small>
-                  </div>
-                  <span className={styles.pendingBadge}>
-                    Đang làm
-                  </span>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
+        </div>
+      </section>
 
-          <div className={styles.floatingCardOne}>
-            <span>
-              <Zap size={19} />
-            </span>
-
+      <section id="dashboard" className={`${styles.dashboardSection} ${styles.snapSection}`}>
+        <div className={styles.sectionFrame}>
+          <div className={`${styles.dashboardIntro} ${styles.reveal}`}>
             <div>
-              <strong>AI sẵn sàng</strong>
-              <small>Hỗ trợ bạn 24/7</small>
+              <div className={styles.sectionKicker}>04 — PERSONAL DASHBOARD</div>
+              <h2>Một dashboard để biết chính xác việc gì cần làm tiếp theo.</h2>
             </div>
-          </div>
-
-          <div className={styles.floatingCardTwo}>
-            <span>
-              <ShieldCheck size={19} />
-            </span>
-
-            <div>
-              <strong>Dữ liệu đáng tin cậy</strong>
-              <small>Dựa trên tài liệu chính thức</small>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.statsSection} data-reveal>
-        <div className={styles.statsContainer}>
-          {stats.map((stat) => (
-            <div key={stat.label} className={styles.statItem}>
-              <strong>{stat.value}</strong>
-              <span>{stat.label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section id="features" className={styles.section} data-reveal>
-        <div className={styles.sectionHeader}>
-          <span className={styles.sectionEyebrow}>
-            <Sparkles size={15} />
-            Hệ sinh thái thực tập VinUni
-          </span>
-
-          <h2>
-            Mọi công cụ bạn cần cho một kỳ thực tập
-            <span> hiệu quả.</span>
-          </h2>
-
-          <p>
-            Tập trung hồ sơ, checklist, báo cáo, quy trình và trợ lý AI trong một trải nghiệm thống nhất dành cho sinh viên VinUni.
-          </p>
-        </div>
-
-        <div className={styles.featureGrid}>
-          {features.map(
-            ({
-              icon: Icon,
-              title,
-              description,
-              highlight,
-            }) => (
-              <article
-                key={title}
-                className={styles.featureCard}
-                data-reveal
-              >
-                <div className={styles.featureCardTop}>
-                  <span className={styles.featureIcon}>
-                    <Icon size={25} strokeWidth={1.8} />
-                  </span>
-
-                  <span className={styles.featureTag}>
-                    {highlight}
-                  </span>
-                </div>
-
-                <h3>{title}</h3>
-                <p>{description}</p>
-
-                <span className={styles.featureLink}>
-                  Tìm hiểu thêm
-                  <ArrowRight size={16} />
-                </span>
-              </article>
-            )
-          )}
-        </div>
-      </section>
-
-      <section id="ai" className={styles.aiSection} data-reveal>
-        <div className={styles.aiShowcase}>
-          <div className={styles.aiContent}>
-            <span className={styles.sectionEyebrowDark}>
-              <BotMessageSquare size={16} />
-              VinUni Internship AI
-            </span>
-
-            <h2>
-              Không chỉ là chatbot.
-              <span> Đây là trợ lý thực tập cá nhân.</span>
-            </h2>
-
             <p>
-              Trợ lý AI truy xuất nội dung từ bộ tài liệu thực tập VinUni đã được quản trị viên phê duyệt, hiển thị nguồn tham khảo và thông báo rõ khi chưa đủ căn cứ trả lời.
+              Tập trung các tín hiệu quan trọng — tiến độ, deadline, CV, tài liệu và tương tác AI — thay vì biến dashboard
+              thành nơi chứa mọi dữ liệu có thể hiển thị.
             </p>
-
-            <ul className={styles.aiBenefits}>
-              <li>
-                <CheckCircle2 size={19} />
-                Tra cứu quy định và thủ tục thực tập
-              </li>
-              <li>
-                <CheckCircle2 size={19} />
-                Trả lời dựa trên tài liệu đáng tin cậy
-              </li>
-              <li>
-                <CheckCircle2 size={19} />
-                Gợi ý cải thiện CV theo từng công việc
-              </li>
-              <li>
-                <CheckCircle2 size={19} />
-                Hỗ trợ sinh viên mọi lúc, mọi nơi
-              </li>
-            </ul>
-
-            <Link
-              href="/auth/register"
-              className={styles.aiButton}
-            >
-              Trải nghiệm VinUni Internship AI
-              <ArrowRight size={18} />
-            </Link>
           </div>
 
-          <div className={styles.aiChatPreview}>
-            <div className={styles.chatPreviewHeader}>
+          <div className={`${styles.fullDashboard} ${styles.reveal}`}>
+            <div className={styles.dashboardToolbar}>
               <div>
-                <span className={styles.chatAvatar}>
-                  <BotMessageSquare size={22} />
-                </span>
-
-                <div>
-                  <strong>VinUni Internship AI</strong>
-                  <small>
-                    <i />
-                    Đang trực tuyến
-                  </small>
-                </div>
+                <Image src="/intern.png" alt="" width={30} height={30} />
+                <span>Student overview</span>
               </div>
-
-              <Sparkles size={20} />
-            </div>
-
-            <div className={styles.chatMessages}>
-              <div className={styles.userMessage}>
-                Quy trình đăng ký thực tập gồm những bước nào?
-              </div>
-
-              <div className={styles.botMessage}>
-                <span>
-                  <BotMessageSquare size={17} />
-                </span>
-
-                <div>
-                  <p>
-                    Quy trình đăng ký thực tập thường bao
-                    gồm 4 bước chính:
-                  </p>
-
-                  <ol>
-                    <li>Hoàn thiện hồ sơ sinh viên.</li>
-                    <li>Đăng ký doanh nghiệp thực tập.</li>
-                    <li>Nộp kế hoạch thực tập.</li>
-                    <li>Chờ khoa xác nhận.</li>
-                  </ol>
-
-                  <small>
-                    <BookOpenCheck size={14} />
-                    Nguồn: Tài liệu thực tập VinUni trong hệ thống
-                  </small>
-                </div>
+              <div className={styles.dashboardToolbarActions}>
+                <button type="button"><Search size={15} /> Search</button>
+                <button type="button"><Bell size={15} /></button>
+                <span className={styles.dashboardAvatar}>VH</span>
               </div>
             </div>
 
-            <div className={styles.chatInput}>
-              <span>Nhập câu hỏi của bạn...</span>
-              <button type="button">
-                <ArrowRight size={17} />
-              </button>
+            <div className={styles.dashboardHeaderRow}>
+              <div>
+                <span>FRIDAY · AUGUST 28</span>
+                <h3>Welcome back, Student</h3>
+                <p>Here is what needs your attention today.</p>
+              </div>
+              <div className={styles.dashboardHeaderMeta}>
+                <span>Academic term</span>
+                <strong>Fall 2026</strong>
+              </div>
+            </div>
+
+            <div className={styles.dashboardStats}>
+              <div className={styles.dashboardStatPrimary}>
+                <div className={styles.statLabel}>Internship progress</div>
+                <div className={styles.statValueRow}><strong>68%</strong><span>On track</span></div>
+                <div className={styles.statProgress}><i style={{ width: "68%" }} /></div>
+                <small>3 milestones remaining</small>
+              </div>
+              <div className={styles.dashboardStat}>
+                <span>Tasks completed</span>
+                <strong>12/16</strong>
+                <small>75% completion</small>
+              </div>
+              <div className={styles.dashboardStat}>
+                <span>Next deadline</span>
+                <strong>Weekly report</strong>
+                <small>Tomorrow · 17:00</small>
+              </div>
+              <div className={styles.dashboardStat}>
+                <span>CV matching</span>
+                <strong>84%</strong>
+                <small>AI Product Intern</small>
+              </div>
+            </div>
+
+            <div className={styles.dashboardMainGrid}>
+              <div className={styles.dashboardTablePanel}>
+                <div className={styles.tablePanelHeader}>
+                  <div>
+                    <span>UPCOMING TASKS</span>
+                    <h4>Priority queue</h4>
+                  </div>
+                  <button type="button">View all</button>
+                </div>
+                <div className={styles.taskTable}>
+                  <div className={styles.taskTableHead}>
+                    <span>Task</span><span>Category</span><span>Due</span><span>Status</span>
+                  </div>
+                  {[
+                    ["Submit weekly report", "Internship", "29 Aug", "High"],
+                    ["Review CV suggestions", "Career", "31 Aug", "Review"],
+                    ["Upload company confirmation", "Document", "02 Sep", "Pending"],
+                    ["Supervisor check-in", "Internship", "04 Sep", "Scheduled"],
+                  ].map((row, rowIndex) => (
+                    <div className={styles.taskTableRow} key={row[0]} style={{ "--item": rowIndex } as React.CSSProperties}>
+                      <strong>{row[0]}</strong><span>{row[1]}</span><span>{row[2]}</span><span>{row[3]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <aside className={styles.dashboardSidePanel}>
+                <div className={styles.sidePanelBlock}>
+                  <div className={styles.sidePanelTitle}>
+                    <span>AI CONVERSATIONS</span>
+                    <MessageSquareText size={16} />
+                  </div>
+                  <strong>18</strong>
+                  <small>6 conversations this week</small>
+                </div>
+
+                <div className={styles.sidePanelBlock}>
+                  <div className={styles.sidePanelTitle}>
+                    <span>LATEST DOCUMENT</span>
+                    <FileText size={16} />
+                  </div>
+                  <strong>Internship Agreement.pdf</strong>
+                  <small>Verified · 24 Aug 2026</small>
+                </div>
+
+                <div className={styles.sidePanelBlock}>
+                  <div className={styles.sidePanelTitle}>
+                    <span>UPCOMING</span>
+                    <Bell size={16} />
+                  </div>
+                  <strong>Supervisor review</strong>
+                  <small>4 Sep · 10:00</small>
+                </div>
+              </aside>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="workflow" className={styles.section} data-reveal>
-        <div className={styles.sectionHeader}>
-          <span className={styles.sectionEyebrow}>
-            <Target size={15} />
-            Quy trình đơn giản
-          </span>
+      <section id="users" className={`${styles.usersSection} ${styles.snapSection}`}>
+        <div className={styles.sectionFrame}>
+          <div className={`${styles.sectionIntro} ${styles.reveal}`}>
+            <div className={styles.sectionKicker}>05 — FOR EVERY ROLE</div>
+            <div className={styles.sectionIntroGrid}>
+              <h2>Một nền tảng, ba góc nhìn vận hành.</h2>
+              <p>
+                Cùng một hệ thống dữ liệu nhưng mỗi vai trò chỉ nhìn thấy đúng những gì họ cần để hành động.
+              </p>
+            </div>
+          </div>
 
-          <h2>
-            Bắt đầu hành trình chỉ với
-            <span> bốn bước.</span>
-          </h2>
-
-          <p>
-            Luồng sử dụng được thiết kế ngắn gọn để sinh viên VinUni có thể bắt đầu nhanh, theo dõi đúng đầu việc và không bỏ lỡ các mốc quan trọng.
-          </p>
-        </div>
-
-        <div className={styles.stepsGrid}>
-          {steps.map(
-            ({
-              number,
-              icon: Icon,
-              title,
-              description,
-            }) => (
-              <article key={number} className={styles.stepCard} data-reveal>
-                <span className={styles.stepNumber}>
-                  {number}
-                </span>
-
-                <span className={styles.stepIcon}>
-                  <Icon size={25} />
-                </span>
-
-                <h3>{title}</h3>
-                <p>{description}</p>
-              </article>
-            )
-          )}
-        </div>
-      </section>
-
-      <section id="reviews" className={styles.reviewSection} data-reveal>
-        <div className={styles.sectionHeader}>
-          <span className={styles.sectionEyebrow}>
-            <MessageSquareText size={15} />
-            Trải nghiệm người dùng
-          </span>
-
-          <h2>
-            Được xây dựng để sinh viên
-            <span> tự tin hơn.</span>
-          </h2>
-        </div>
-
-        <div className={styles.reviewGrid}>
-          {testimonials.map((testimonial, index) => (
-            <article
-              key={`${testimonial.name}-${index}`}
-              className={styles.reviewCard}
-              data-reveal
-            >
-              <div className={styles.reviewStars}>
-                ★ ★ ★ ★ ★
+          <div className={styles.usersColumns}>
+            <article className={`${styles.userColumn} ${styles.reveal}`} style={{ "--item": 0 } as React.CSSProperties}>
+              <div className={styles.userColumnTop}>
+                <span>01</span>
+                <GraduationCap size={24} strokeWidth={1.5} />
               </div>
-
-              <blockquote>
-                “{testimonial.content}”
-              </blockquote>
-
-              <div className={styles.reviewUser}>
-                <span>{testimonial.initials}</span>
-
-                <div>
-                  <strong>{testimonial.name}</strong>
-                  <small>{testimonial.role}</small>
-                </div>
-              </div>
+              <h3>Sinh viên</h3>
+              <p>Quản lý hành trình cá nhân từ hồ sơ, CV, thực tập đến báo cáo và các mốc cần hoàn thành.</p>
+              <ul>
+                <li>Personal dashboard</li>
+                <li>AI guidance</li>
+                <li>Deadline & task tracking</li>
+              </ul>
             </article>
-          ))}
-        </div>
-      </section>
 
-      <section className={styles.ctaSection} data-reveal>
-        <div className={styles.ctaGlow} />
+            <article className={`${styles.userColumn} ${styles.reveal}`} style={{ "--item": 1 } as React.CSSProperties}>
+              <div className={styles.userColumnTop}>
+                <span>02</span>
+                <UsersRound size={24} strokeWidth={1.5} />
+              </div>
+              <h3>Giảng viên</h3>
+              <p>Theo dõi sinh viên, tiến độ thực tập, báo cáo và các trường hợp cần hỗ trợ sớm.</p>
+              <ul>
+                <li>Student monitoring</li>
+                <li>Progress review</li>
+                <li>Report oversight</li>
+              </ul>
+            </article>
 
-        <div className={styles.ctaContent}>
-          <span>
-            <GraduationCap size={28} />
-          </span>
-
-          <h2>Sẵn sàng chủ động hơn trong kỳ thực tập tại VinUni?</h2>
-
-          <p>
-            Đăng nhập bằng tài khoản được cấp để quản lý hồ sơ, báo cáo, checklist và nhận hỗ trợ AI trong cùng một nền tảng.
-          </p>
-
-          <div className={styles.ctaActions}>
-            <Link
-              href="/auth/register"
-              className={styles.ctaPrimary}
-            >
-              Đăng ký sử dụng
-              <ArrowRight size={18} />
-            </Link>
-
-            <Link
-              href="/auth/login"
-              className={styles.ctaSecondary}
-            >
-              Tôi đã có tài khoản
-            </Link>
+            <article className={`${styles.userColumn} ${styles.reveal}`} style={{ "--item": 2 } as React.CSSProperties}>
+              <div className={styles.userColumnTop}>
+                <span>03</span>
+                <ShieldCheck size={24} strokeWidth={1.5} />
+              </div>
+              <h3>Nhà trường / Admin</h3>
+              <p>Quản trị tài liệu, tri thức, dữ liệu và theo dõi tiến độ tổng thể ở cấp hệ thống.</p>
+              <ul>
+                <li>Knowledge governance</li>
+                <li>Role & access control</li>
+                <li>Institution-wide overview</li>
+              </ul>
+            </article>
           </div>
         </div>
       </section>
 
-      <footer className={styles.footer} data-reveal>
-        <div className={styles.footerGlow} />
+      <section id="trust" className={`${styles.trustSection} ${styles.snapSection}`}>
+        <div className={styles.sectionFrame}>
+          <div className={`${styles.trustHeading} ${styles.reveal}`}>
+            <div className={styles.sectionKicker}>06 — TRUST BY DESIGN</div>
+            <h2>AI đáng tin cậy bắt đầu từ dữ liệu đáng tin cậy.</h2>
+          </div>
 
-        <div className={styles.footerContainer}>
+          <div className={styles.trustList}>
+            {trustItems.map(([title, description], index) => (
+              <div className={`${styles.trustRow} ${styles.reveal}`} key={title} style={{ "--item": index } as React.CSSProperties}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <h3>{title}</h3>
+                  <p>{description}</p>
+                </div>
+                <ShieldCheck size={19} strokeWidth={1.6} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.finalCtaSection}>
+        <div className={styles.sectionFrame}>
+          <div className={`${styles.finalCtaInner} ${styles.reveal}`}>
+            <div>
+              <span>INTERNOVA AI PLATFORM</span>
+              <h2>Một trải nghiệm tốt hơn cho hành trình sinh viên.</h2>
+            </div>
+            <a href="/auth/register">
+              Đăng ký
+              <ArrowRight size={18} />
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <footer className={styles.footer}>
+        <div className={styles.sectionFrame}>
           <div className={styles.footerTop}>
             <div className={styles.footerBrand}>
-              <Link href="/" className={styles.footerLogo}>
-                <span className={styles.footerLogoIcon}>
-                  <Image
-                    src="/vinuni-internship-logo.svg"
-                    alt="Internova for VinUni logo"
-                    width={48}
-                    height={48}
-                  />
-                </span>
-
-                <span>
-                  <strong>Internova</strong>
-                  <small>Internship Support Platform</small>
-                </span>
-              </Link>
-
-              <p>
-                Nền tảng hỗ trợ hành trình thực tập của sinh viên VinUni, kết nối hồ sơ, tiến độ, báo cáo và trợ lý AI.
-              </p>
-
-
-              <p className={styles.projectNote}>
-                Sản phẩm phục vụ dự án tại VinUni; nội dung quy định được quản trị theo tài liệu của từng chương trình.
-              </p>
+              <Image src="/intern.png" alt="Internova" width={38} height={38} />
+              <div>
+                <strong>Internova</strong>
+                <span>VinUni AI Student Support Platform</span>
+              </div>
             </div>
-
-            <div className={styles.footerNavigation}>
-              <div className={styles.footerColumn}>
-                <h3>Sản phẩm</h3>
-
-                <a href="#features">Tính năng</a>
-                <a href="#ai">VinUni Internship AI</a>
-                <a href="#workflow">Quy trình</a>
-                <a href="#reviews">Đánh giá</a>
-              </div>
-
-              <div className={styles.footerColumn}>
-                <h3>Tài khoản</h3>
-
-                <Link href="/auth/login">Đăng nhập</Link>
-                <Link href="/auth/register">Đăng ký</Link>
-                <Link href="student/dashboard">Dashboard</Link>
-                <Link href="student/internship-profile">
-                  Hồ sơ thực tập
-                </Link>
-              </div>
-
-              <div className={styles.footerColumn}>
-                <h3>Hỗ trợ</h3>
-
-                <a href="#">Trung tâm trợ giúp</a>
-                <a href="#">Điều khoản sử dụng</a>
-                <a href="#">Chính sách bảo mật</a>
-                <a href="#">Liên hệ</a>
-              </div>
+            <div className={styles.footerLinks}>
+              <a href="/auth/login">Login</a>
+              <a href="/auth/register">Register</a>
+              <a href="/privacy">Privacy</a>
             </div>
           </div>
-
-          <div className={styles.footerDivider} />
-
           <div className={styles.footerBottom}>
-            <p>© 2026 Internova for VinUni — Student Project.</p>
-
-            <div className={styles.footerBottomLinks}>
-              <a href="#">Quyền riêng tư</a>
-              <a href="#">Điều khoản</a>
-              <span>Built for VinUni students</span>
-            </div>
+            <span>© 2026 Internova</span>
+            <span>Built for a clearer student journey.</span>
           </div>
         </div>
       </footer>
