@@ -194,11 +194,13 @@ export default function InternovaLandingPage() {
 
   return (
     <main className={styles.pageShell}>
+      <link rel="preload" href="/videos/internova-poster.jpg" as="image" />
       <link rel="preload" href="/videos/internova-intro.mp4" as="video" type="video/mp4" />
       <div className={styles.videoLayer} aria-hidden="true">
         <video
           className={`${styles.backgroundVideo} ${styles.introVideo} ${mainVideoReady ? styles.videoHidden : ""}`}
           src="/videos/internova-intro.mp4"
+          poster="/videos/internova-poster.jpg"
           autoPlay
           muted
           loop
@@ -211,6 +213,7 @@ export default function InternovaLandingPage() {
           <video
             className={`${styles.backgroundVideo} ${styles.mainVideo} ${mainVideoReady ? styles.videoReady : ""}`}
             src="/videos/internova-scroll.mp4"
+            poster="/videos/internova-poster.jpg"
             autoPlay
             muted
             loop

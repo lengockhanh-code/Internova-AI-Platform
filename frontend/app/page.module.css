@@ -56,6 +56,9 @@
   inset: 0;
   z-index: -3;
   overflow: hidden;
+  background-image: url("/videos/internova-poster.jpg");
+  background-position: center;
+  background-size: cover;
   pointer-events: none;
 }
 
