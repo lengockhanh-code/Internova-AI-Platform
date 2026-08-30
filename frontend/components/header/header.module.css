@@ -1142,8 +1142,8 @@
    Keeps all existing header interactions intact.
 ========================================================== */
 .header {
-    min-height: 90px;
-    padding: 14px 34px 14px 44px;
+    min-height: 76px;
+    padding: 9px 34px 9px 44px;
     gap: 28px;
     border-bottom: 1px solid #dce5f1;
     background: rgba(255, 255, 255, 0.96);
@@ -1331,4 +1331,5 @@
     .logo {
         flex: 0 0 auto;
     }
+
 }

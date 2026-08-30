@@ -15,14 +15,17 @@ without touching the database layer; swapping this for a real DB
 table later does not require changing this file's public API (the
 request/response models stay the same).
 
-FIX (2nd pass): /detect now optionally accepts the CHAT's session_id
-and remembers the last detected form for it in _PENDING_SUGGESTIONS.
-This lets bridge.py recognize "the student just said yes to a form
-suggestion" on the very next /chat turn WITHOUT reading anything from
-RAG's own conversation memory (src.rag.memory) — the frontend already
-calls /detect after every RAG answer (to decide whether to show the
-suggestion text), so this reuses that exact call instead of adding a
-new dependency on RAG internals.
+FIX (Explicit Intent Only): /detect is now back to fully stateless
+(no session_id tracking) — the earlier "remember the last detected
+form per chat session, auto-start on the student's next plain 'yes'"
+mechanism (_PENDING_SUGGESTIONS) has been removed. bridge.py now
+detects fill-intent directly on every incoming message instead (an
+explicit action phrase like "điền giúp" + a form detect_form() can
+identify), independent of any prior RAG turn or /detect call. /detect
+itself is kept only as an optional, stateless "is this text related
+to a form?" check the frontend may still use for a lightweight
+discoverability hint (e.g. a small text note under a form-related RAG
+answer) — it no longer drives any auto-trigger logic.
 """
 
 from __future__ import annotations
@@ -31,28 +34,53 @@ import uuid
 from threading import Lock
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 
 from src.agents.form_agent.graph import form_agent
-from src.agents.form_agent.state import FormAgentState, FormCode
+from src.agents.form_agent.state import FormAgentState
+from src.agents.form_agent.tools.form_tool import build_profile_field_values
+from src.database.connection import SessionLocal
+from src.security.auth import decode_access_token
+from src.services.student_settings_service import get_student_settings
 
 router = APIRouter(prefix="/form-agent", tags=["form-agent"])
 
 _SESSIONS: dict[str, FormAgentState] = {}
 _LOCK = Lock()
 
-# chat-session-id -> last detected form, set by /detect. Lives here
-# (not in bridge.py) because it's naturally next to _SESSIONS and
-# guarded by the same _LOCK. See module docstring above.
-_PENDING_SUGGESTIONS: dict[str, FormCode] = {}
+
+def _get_user_from_header(authorization: Optional[str] = Header(None)) -> Optional[dict]:
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization.split("Bearer ", 1)[1].strip()
+    try:
+        payload = decode_access_token(token)
+        user_id = payload.get("sub")
+        if user_id:
+            return {"id": int(user_id)}
+    except Exception:
+        pass
+    return None
+
+
+def _fetch_profile_field_values(current_user: Optional[dict]) -> dict[str, str | None]:
+    if not current_user or not current_user.get("id"):
+        return {}
+    user_id = current_user["id"]
+    try:
+        with SessionLocal() as db:
+            profile = get_student_settings(db, int(user_id))
+            return dict(build_profile_field_values(profile))
+    except Exception:
+        return {}
 
 
 class FormAgentTurnRequest(BaseModel):
     session_id: Optional[str] = None
     message: str
-    detected_form: Optional[FormCode] = None
+    detected_form: Optional[str] = None
 
 
 class FormAgentTurnResponse(BaseModel):
@@ -71,18 +99,17 @@ class FormAgentConfirmRequest(BaseModel):
 
 class FormAgentDetectRequest(BaseModel):
     text: str
-    session_id: Optional[str] = None
 
 
 class FormAgentDetectResponse(BaseModel):
     detected_form: Optional[str] = None
 
 
-def _fresh_state() -> FormAgentState:
+def _fresh_state(profile_field_values: dict[str, str | None] | None = None) -> FormAgentState:
     return {
         "conversation_text": "",
         "latest_user_message": "",
-        "field_values": {},
+        "field_values": dict(profile_field_values or {}),
         "human_approved": False,
         "status": "selecting_form",
     }
@@ -103,34 +130,23 @@ def _to_response(session_id: str, state: FormAgentState) -> FormAgentTurnRespons
 @router.post("/detect", response_model=FormAgentDetectResponse)
 async def form_agent_detect(request: FormAgentDetectRequest) -> FormAgentDetectResponse:
     """Lightweight, stateless check: does this text relate to one of
-    Form 1-4? Used by the frontend to decide whether to show the
-    inline '🤖 Cần mình giúp điền...' suggestion under a chat message —
-    intentionally independent of how chat_service.py tags its own
-    sources (that tagging is out of scope to modify, and isn't
-    reliable for this purpose).
-
-    FIX: if the caller also passes the chat's session_id, remember the
-    detected form (or forget it, if none was found) for that session —
-    see _PENDING_SUGGESTIONS and bridge.maybe_autostart(), which uses
-    this to auto-start a form_agent session on the student's next
-    plain-text "yes", without needing to read RAG's own memory.
+    Form 1-4? No longer drives any auto-trigger logic — kept only as
+    an optional signal the frontend may use for a discoverability
+    hint (e.g. a small non-blocking text note, not a Yes/No prompt).
+    See bridge.py for how form-filling sessions actually get started
+    now (explicit intent detected directly on each incoming message).
     """
     from src.agents.form_agent.nodes.form_selector import detect_form
 
     detected = detect_form(request.text)
-
-    if request.session_id:
-        with _LOCK:
-            if detected:
-                _PENDING_SUGGESTIONS[request.session_id] = detected
-            else:
-                _PENDING_SUGGESTIONS.pop(request.session_id, None)
-
     return FormAgentDetectResponse(detected_form=detected)
 
 
 @router.post("/turn", response_model=FormAgentTurnResponse)
-async def form_agent_turn(request: FormAgentTurnRequest) -> FormAgentTurnResponse:
+async def form_agent_turn(
+    request: FormAgentTurnRequest,
+    current_user: Optional[dict] = Depends(_get_user_from_header),
+) -> FormAgentTurnResponse:
     """One turn of the form-filling conversation.
 
     Send session_id=None (or omit it) the first time to start a new
@@ -149,11 +165,19 @@ async def form_agent_turn(request: FormAgentTurnRequest) -> FormAgentTurnRespons
         if request.session_id and request.session_id in _SESSIONS:
             session_id = request.session_id
             state = _SESSIONS[session_id]
+            # If state exists but student profile wasn't loaded before and user is authenticated now:
+            if current_user and not any(state.get("field_values", {}).get(k) for k in ("name_in_full", "student_id")):
+                prof = _fetch_profile_field_values(current_user)
+                for k, v in prof.items():
+                    if v and not state.setdefault("field_values", {}).get(k):
+                        state["field_values"][k] = v
         else:
             session_id = request.session_id or str(uuid.uuid4())
-            state = _fresh_state()
+            profile_values = _fetch_profile_field_values(current_user)
+            state = _fresh_state(profile_values)
             if request.detected_form:
-                state["detected_form"] = request.detected_form
+                state["detected_form"] = request.detected_form  # type: ignore[assignment]
+                state["status"] = "collecting_info"
 
         if state.get("status") == "awaiting_review":
             state["status"] = "collecting_info"

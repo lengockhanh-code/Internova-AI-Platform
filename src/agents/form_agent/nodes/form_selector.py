@@ -72,31 +72,25 @@ _FORM_KEYWORDS: dict[FormCode, tuple[str, ...]] = {
         "di nuoc ngoai", "sang nuoc ngoai",
         "ky cam ket", "ki cam ket",
         # Các quốc gia/vùng lãnh thổ phổ biến sinh viên VinUni hay đi
-        # thực tập — không phủ hết mọi nước trên thế giới, chỉ phủ
-        # phạm vi thực tế thường gặp. Bổ sung thêm khi gặp case mới.
-        # Whole-word matching (see module docstring) makes even short
-        # entries like "y", "anh", "my" SAFE now — "y" only matches
-        # the standalone word "y" (Italy, informal), never the "y"
-        # buried inside "công ty".
+        # thực tập. Tránh từ đơn như 'anh' (anh/chị), 'y' (ý kiến), 'my' (mỹ)
+        # gây va chạm với đại từ và từ ngữ thông dụng tiếng Việt.
         "singapore", "nhat ban", "nhat", "han quoc", "trieu tien",
         "trung quoc", "hong kong", "dai loan",
-        "my", "hoa ky", "hoa ki", "canada",
-        "anh", "anh quoc", "phap", "duc", "ha lan",
-        "thuy si", "thuy dien", "y", "tay ban nha",
+        "nuoc my", "hoa ky", "hoa ki", "usa", "canada",
+        "nuoc anh", "anh quoc", "vuong quoc anh", "uk", "phap", "duc", "ha lan",
+        "thuy si", "thuy dien", "nuoc y", "italia", "italy", "tay ban nha",
         "uc", "australia", "new zealand", "niu di lan",
         "thai lan", "malaysia", "indonesia", "philippines",
         "an do", "dubai", "uae",
     ),
     "Form 3": (
-        "form 3", "khieu nai", "quay roi", "su co",
+        "form 3", "khieu nai", "don khieu nai", "quay roi", "su co",
         "bao cao su co", "grievance", "harassment", "incident",
         "bi doi xu", "bi ep buoc", "khong an toan", "nguoc dai",
         "bi nguoc dai", "bi bat nat", "bat nat", "de doa",
-        "hanh vi khong phu hop", "dung cham",
-        # Bổ sung: các tình huống bị bóc lột/ép buộc lao động — vốn
-        # trước đây có thể bị Form 2 "cướp" mất do khớp nhầm từ khóa
-        # ngắn (xem FIX 4th pass) — giờ thêm trực tiếp để tăng độ phủ
-        # đúng hướng cho Form 3.
+        "hanh vi khong phu hop", "khiem nha", "hanh vi khiem nha",
+        "dung cham", "phan anh", "phan anh su co", "phan anh van de",
+        # Các tình huống bị bóc lột/ép buộc lao động
         "ep lam them gio", "khong tra luong", "bi boc lot",
         "lam viec qua suc", "bi lam dung",
     ),

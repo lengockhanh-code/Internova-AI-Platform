@@ -1,0 +1,346 @@
+.mascot {
+    position: fixed;
+    right: 20px;
+    bottom: 92px;
+    z-index: 70;
+    width: 110px;
+    pointer-events: none;
+    filter: drop-shadow(0 9px 11px rgba(15, 42, 82, 0.2));
+    isolation: isolate;
+}
+
+.mascot::before {
+    position: absolute;
+    z-index: -1;
+    inset: 18% -3% 10%;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        rgba(90, 161, 232, 0.16) 0%,
+        rgba(90, 161, 232, 0.05) 45%,
+        transparent 72%
+    );
+    content: "";
+    animation: auraPulse 4.8s ease-in-out infinite;
+}
+
+.mascot::after {
+    position: absolute;
+    right: 21%;
+    bottom: 4px;
+    left: 21%;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(15, 42, 82, 0.18);
+    content: "";
+    filter: blur(6px);
+    animation: shadowBreath 3.6s ease-in-out infinite;
+}
+
+.mascotSvg {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+.body {
+    transform-origin: 100px 226px;
+    animation: bodyBreath 3.6s ease-in-out infinite;
+}
+
+.head {
+    transform-origin: 100px 136px;
+    animation: headGreeting 7.2s ease-in-out infinite;
+}
+
+.waveWing {
+    transform-origin: 146px 147px;
+    animation: wingWave 4.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.bookWing {
+    transform-origin: 63px 151px;
+    animation: bookHug 7.2s ease-in-out infinite;
+}
+
+.book {
+    transform-origin: 100px 220px;
+    animation: bookLift 7.2s ease-in-out infinite;
+}
+
+.eyes {
+    transform-origin: 100px 89px;
+    animation: blink 5.2s linear infinite;
+}
+
+.pupils {
+    transform-origin: 100px 90px;
+    animation: glance 7.2s ease-in-out infinite;
+}
+
+.glasses {
+    fill: none;
+    stroke: #0a315f;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 3;
+}
+
+.tassel {
+    transform-origin: 101px 30px;
+    animation: tasselSwing 2.4s ease-in-out infinite;
+}
+
+.waveLines {
+    fill: none;
+    stroke: #2f7bdc;
+    stroke-linecap: round;
+    stroke-width: 3;
+    animation: waveSignal 4.4s ease-in-out infinite;
+}
+
+.sparkles {
+    fill: #f4b740;
+    stroke: #f4b740;
+    stroke-linecap: round;
+    stroke-width: 3;
+    animation: sparklePulse 3.2s ease-in-out infinite;
+}
+
+.groundShadow {
+    fill: rgba(15, 42, 82, 0.16);
+    filter: blur(4px);
+    animation: svgShadowBreath 3.6s ease-in-out infinite;
+}
+
+.feet {
+    fill: #f4b740;
+}
+
+@keyframes wingWave {
+    0%,
+    14%,
+    54%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    21%,
+    35%,
+    49% {
+        transform: rotate(-14deg);
+    }
+
+    28%,
+    42% {
+        transform: rotate(7deg);
+    }
+}
+
+@keyframes headGreeting {
+    0%,
+    12%,
+    55%,
+    100% {
+        transform: rotate(0deg) translateY(0);
+    }
+
+    20%,
+    34% {
+        transform: rotate(-3deg) translateY(1px);
+    }
+
+    27%,
+    41% {
+        transform: rotate(2.5deg) translateY(-1px);
+    }
+}
+
+@keyframes glance {
+    0%,
+    18%,
+    48%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25%,
+    38% {
+        transform: translateX(2px);
+    }
+
+    72%,
+    82% {
+        transform: translateX(-1.5px);
+    }
+}
+
+@keyframes blink {
+    0%,
+    43%,
+    47%,
+    72%,
+    76%,
+    100% {
+        transform: scaleY(1);
+    }
+
+    45%,
+    74% {
+        transform: scaleY(0.08);
+    }
+}
+
+@keyframes bodyBreath {
+    0%,
+    100% {
+        transform: scaleY(1);
+    }
+
+    50% {
+        transform: scaleY(1.018);
+    }
+}
+
+@keyframes bookHug {
+    0%,
+    52%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    60%,
+    70% {
+        transform: rotate(-4deg);
+    }
+}
+
+@keyframes bookLift {
+    0%,
+    52%,
+    100% {
+        transform: translateY(0);
+    }
+
+    60%,
+    70% {
+        transform: translateY(-3px);
+    }
+}
+
+@keyframes tasselSwing {
+    0%,
+    100% {
+        transform: rotate(-3deg);
+    }
+
+    50% {
+        transform: rotate(7deg);
+    }
+}
+
+@keyframes waveSignal {
+    0%,
+    14%,
+    54%,
+    100% {
+        opacity: 0;
+        transform: translateX(-4px) scale(0.9);
+    }
+
+    24%,
+    44% {
+        opacity: 0.85;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes sparklePulse {
+    0%,
+    100% {
+        opacity: 0.35;
+        transform: scale(0.8);
+        transform-origin: 30px 70px;
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.05);
+        transform-origin: 30px 70px;
+    }
+}
+
+@keyframes svgShadowBreath {
+    0%,
+    100% {
+        opacity: 0.75;
+        transform: scaleX(1);
+        transform-origin: 103px 239px;
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scaleX(0.94);
+        transform-origin: 103px 239px;
+    }
+}
+
+@keyframes shadowBreath {
+    0%,
+    100% {
+        opacity: 0.65;
+        transform: scaleX(1);
+    }
+
+    50% {
+        opacity: 0.4;
+        transform: scaleX(0.94);
+    }
+}
+
+@keyframes auraPulse {
+    0%,
+    100% {
+        opacity: 0.55;
+        transform: scale(0.96);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.04);
+    }
+}
+
+@media (max-height: 700px) {
+    .mascot {
+        bottom: 82px;
+        width: 92px;
+    }
+}
+
+@media (max-width: 768px) {
+    .mascot {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mascot::before,
+    .mascot::after,
+    .body,
+    .head,
+    .waveWing,
+    .bookWing,
+    .book,
+    .eyes,
+    .pupils,
+    .tassel,
+    .waveLines,
+    .sparkles,
+    .groundShadow {
+        animation: none;
+    }
+}

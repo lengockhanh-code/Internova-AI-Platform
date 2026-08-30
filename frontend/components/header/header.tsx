@@ -8,7 +8,6 @@ import {
     Lock,
     LogOut,
     Menu,
-    Search,
     MessageSquareWarning,
     Moon,
     ShieldCheck,
@@ -32,6 +31,7 @@ import {
 } from "@/lib/studentNotifications";
 import { useSettings } from "@/context/settings-provider";
 import LecturerLanguageSwitcher from "@/components/lecturer/LecturerLanguageSwitcher";
+import StudentMascot from "@/components/student-mascot/student-mascot";
 
 
 const API_BASE_URL =
@@ -73,7 +73,6 @@ interface RawStudentNotification {
     sentAt?: string;
     sent_at?: string;
 }
-
 
 export default function Header() {
     const router = useRouter();
@@ -537,13 +536,6 @@ setLatestNotifications(normalized);
                     <Menu size={20} />
                 </button>
 
-                <div className={styles.searchShell} role="search">
-                    <Search size={17} aria-hidden="true" />
-                    <span className={styles.searchPlaceholder}>
-                        {locale === "vi" ? "Tìm kiếm nhanh..." : "Quick search..."}
-                    </span>
-                    <kbd>Ctrl + K</kbd>
-                </div>
             </div>
 
             <div className={styles.headerRight}>
@@ -1060,6 +1052,8 @@ setLatestNotifications(normalized);
                     </div>
                 </div>
             )}
+
+            <StudentMascot />
         </header>
     );
 }

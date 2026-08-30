@@ -10,6 +10,7 @@ import {
     Building2,
     CalendarDays,
     CheckCircle2,
+    Eye,
     FileText,
     LoaderCircle,
     Mail,
@@ -1701,13 +1702,19 @@ export default function InternshipProfilePage() {
                                                         className={
                                                             styles.viewButton
                                                         }
+                                                        aria-label="Xem tài liệu"
+                                                        title="Xem tài liệu"
                                                         onClick={() =>
                                                             void viewDocument(
                                                                 document
                                                             )
                                                         }
                                                     >
-                                                        Xem
+                                                        <Eye
+                                                            size={
+                                                                15
+                                                            }
+                                                        />
                                                     </button>
                                                 )}
 
@@ -1716,6 +1723,18 @@ export default function InternshipProfilePage() {
                                                     type="button"
                                                     className={
                                                         styles.uploadButton
+                                                    }
+                                                    aria-label={
+                                                        uploadingKey === document.key
+                                                            ? "Đang tải tài liệu"
+                                                            : document.uploaded
+                                                                ? "Thay tệp"
+                                                                : "Tải lên"
+                                                    }
+                                                    title={
+                                                        document.uploaded
+                                                            ? "Thay tệp"
+                                                            : "Tải lên"
                                                     }
                                                     disabled={
                                                         uploadingKey ===
@@ -1739,8 +1758,6 @@ export default function InternshipProfilePage() {
                                                                     styles.smallSpinner
                                                                 }
                                                             />
-
-                                                            Đang tải...
                                                         </>
                                                     ) : (
                                                         <>
@@ -1749,10 +1766,6 @@ export default function InternshipProfilePage() {
                                                                     15
                                                                 }
                                                             />
-
-                                                            {document.uploaded
-                                                                ? "Thay tệp"
-                                                                : "Tải lên"}
                                                         </>
                                                     )}
                                                 </button>
@@ -1764,6 +1777,8 @@ export default function InternshipProfilePage() {
                                                         className={
                                                             styles.deleteButton
                                                         }
+                                                        aria-label="Xóa tài liệu"
+                                                        title="Xóa tài liệu"
                                                         disabled={
                                                             deletingId ===
                                                             document.id

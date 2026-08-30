@@ -194,6 +194,8 @@
     line-height: 1.4;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+
+    color: #f1f5f9;
 }
 
 
@@ -519,10 +521,10 @@
 }
 
 
-/* Group titles keep the same academic slate tone in dark mode. */
+/* Group titles remain white in dark mode. */
 
 :global(.dark) .navGroupTitle {
-    color: #91a8c6;
+    color: #f1f5f9;
 }
 
 

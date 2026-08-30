@@ -80,6 +80,16 @@ class FormAgentState(TypedDict, total=False):
     Prevents asking this every turn — only asked once, right after all
     required fields are satisfied, before moving on to form_filler."""
 
+    invalid_field_attempts: dict[str, int]
+    """Field name -> how many times in a row the student's submitted
+    value for that field was rejected by the guardrail in
+    tools/form_tool.py (unreasonable/fake/inappropriate content, or a
+    machine-checkable format like email/student_id that didn't parse).
+    Used to escalate the corrective message from a polite first-time
+    request to a firmer warning on repeated invalid attempts — see
+    build_rejection_message(). Reset to 0 (removed) for a field once
+    it's successfully provided."""
+
     # ── Filling + review ──────────────────────────────────────────────
     filled_docx_bytes: bytes | None
     """The generated, filled .docx — produced by form_filler.py (node),

@@ -1543,6 +1543,7 @@ async def chat(
         _form_agent_try_dispatch,
         history_session_id,
         message,
+        current_user,
     )
     if form_result is not None:
         response = _build_form_agent_chat_response(
@@ -1762,6 +1763,7 @@ async def chat_stream(
         _form_agent_try_dispatch,
         history_session_id,
         message,
+        current_user,
     )
 
     if _pending_form_check is not None:
@@ -2343,6 +2345,8 @@ async def create_copilot_opportunity(
             ),
             payload.model_dump(),
         ).mappings().first()
+        if not row:
+            raise HTTPException(status_code=500, detail="Failed to create internship opportunity")
         db.commit()
         return int(row["id"])
 

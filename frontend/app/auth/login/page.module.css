@@ -574,21 +574,54 @@
 .authSwitch {
     display: flex;
     align-items: center;
-    gap: 5px;
-    margin-top: 24px;
-    color: var(--muted);
-    font-size: 12px;
+    gap: 8px;
+    margin-top: 26px;
+    color: #647286;
+    font-size: 13.5px;
+    line-height: 1.5;
 }
 
 .authSwitch a {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 0 3px;
     color: var(--accent);
-    font-weight: 700;
+    font-size: 14.5px;
+    font-weight: 740;
+    letter-spacing: -0.012em;
     text-decoration: none;
+    transition:
+        color 180ms ease,
+        transform 180ms ease;
+}
+
+.authSwitch a::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 1.5px;
+    border-radius: 999px;
+    background: currentColor;
+    transform: scaleX(0.28);
+    transform-origin: left center;
+    opacity: 0.45;
+    transition:
+        transform 200ms ease,
+        opacity 200ms ease;
 }
 
 .authSwitch a:hover {
-    text-decoration: underline;
-    text-underline-offset: 3px;
+    color: var(--accent-dark);
+    transform: translateY(-1px);
+}
+
+.authSwitch a:hover::after,
+.authSwitch a:focus-visible::after {
+    transform: scaleX(1);
+    opacity: 0.9;
 }
 
 .securityNote {

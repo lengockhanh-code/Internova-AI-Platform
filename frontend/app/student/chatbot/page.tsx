@@ -117,7 +117,7 @@ function resizeComposer(
 
     textarea.style.overflowY =
         textarea.scrollHeight >
-        COMPOSER_MAX_HEIGHT_PX
+            COMPOSER_MAX_HEIGHT_PX
             ? "auto"
             : "hidden";
 }
@@ -646,60 +646,42 @@ export default function RagChatPage() {
     const [activeFormAgentSessionId, setActiveFormAgentSessionId] = useState<string | null>(null);
     const [activeFormAgentStatus, setActiveFormAgentStatus] = useState<string | null>(null);
 
+    // Explicit fill-intent phrases — mirrors bridge.py _FILL_INTENT_PHRASES.
+    // Kept in sync manually: if backend list changes, update here too.
+    const FILL_INTENT_PHRASES = [
+        "dien giup", "dien ho", "giup dien", "giup toi dien",
+        "giup minh dien", "giup em dien",
+        "lam don giup", "tao don giup", "lam ho don", "dien don giup",
+        "muon dien", "can dien",
+        "muon lam don", "can lam don",
+        "dien form giup", "dien bieu mau giup",
+        "lam don dang ky giup", "tao don dang ky giup",
+        "nop don giup", "giup nop don",
+        "dien luon", "lam luon don", "dien don luon",
+        "dien cho", "dien dum", "dien gium", "gium dien",
+        "dien di", "dien luon di", "lam don di", "tao don di",
+        "dien no giup", "dien no ho", "dien no di", "dien no cho",
+    ];
 
-    function normalizeFormIntentText(value: string): string {
-        return value
+    const FILL_VERB_PHRASES = ["lam don", "tao don", "nop don"];
+    const FILL_HELPER_TOKENS = new Set(["giup", "dum", "gium"]);
+
+    function hasFillIntentPhrase(text: string): boolean {
+        const normalized = text
             .toLowerCase()
             .replace(/\u0111/g, "d")
             .replace(/\u0110/g, "d")
             .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^a-z0-9\s-]/g, " ")
-            .replace(/\s+/g, " ")
-            .trim();
-    }
+            .replace(/[\u0300-\u036f]/g, "");
 
-    function isExplicitFormFillRequest(value: string): boolean {
-        const normalized = normalizeFormIntentText(value);
-        const hasFormTarget = /\b(form|don|bieu mau)\b/.test(normalized);
-        const hasFillOrCreateAction = /\b(dien|lam|tao|fill|complete|prepare)\b/.test(normalized);
-        const directCommand = /^(dien|lam|tao|fill|complete|prepare)\s+(form|don|bieu mau)\b/.test(normalized);
-        const asksForHelp = [
-            "giup",
-            "ho",
-            "gium",
-            "cho minh",
-            "cho em",
-            "cho toi",
-            "toi muon",
-            "em muon",
-            "minh muon",
-            "can ban",
-            "can minh",
-            "bat dau",
-            "lam luon",
-            "dien luon",
-            "help me",
-            "i want",
-            "please",
-        ].some(phrase => normalized.includes(phrase));
-        const asksAboutInstructions = [
-            "cach dien",
-            "huong dan dien",
-            "quy trinh dien",
-            "tai form",
-            "download form",
-            "form nao",
-            "can form nao",
-        ].some(phrase => normalized.includes(phrase));
+        if (FILL_INTENT_PHRASES.some(p => normalized.includes(p))) {
+            return true;
+        }
 
-        return hasFormTarget && hasFillOrCreateAction && (directCommand || asksForHelp) && !asksAboutInstructions;
-    }
-
-    function isActiveFormAgentTurn(status: string | null): boolean {
-        return status === "selecting_form"
-            || status === "collecting_info"
-            || status === "awaiting_review";
+        const tokens = new Set(normalized.split(/\s+/).filter(Boolean));
+        const hasVerb = tokens.has("dien") || FILL_VERB_PHRASES.some(p => normalized.includes(p));
+        const hasHelper = [...FILL_HELPER_TOKENS].some(t => tokens.has(t));
+        return hasVerb && hasHelper;
     }
 
     function updateMessageById(
@@ -746,9 +728,13 @@ export default function RagChatPage() {
                 );
             }
 
+            const token = getToken();
             const res = await fetch(`${API_URL}/api/v1/form-agent/turn`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify({
                     session_id: null,
                     message: userPrompt || "bắt đầu điền đơn",
@@ -773,13 +759,14 @@ export default function RagChatPage() {
             setActiveFormAgentSessionId(data.session_id);
             setActiveFormAgentStatus(data.status);
 
+
             await persistStandaloneMessage(
                 newId,
                 "ASSISTANT",
                 assistantContent,
                 visibleUserMessage?.content
-                    || formName
-                    || (locale === "en" ? "Fill a form" : "Điền biểu mẫu"),
+                || formName
+                || (locale === "en" ? "Fill a form" : "Điền biểu mẫu"),
             );
             void loadChatSessions();
         } catch (err) {
@@ -792,7 +779,11 @@ export default function RagChatPage() {
     }
 
     // Bấm nút gợi ý -> Chạy Form Agent trực tiếp ngay lập tức
-// Sinh viên gõ câu trả lời cho agent NGAY TẠI Ô NHẬP CHÍNH →
+    function handleFormAgentRequest(formName?: string) {
+        void startFormAgent(formName, "bắt đầu điền đơn");
+    }
+
+    // Sinh viên gõ câu trả lời cho agent NGAY TẠI Ô NHẬP CHÍNH →
     // THÊM 1 tin nhắn assistant mới (không sửa tin nhắn cũ) chứa
     // câu hỏi/kết quả tiếp theo — giống hệt cách chat RAG bình
     // thường thêm tin nhắn mới mỗi lượt.
@@ -801,6 +792,14 @@ export default function RagChatPage() {
         userMessageId: string,
     ) {
         const newId = crypto.randomUUID();
+        const effectiveSessionId =
+            activeFormAgentSessionId ||
+            [...messagesRef.current]
+                .reverse()
+                .find(m => m.isFormAgentMessage && m.formAgentSessionId && m.formAgentStatus !== "approved" && m.formAgentStatus !== "cancelled")
+                ?.formAgentSessionId ||
+            null;
+        const effectiveStatus = activeFormAgentStatus || "collecting_info";
 
         setMessages(current => [
             ...current,
@@ -810,8 +809,8 @@ export default function RagChatPage() {
                 content: "",
                 isFormAgentMessage: true,
                 formAgentPhase: "working",
-                formAgentSessionId: activeFormAgentSessionId,
-                formAgentStatus: activeFormAgentStatus,
+                formAgentSessionId: effectiveSessionId,
+                formAgentStatus: effectiveStatus,
                 formAgentLoading: true,
             },
         ]);
@@ -826,11 +825,15 @@ export default function RagChatPage() {
                 userText,
             );
 
+            const token = getToken();
             const res = await fetch(`${API_URL}/api/v1/form-agent/turn`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify({
-                    session_id: activeFormAgentSessionId,
+                    session_id: effectiveSessionId,
                     message: userText,
                 }),
             });
@@ -874,9 +877,13 @@ export default function RagChatPage() {
     async function handleFormAgentApprove(messageId: string, sessionId: string) {
         updateMessageById(messageId, m => ({ ...m, formAgentLoading: true }));
         try {
+            const token = getToken();
             const res = await fetch(`${API_URL}/api/v1/form-agent/confirm`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify({ session_id: sessionId }),
             });
             if (!res.ok) throw new Error(`Lỗi server: ${res.status}`);
@@ -901,8 +908,12 @@ export default function RagChatPage() {
     async function handleFormAgentCancelSession(messageId: string, sessionId: string) {
         updateMessageById(messageId, m => ({ ...m, formAgentLoading: true }));
         try {
+            const token = getToken();
             await fetch(`${API_URL}/api/v1/form-agent/cancel/${sessionId}`, {
                 method: "POST",
+                headers: {
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
             });
         } finally {
             updateMessageById(messageId, m => ({
@@ -1274,7 +1285,6 @@ export default function RagChatPage() {
                 nextCursor,
                 hasMore,
             );
-
             setActiveFormAgentSessionId(null);
             setActiveFormAgentStatus(null);
             setShowJumpToLatest(false);
@@ -2110,6 +2120,7 @@ export default function RagChatPage() {
         }
         setShowJumpToLatest(false);
 
+
         setActiveFormAgentSessionId(null);
         setActiveFormAgentStatus(null);
         setHistoryOpen(false);
@@ -2169,9 +2180,24 @@ export default function RagChatPage() {
         }
 
         // ── FORM AGENT 1: Nếu đang có phiên Form Agent đang chạy ───────
+        const currentActiveSessionId =
+            activeFormAgentSessionId ||
+            [...messagesRef.current]
+                .reverse()
+                .find(m => m.isFormAgentMessage && m.formAgentSessionId && m.formAgentStatus !== "approved" && m.formAgentStatus !== "cancelled")
+                ?.formAgentSessionId ||
+            null;
+        const currentActiveStatus =
+            activeFormAgentStatus ||
+            [...messagesRef.current]
+                .reverse()
+                .find(m => m.isFormAgentMessage && m.formAgentSessionId && m.formAgentStatus !== "approved" && m.formAgentStatus !== "cancelled")
+                ?.formAgentStatus ||
+            null;
+
         if (
-            activeFormAgentSessionId &&
-            isActiveFormAgentTurn(activeFormAgentStatus)
+            currentActiveSessionId &&
+            (currentActiveStatus === "collecting_info" || currentActiveStatus === "awaiting_review" || currentActiveStatus === "selecting_form")
         ) {
             const userMessage: Message = {
                 id: crypto.randomUUID(),
@@ -2188,7 +2214,7 @@ export default function RagChatPage() {
                 scrollToBottom("smooth");
             });
 
-            // Kiểm tra câu từ chối / hủy phiên thực sự
+            // Kiểm tra câu từ chối / hủy phiên thực sự (chỉ áp dụng với câu lệnh ngắn <= 6 từ)
             const cancelPhrases = [
                 "huy", "huy phien", "huy don", "huy dien don", "dung", "dung lai", "cancel",
                 "dung lai", "dung phien", "dung dien don", "khong dien nua",
@@ -2200,12 +2226,12 @@ export default function RagChatPage() {
                 .normalize("NFD")
                 .replace(/[\u0300-\u036f]/g, "");
             const tokens = normalized.split(/\s+/).filter(Boolean);
-            const isExplicitCancel = cancelPhrases.some(p => {
+            const isExplicitCancel = tokens.length <= 6 && cancelPhrases.some(p => {
                 if (p.includes(" ")) return normalized.includes(p);
                 return tokens.includes(p);
             });
             if (isExplicitCancel) {
-                void handleFormAgentCancelSession(activeFormAgentSessionId, activeFormAgentSessionId);
+                void handleFormAgentCancelSession(currentActiveSessionId, currentActiveSessionId);
                 return;
             }
 
@@ -2213,24 +2239,51 @@ export default function RagChatPage() {
             return;
         }
 
-        // ── FORM AGENT 2: Chỉ mở agent khi người dùng chủ động muốn điền form ──
+        // ── FORM AGENT (Explicit Intent Only): nhận diện ý định điền form
+        // ngay trên tin nhắn đầu vào — trước khi gọi RAG. Chỉ kích hoạt khi
+        // CẢ 2 đúng: có cụm từ hành động rõ ràng (FILL_INTENT_PHRASES) VÀ
+        // /detect xác định được form nào. Câu hỏi thường như "Form 1 là gì?"
+        // không có cụm hành động nên không bị cướp sang form agent.
+        if (!activeFormAgentSessionId && hasFillIntentPhrase(message)) {
+            try {
+                // FIX: câu "điền giúp tôi đi" tự nó không nhắc tên form nào —
+                // ghép thêm câu trả lời RAG gần nhất (nếu có, không phải tin
+                // nhắn Form Agent) để detect_form() nhận ra "Form 1" từ ngữ
+                // cảnh vừa thảo luận, đúng cách nó đã xử lý cho luồng gợi ý
+                // cũ trước đây.
+                const lastRagMessage = [...messagesRef.current]
+                    .reverse()
+                    .find(m => m.role === "assistant" && !m.isFormAgentMessage);
+                const detectText = lastRagMessage
+                    ? `${message}\n${lastRagMessage.content}`
+                    : message;
 
-        // Start Form Agent only for a clear fill/create-form request; unclear form choice is handled inside the agent.
-        if (!activeFormAgentSessionId && isExplicitFormFillRequest(message)) {
-            const userMessage: Message = {
-                id: crypto.randomUUID(),
-                role: "user",
-                content: message,
-            };
+                const detectRes = await fetch(`${API_URL}/api/v1/form-agent/detect`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: detectText }),
+                });
+                if (detectRes.ok) {
+                    const detectData: { detected_form?: string | null } = await detectRes.json();
+                    if (detectData.detected_form) {
+                        const userMessage: Message = {
+                            id: crypto.randomUUID(),
+                            role: "user",
+                            content: message,
+                        };
+                        setMessages(current => [...current, userMessage]);
+                        setInput("");
+                        isNearBottomRef.current = true;
+                        setShowJumpToLatest(false);
+                        requestAnimationFrame(() => scrollToBottom("smooth"));
 
-            setMessages(current => [...current, userMessage]);
-            setInput("");
-            isNearBottomRef.current = true;
-            setShowJumpToLatest(false);
-            requestAnimationFrame(() => scrollToBottom("smooth"));
-
-            void startFormAgent(undefined, message, userMessage);
-            return;
+                        void startFormAgent(detectData.detected_form, message, userMessage);
+                        return;
+                    }
+                }
+            } catch {
+                // Im lặng bỏ qua — rơi xuống RAG bình thường nếu detect lỗi.
+            }
         }
         // ── HẾT PHẦN FORM AGENT ──────────────────────────────────────
 
@@ -2395,12 +2448,6 @@ export default function RagChatPage() {
                 streamMessages
             );
         };
-
-        // ── FORM AGENT: kiểm tra độc lập, tách biệt hoàn toàn khỏi
-        // luồng chat/auth chính — lỗi ở đây không bao giờ ảnh hưởng
-        // tới việc gửi/nhận tin nhắn bình thường.
-        const checkFormRelevance = async (_contextText: string) => { void _contextText; };
-        // ── HẾT PHẦN FORM AGENT ────────────────────────────────────────
 
         const flushStreamBuffer = () => {
             const chunk =
@@ -2745,16 +2792,6 @@ export default function RagChatPage() {
                             })
                         );
 
-                        // ── FORM AGENT: kiểm tra độc lập ngay sau khi
-                        // có câu trả lời cuối cùng ─────────────────────
-                        void checkFormRelevance(
-                            `${message}\n${event.result?.answer ??
-                            event.response ??
-                            ""
-                            }`
-                        );
-                        // ── HẾT PHẦN FORM AGENT ────────────────────────
-
                         continue;
                     }
 
@@ -2912,15 +2949,6 @@ export default function RagChatPage() {
                                 })),
                         })
                     );
-
-                    // ── FORM AGENT: kiểm tra độc lập (nhánh dự phòng) ──
-                    void checkFormRelevance(
-                        `${message}\n${event.result?.answer ??
-                        event.response ??
-                        ""
-                        }`
-                    );
-                    // ── HẾT PHẦN FORM AGENT ─────────────────────────────
                 }
             }
 
@@ -3638,9 +3666,9 @@ export default function RagChatPage() {
 
                                 <div
                                     className={
-                                    `${styles.chatComposer} notranslate`
+                                        `${styles.chatComposer} notranslate`
                                     }
-                                translate="no"
+                                    translate="no"
                                 >
 
                                     <textarea
@@ -3669,13 +3697,13 @@ export default function RagChatPage() {
                                         }
                                         placeholder={
                                             activeFormAgentSessionId &&
-                                            isActiveFormAgentTurn(activeFormAgentStatus)
+                                                (activeFormAgentStatus === "collecting_info" || activeFormAgentStatus === "awaiting_review")
                                                 ? (locale === "en"
                                                     ? "Enter information for the form (or type 'cancel' to stop)..."
                                                     : "Nhập thông tin cho đơn (hoặc gõ 'hủy' để dừng)...")
                                                 : (locale === "en"
-                                                        ? "Ask about internship policies, procedures, forms..."
-                                                        : "Nhập câu hỏi của bạn về học vụ, quy định, thủ tục thực tập...")
+                                                    ? "Ask about internship policies, procedures, forms..."
+                                                    : "Nhập câu hỏi của bạn về học vụ, quy định, thủ tục thực tập...")
                                         }
                                     />
 
@@ -4714,19 +4742,6 @@ function FormResourceCard({
                     </div>
                 )}
 
-            {/* ── FORM AGENT: nút gợi ý điền đơn ngay tại đây ─────────── */}
-            {onFillRequest && (
-                <button
-                    type="button"
-                    onClick={() => onFillRequest(source.document_name)}
-                                    className={styles.formFillButton}
-                >
-                    🤖 {locale === "en" 
-                        ? `Need help filling ${source.document_name ?? "this form"}?`
-                        : `Cần mình giúp điền ${source.document_name ?? "đơn này"} luôn không?`}
-                </button>
-            )}
-            {/* ── HẾT PHẦN FORM AGENT ──────────────────────────────────── */}
         </div>
     );
 }

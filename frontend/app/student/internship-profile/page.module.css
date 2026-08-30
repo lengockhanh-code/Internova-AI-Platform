@@ -464,40 +464,43 @@
 .uploadButton,
 .deleteButton {
     display: inline-flex;
-    min-height: 30px;
+    width: 32px;
+    min-height: 32px;
+    padding: 0;
     align-items: center;
     justify-content: center;
     gap: 5px;
-    border-radius: 6px;
+    border-radius: 8px;
     font-family: inherit;
     font-size: 10.5px;
-    font-weight: 650;
+    font-weight: 700;
     cursor: pointer;
     transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
 .viewButton {
-    padding: 0 11px;
-    border: 1px solid #d8dee8;
-    background: #ffffff;
-    color: #263750;
+    border: 1px solid #cbdcf2;
+    background: #f5f9ff;
+    color: #245b9e;
 }
 
 .viewButton:hover {
-    background: #f8fafc;
-    border-color: #bbc7d8;
+    background: #eaf3ff;
+    border-color: #9dbce2;
+    color: #174b8d;
 }
 
 .uploadButton {
-    padding: 0 10px;
-    border: 1px solid #d8dee8;
-    background: #ffffff;
-    color: #263750;
+    border: 1px solid #2563eb;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.18);
 }
 
 .uploadButton:hover {
-    border-color: #9fb2ca;
-    background: #f8fafc;
+    border-color: #1d4ed8;
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    box-shadow: 0 6px 14px rgba(37, 99, 235, 0.24);
 }
 
 .uploadButton:disabled {
@@ -506,17 +509,15 @@
 }
 
 .deleteButton {
-    width: 30px;
-    padding: 0;
-    border: 1px solid #e0e4ea;
-    background: #ffffff;
-    color: #69778d;
+    border: 1px solid #f2c9cf;
+    background: #fff6f7;
+    color: #b4233a;
 }
 
 .deleteButton:hover {
-    border-color: #efc4c4;
-    background: #fffafa;
-    color: #b42318;
+    border-color: #e9aab5;
+    background: #ffecef;
+    color: #971b30;
 }
 
 .deleteButton:disabled {
@@ -1644,6 +1645,32 @@
         sans-serif;
     font-weight: 450;
     letter-spacing: 0;
+}
+
+/* Keep document actions distinct and legible in dark mode. */
+:global(.dark) .viewButton {
+    border-color: #3b5f88;
+    background: #122944;
+    color: #b9d8ff;
+}
+
+:global(.dark) .viewButton:hover {
+    border-color: #5680af;
+    background: #183653;
+    color: #ffffff;
+}
+
+:global(.dark) .uploadButton {
+    border-color: #3b82f6;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.28);
+}
+
+:global(.dark) .uploadButton:hover {
+    border-color: #60a5fa;
+    background: linear-gradient(135deg, #3478ed, #2457c5);
+    color: #ffffff;
 }
 
 .secondaryAction,

@@ -17,6 +17,7 @@ import {
     GraduationCap,
     Info,
     LoaderCircle,
+    Lock,
     Mail,
     MapPin,
     Paperclip,
@@ -43,6 +44,8 @@ import styles from "./page.module.css";
 const API_URL =
     process.env.NEXT_PUBLIC_API_URL ??
     "http://localhost:8000";
+
+const FIXED_INTERNSHIP_CREDITS = "12";
 
 
 type RegistrationForm = {
@@ -155,7 +158,7 @@ const initialForm: RegistrationForm = {
     faculty: "",
     major: "",
     cohort: "",
-    credits: "3",
+    credits: FIXED_INTERNSHIP_CREDITS,
 
     companyName: "",
     industry: "",
@@ -374,11 +377,7 @@ export default function InternshipRegistrationPage() {
                     "",
 
                 credits:
-                    String(
-                        data.application
-                            ?.credits ??
-                        3
-                    ),
+                    FIXED_INTERNSHIP_CREDITS,
 
                 companyName:
                     data.application
@@ -650,7 +649,7 @@ export default function InternshipRegistrationPage() {
                             JSON.stringify({
                                 credits:
                                     Number(
-                                        form.credits
+                                        FIXED_INTERNSHIP_CREDITS
                                     ),
 
                                 companyName:
@@ -2098,31 +2097,19 @@ function StudentInformationStep({
                             id="credits"
                             name="credits"
                             value={
-                                form.credits
+                                FIXED_INTERNSHIP_CREDITS
                             }
-                            onChange={
-                                onChange
-                            }
+                            disabled
+                            aria-readonly="true"
                         >
-                            <option value="2">
-                                2 tín chỉ
-                            </option>
-
-                            <option value="3">
-                                3 tín chỉ
-                            </option>
-
-                            <option value="4">
-                                4 tín chỉ
-                            </option>
-
-                            <option value="6">
-                                6 tín chỉ
+                            <option value={FIXED_INTERNSHIP_CREDITS}>
+                                12 tín chỉ
                             </option>
                         </select>
 
-                        <ChevronDown
+                        <Lock
                             size={17}
+                            aria-label="Tín chỉ cố định"
                         />
                     </div>
                 </div>

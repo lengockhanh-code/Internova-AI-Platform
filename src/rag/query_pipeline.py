@@ -5,11 +5,11 @@ import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
-from datetime import datetime
-from zoneinfo import ZoneInfo
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
@@ -1158,7 +1158,10 @@ def _semantic_router_clock_context() -> tuple[str, str]:
         now = datetime.now(ZoneInfo(tz_name))
     except Exception:
         tz_name = "Asia/Ho_Chi_Minh"
-        now = datetime.now(ZoneInfo(tz_name))
+        # Windows does not ship the IANA timezone database by default. Keep
+        # semantic routing available with Vietnam's fixed UTC+7 offset when
+        # ZoneInfo data is missing instead of retrying the same failing lookup.
+        now = datetime.now(timezone(timedelta(hours=7), name=tz_name))
     return now.isoformat(timespec="seconds"), tz_name
 
 

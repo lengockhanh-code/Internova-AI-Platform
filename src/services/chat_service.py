@@ -35,6 +35,7 @@ RAG_SCOPES = {
 }
 
 
+
 class ChatService:
     def __init__(self) -> None:
         self._pipeline: QueryPipeline | None = None
@@ -59,6 +60,10 @@ class ChatService:
 
         return memory
 
+    def forget_memory(self, session_id: str) -> None:
+        """Remove in-process conversation memory for a deleted session."""
+        self._memories.pop(session_id, None)
+
     def restore_memory(
         self,
         session_id: str,
@@ -70,7 +75,7 @@ class ChatService:
         router see follow-up context after refresh/restart while keeping user facts
         separate from assistant responses.
         """
-        memory = ConversationMemory(session_id=str(session_id))
+        memory = ConversationMemory(session_id=session_id)
 
         pending_user: str | None = None
         for turn in turns or []:
@@ -101,7 +106,7 @@ class ChatService:
                 )
                 pending_user = None
 
-        self._memories[str(session_id)] = memory
+        self._memories[session_id] = memory
         return memory
 
     def _get_pipeline(self) -> QueryPipeline:
