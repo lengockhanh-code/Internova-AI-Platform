@@ -38,6 +38,7 @@ def run_ingestion(
     source_dir: Path,
     output_dir: Path,
     chroma_dir: Path,
+    document_type_overrides: dict[str, str] | None = None,
 ) -> IngestionReport:
     """Run the full ingestion pipeline.
 
@@ -53,6 +54,19 @@ def run_ingestion(
 
         chroma_dir:
             Directory containing the ChromaDB vector store.
+
+        document_type_overrides:
+            Optional mapping from source-relative file path to semantic
+            RAG document type, for example:
+            {
+                "quy-dinh-thuc-tap.docx": "policy",
+                "forms/form-1.docx": "form",
+            }
+
+            When this mapping is provided, every supported source
+            document must have an explicit semantic type. This prevents
+            Admin-managed RAG builds from falling back to filename-based
+            classification.
 
     Returns:
         IngestionReport containing processing statistics and errors.
@@ -70,6 +84,14 @@ def run_ingestion(
     source_dir = Path(source_dir)
     output_dir = Path(output_dir)
     chroma_dir = Path(chroma_dir)
+
+    normalized_document_type_overrides: dict[str, str] | None = None
+
+    if document_type_overrides is not None:
+        normalized_document_type_overrides = {
+            str(key).replace("\\", "/"): str(value).strip().lower()
+            for key, value in document_type_overrides.items()
+        }
 
     if not source_dir.exists():
         return IngestionReport(
@@ -127,7 +149,35 @@ def run_ingestion(
 
     for path in doc_files:
         try:
-            result = load_document(path)
+            document_type_override: str | None = None
+
+            if normalized_document_type_overrides is not None:
+                relative_key = path.relative_to(
+                    source_dir
+                ).as_posix()
+
+                if relative_key not in normalized_document_type_overrides:
+                    raise ValueError(
+                        "Missing semantic document type override "
+                        f"for source: {relative_key}"
+                    )
+
+                document_type_override = (
+                    normalized_document_type_overrides[
+                        relative_key
+                    ]
+                )
+
+                if not document_type_override:
+                    raise ValueError(
+                        "Empty semantic document type override "
+                        f"for source: {relative_key}"
+                    )
+
+            result = load_document(
+                path,
+                document_type_override=document_type_override,
+            )
 
             extraction_results.append(
                 result

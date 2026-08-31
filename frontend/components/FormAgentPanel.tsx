@@ -81,7 +81,7 @@ export default function FormAgentPanel({
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-blue-900">
                     🤖 {locale === "en" ? "Form Agent" : "Agent điền đơn"}
-                    
+
                 </h3>
                 {sessionId && status !== "approved" && status !== "cancelled" && (
                     <button

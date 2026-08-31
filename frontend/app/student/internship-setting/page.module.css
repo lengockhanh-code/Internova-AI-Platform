@@ -637,7 +637,7 @@
     gap: 9px;
 
     padding: 0 22px 22px;
-}   
+}
 
 :global(.dark) .layout,
 :global(.dark) .main,
@@ -977,4 +977,3 @@
 :global(.dark) .switchActive {
     background: #315f8f;
 }
-

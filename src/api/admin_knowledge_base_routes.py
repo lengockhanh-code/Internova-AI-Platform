@@ -26,6 +26,11 @@ from src.services.admin_knowledge_base_service import (
     list_admin_knowledge_documents,
     set_admin_knowledge_current_version,
     update_admin_knowledge_document,
+    
+)
+from src.services.rag_index_service import (
+    get_rag_index_status,
+    rebuild_rag_index,
 )
 
 
@@ -261,4 +266,51 @@ def set_current_version(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
+        ) from exc
+
+
+@router.get("/index-status")
+def get_index_status(
+    db: Session = Depends(get_db),
+) -> dict:
+    """Return the currently serving RAG index health/status."""
+
+    try:
+        return get_rag_index_status(db)
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Could not read RAG index status: {exc}",
+        ) from exc
+
+
+
+@router.post("/reindex")
+def reindex_knowledge_base(
+    db: Session = Depends(get_db),
+) -> dict:
+    """Fully rebuild and activate RAG from ACTIVE/current Admin documents."""
+
+    try:
+        return rebuild_rag_index(db)
+
+    except RuntimeError as exc:
+        message = str(exc)
+
+        if message == "A RAG re-index operation is already running.":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=message,
+            ) from exc
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=message,
+        ) from exc
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"RAG re-index failed: {exc}",
         ) from exc

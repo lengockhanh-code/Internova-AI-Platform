@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import json
 import time
 from pathlib import Path
 from threading import Lock
@@ -26,12 +27,14 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 
 CHROMA_DIR = ROOT_DIR / "data" / "chroma"
 BM25_PATH = ROOT_DIR / "data" / "rag" / "bm25.pkl"
+ACTIVE_INDEX_POINTER = ROOT_DIR / "data" / "rag" / "active_index.json"
 
 RAG_SCOPES = {
     "rag",
     "internship",
     "career",
     "capstone",
+    "knowledge",
 }
 
 
@@ -39,6 +42,7 @@ RAG_SCOPES = {
 class ChatService:
     def __init__(self) -> None:
         self._pipeline: QueryPipeline | None = None
+        self._pipeline_pointer_signature: tuple[bool, int, int] | None = None
         self._lock = Lock()
         self._memories: dict[str, ConversationMemory] = {}
 
@@ -109,35 +113,334 @@ class ChatService:
         self._memories[session_id] = memory
         return memory
 
+
+    def _active_index_pointer_signature(self) -> tuple[bool, int, int]:
+        """Return a cheap process-local signature for active_index.json."""
+
+        try:
+            stat = ACTIVE_INDEX_POINTER.stat()
+        except FileNotFoundError:
+            return (False, 0, 0)
+
+        return (
+            True,
+            int(stat.st_mtime_ns),
+            int(stat.st_size),
+        )
+
+    def _resolve_active_index_paths(
+        self,
+        *,
+        strict: bool = False,
+    ) -> tuple[Path, Path]:
+        """Resolve the persisted active RAG index.
+
+        Startup may fall back to the canonical index for backward compatibility.
+        Runtime hot reload uses strict=True so an invalid new pointer never replaces
+        an already-working pipeline.
+        """
+
+        if not ACTIVE_INDEX_POINTER.exists():
+            if strict:
+                raise FileNotFoundError(
+                    f"Active RAG index pointer not found: {ACTIVE_INDEX_POINTER}"
+                )
+
+            return CHROMA_DIR, BM25_PATH
+
+        try:
+            payload = json.loads(
+                ACTIVE_INDEX_POINTER.read_text(encoding="utf-8")
+            )
+
+            chroma_value = str(
+                payload.get("chroma_dir") or ""
+            ).strip()
+
+            bm25_value = str(
+                payload.get("bm25_path") or ""
+            ).strip()
+
+            if not chroma_value or not bm25_value:
+                raise ValueError(
+                    "Active index pointer is incomplete."
+                )
+
+            chroma_dir = Path(chroma_value)
+            bm25_path = Path(bm25_value)
+
+            if not chroma_dir.is_absolute():
+                chroma_dir = ROOT_DIR / chroma_dir
+
+            if not bm25_path.is_absolute():
+                bm25_path = ROOT_DIR / bm25_path
+
+            chroma_dir = chroma_dir.resolve()
+            bm25_path = bm25_path.resolve()
+
+            if not chroma_dir.is_dir():
+                raise FileNotFoundError(
+                    f"Active Chroma directory not found: {chroma_dir}"
+                )
+
+            if not bm25_path.is_file():
+                raise FileNotFoundError(
+                    f"Active BM25 index not found: {bm25_path}"
+                )
+
+            return chroma_dir, bm25_path
+
+        except Exception as exc:
+            if strict:
+                raise RuntimeError(
+                    "Invalid active RAG index pointer."
+                ) from exc
+
+            logger.exception(
+                "Invalid active RAG index pointer; "
+                "falling back to canonical index: %s",
+                exc,
+            )
+
+            return CHROMA_DIR, BM25_PATH
+
+    def _persist_active_index_paths(
+        self,
+        chroma_dir: Path,
+        bm25_path: Path,
+    ) -> None:
+        """Atomically persist which RAG index should survive process restarts."""
+
+        chroma_dir = Path(chroma_dir).resolve()
+        bm25_path = Path(bm25_path).resolve()
+
+        try:
+            chroma_value = chroma_dir.relative_to(ROOT_DIR).as_posix()
+        except ValueError:
+            chroma_value = chroma_dir.as_posix()
+
+        try:
+            bm25_value = bm25_path.relative_to(ROOT_DIR).as_posix()
+        except ValueError:
+            bm25_value = bm25_path.as_posix()
+
+        payload = {
+            "chroma_dir": chroma_value,
+            "bm25_path": bm25_value,
+            "activated_at_unix": int(time.time()),
+        }
+
+        ACTIVE_INDEX_POINTER.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        temp_pointer = ACTIVE_INDEX_POINTER.with_suffix(".json.tmp")
+
+        temp_pointer.write_text(
+            json.dumps(
+                payload,
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
+        temp_pointer.replace(ACTIVE_INDEX_POINTER)
+
+
+    def _create_pipeline(
+        self,
+        chroma_dir: Path,
+        bm25_path: Path,
+    ) -> QueryPipeline:
+        """Create and fully initialize a RAG pipeline for the given index."""
+
+        options = PipelineOptions(
+            top_k_vector=6,
+            top_k_bm25=6,
+            top_k_fused=5,
+            top_k_rerank=3,
+            use_reranker=True,
+            use_openai_translation=False,
+            max_context_chars=4000,
+
+            # Keep automatic Vietnamese/English response selection.
+            answer_language=None,
+        )
+
+        return QueryPipeline(
+            chroma_dir=Path(chroma_dir),
+            bm25_path=Path(bm25_path),
+            options=options,
+        )
+
     def _get_pipeline(self) -> QueryPipeline:
-        """Lazy-load the RAG pipeline."""
+        """Return the active pipeline and hot-reload it when the pointer changes."""
+
+        # --------------------------------------------------------------
+        # First process-local load.
+        # --------------------------------------------------------------
 
         if self._pipeline is None:
             with self._lock:
                 if self._pipeline is None:
-                    options = PipelineOptions(
-                        top_k_vector=6,
-                        top_k_bm25=6,
-                        top_k_fused=5,
-                        top_k_rerank=3,
-                        use_reranker=True,
-                        use_openai_translation=False,
-                        max_context_chars=4000,
+                    pointer_signature = self._active_index_pointer_signature()
 
-                        # IMPORTANT:
-                        # None keeps Vietnamese/English automatic response
-                        # language selection. "vi" would force every answer
-                        # to Vietnamese.
-                        answer_language=None,
+                    chroma_dir, bm25_path = self._resolve_active_index_paths()
+
+                    candidate = self._create_pipeline(
+                        chroma_dir=chroma_dir,
+                        bm25_path=bm25_path,
                     )
 
-                    self._pipeline = QueryPipeline(
-                        chroma_dir=CHROMA_DIR,
-                        bm25_path=BM25_PATH,
-                        options=options,
+                    self._pipeline = candidate
+                    self._pipeline_pointer_signature = pointer_signature
+
+                    logger.info(
+                        "Loaded initial RAG pipeline chroma=%s bm25=%s",
+                        chroma_dir,
+                        bm25_path,
                     )
 
-        return self._pipeline
+            assert self._pipeline is not None
+            return self._pipeline
+
+        # --------------------------------------------------------------
+        # Cheap hot-reload detection.
+        # --------------------------------------------------------------
+
+        try:
+            pointer_signature = self._active_index_pointer_signature()
+        except OSError as exc:
+            logger.warning(
+                "Could not stat active RAG index pointer; "
+                "keeping current pipeline: %s",
+                exc,
+            )
+            return self._pipeline
+
+        if pointer_signature == self._pipeline_pointer_signature:
+            return self._pipeline
+
+        # --------------------------------------------------------------
+        # Pointer changed.
+        #
+        # Only one request in this worker performs the reload.
+        # Other concurrent requests continue using the current pipeline
+        # instead of blocking behind an expensive pipeline construction.
+        # --------------------------------------------------------------
+
+        if not self._lock.acquire(blocking=False):
+            return self._pipeline
+
+        try:
+            # Another thread may already have reloaded while this request
+            # was reaching the lock.
+            try:
+                pointer_signature = self._active_index_pointer_signature()
+            except OSError as exc:
+                logger.warning(
+                    "Could not stat active RAG index pointer during reload; "
+                    "keeping current pipeline: %s",
+                    exc,
+                )
+                return self._pipeline
+
+            if pointer_signature == self._pipeline_pointer_signature:
+                return self._pipeline
+
+            try:
+                chroma_dir, bm25_path = self._resolve_active_index_paths(
+                    strict=True
+                )
+
+                candidate = self._create_pipeline(
+                    chroma_dir=chroma_dir,
+                    bm25_path=bm25_path,
+                )
+
+            except Exception as exc:
+                logger.exception(
+                    "Failed to hot-reload changed RAG index; "
+                    "keeping current pipeline: %s",
+                    exc,
+                )
+
+                # Do NOT update _pipeline_pointer_signature here.
+                # The next request will retry the reload.
+                return self._pipeline
+
+            self._pipeline = candidate
+            self._pipeline_pointer_signature = pointer_signature
+
+            logger.info(
+                "Hot-reloaded RAG pipeline chroma=%s bm25=%s",
+                chroma_dir,
+                bm25_path,
+            )
+
+            return candidate
+
+        finally:
+            self._lock.release()
+
+    def install_pipeline(
+    self,
+    chroma_dir: Path,
+    bm25_path: Path,
+    *,
+    persist: bool = False,
+) -> None:
+        """Atomically activate a fully built RAG index.
+
+        The candidate pipeline is created before replacing the active pipeline.
+        Therefore, if the new index cannot be loaded, the currently active
+        chatbot pipeline remains untouched.
+
+        Requests already in progress keep their local reference to the old
+        pipeline and can finish normally.
+        """
+
+        chroma_dir = Path(chroma_dir)
+        bm25_path = Path(bm25_path)
+
+        if not chroma_dir.is_dir():
+            raise FileNotFoundError(
+                f"Chroma directory does not exist: {chroma_dir}"
+            )
+
+        if not bm25_path.is_file():
+            raise FileNotFoundError(
+                f"BM25 index does not exist: {bm25_path}"
+            )
+
+        # IMPORTANT:
+        # Fully construct/validate the new pipeline BEFORE acquiring the swap
+        # lock and BEFORE touching the currently active pipeline.
+        candidate = self._create_pipeline(
+            chroma_dir=chroma_dir,
+            bm25_path=bm25_path,
+        )
+        with self._lock:
+            pointer_signature = self._pipeline_pointer_signature
+
+            if persist:
+                self._persist_active_index_paths(
+                    chroma_dir=chroma_dir,
+                    bm25_path=bm25_path,
+                )
+
+                pointer_signature = self._active_index_pointer_signature()
+
+            self._pipeline = candidate
+            self._pipeline_pointer_signature = pointer_signature
+
+        logger.info(
+            "Activated RAG pipeline chroma=%s bm25=%s",
+            chroma_dir,
+            bm25_path,
+        )
 
     def _result_cache_payload(
         self,
@@ -161,7 +464,7 @@ class ChatService:
             # Invalidate old answer-cache entries whenever the semantic
             # orchestrator contract changes. Otherwise a corrected route can still
             # surface an answer cached under older intent/tool behavior.
-            "semantic_orchestrator_version": 45,
+            "semantic_orchestrator_version": 46,
             "preferred_language": (
                 preferences.language
                 if preferences is not None
@@ -492,10 +795,27 @@ class ChatService:
             return result
 
     def reload_pipeline(self) -> None:
-        """Reset pipeline after rebuilding Chroma/BM25."""
+        """Reload the persisted active RAG index without clearing chat memory."""
+
+        pointer_signature = self._active_index_pointer_signature()
+
+        chroma_dir, bm25_path = self._resolve_active_index_paths(
+            strict=self._pipeline is not None
+        )
+
+        candidate = self._create_pipeline(
+            chroma_dir=chroma_dir,
+            bm25_path=bm25_path,
+        )
 
         with self._lock:
-            self._pipeline = None
-            self._memories.clear()
+            self._pipeline = candidate
+            self._pipeline_pointer_signature = pointer_signature
+
+        logger.info(
+            "Reloaded active RAG pipeline chroma=%s bm25=%s",
+            chroma_dir,
+            bm25_path,
+        )
 
 chat_service = ChatService()

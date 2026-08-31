@@ -18,6 +18,7 @@ from src.config import get_settings
 from src.observability.instrumentation import langfuse_callbacks, observed_call
 from src.rag.evidence import (
     EvidenceCheckResult,
+    _can_use_deterministic_fast_path,
     check_evidence_legacy,
     evaluate_semantic_evidence_combined,
     validate_semantic_evidence_selection,
@@ -520,6 +521,7 @@ IntentName = Literal[
     "form_guidance",
     "career_opportunity",
     "capstone",
+    "knowledge_base",
     "out_of_scope",
 ]
 
@@ -530,6 +532,7 @@ SourceScope = Literal[
     "internship",
     "career",
     "capstone",
+    "knowledge",
     "out_of_scope",
 ]
 
@@ -730,9 +733,10 @@ class SemanticRouteOutput(BaseModel):
         default="none",
         description=(
             "What kind of information/operation is actually needed: conversation for "
-            "rewriting/translating/referring to text already in chat; rag for official "
-            "documents/policies/forms; personal_db only for explicit current/stored own-account "
-            "data; write_action for a persistent Copilot side effect; none otherwise."
+            "rewriting/translating/referring to text already in chat; rag for indexed "
+            "document-backed information, including active Admin Knowledge Base documents; "
+            "personal_db only for explicit current/stored own-account data; write_action for "
+            "a persistent Copilot side effect; none otherwise."
         ),
     )
 
@@ -962,10 +966,15 @@ CAPSTONE_DOCUMENT_TYPES = [
     "capstone_booklet",
 ]
 
+KNOWLEDGE_DOCUMENT_TYPES = [
+    "knowledge",
+]
+
 ALL_ROUTED_DOCUMENT_TYPES = [
     *INTERNSHIP_DOCUMENT_TYPES,
     *CAREER_DOCUMENT_TYPES,
     *CAPSTONE_DOCUMENT_TYPES,
+    *KNOWLEDGE_DOCUMENT_TYPES,
 ]
 
 
@@ -1025,7 +1034,7 @@ _ROUTER_WRITE_ACTIONS = {
     "grievance_assistant",
 }
 
-_ROUTER_RAG_SCOPES = {"internship", "career", "capstone"}
+_ROUTER_RAG_SCOPES = {"internship", "career", "capstone", "knowledge"}
 
 
 def normalize_route_contract(route: RouteDecision) -> RouteDecision:
@@ -1291,7 +1300,7 @@ def _route_query_uncached(
             ),
             retrieval_query=(
                 normalize_query(semantic_result.retrieval_query or "") or None
-                if scope in {"internship", "career", "capstone"}
+                if scope in _ROUTER_RAG_SCOPES
                 and not semantic_result.needs_clarification
                 and not (
                     intent == "form_guidance"
@@ -1309,7 +1318,7 @@ def _route_query_uncached(
             ),
             evidence_mode=(
                 semantic_result.evidence_mode
-                if scope in {"internship", "career", "capstone"}
+                if scope in _ROUTER_RAG_SCOPES
                 and not semantic_result.needs_clarification
                 and not (
                     intent == "form_guidance"
@@ -1377,7 +1386,7 @@ def route_query(
         "model": settings.openai_chat_model or settings.model_name,
         # Bump when routing/domain policy changes so stale Redis decisions cannot
         # bypass a newly tightened scope policy.
-        "routing_policy_version": 44,
+        "routing_policy_version": 46,
     }
 
     cached = redis_cache.get_json(
@@ -1430,6 +1439,9 @@ def allowed_document_types_for_scope(
 
     if scope == "capstone":
         return list(CAPSTONE_DOCUMENT_TYPES)
+
+    if scope == "knowledge":
+        return list(KNOWLEDGE_DOCUMENT_TYPES)
 
     if scope in {"personal", "conversation", "general_support", "out_of_scope"}:
         return []
@@ -1601,7 +1613,7 @@ class QueryPipeline:
                 "route_scope": getattr(route_decision, "scope", None),
                 "needs_retrieval": (
                     getattr(route_decision, "scope", None)
-                    in {"internship", "career", "capstone"}
+                    in _ROUTER_RAG_SCOPES
                 ),
             }
             if step_id is not None:
@@ -1734,18 +1746,18 @@ class QueryPipeline:
         )
         emit_status(
             "retrieving"
-            if route.scope in {"internship", "career", "capstone"}
+            if route.scope in _ROUTER_RAG_SCOPES
             else "thinking",
             route,
             step_id=(
                 "query_planning"
-                if route.scope in {"internship", "career", "capstone"}
+                if route.scope in _ROUTER_RAG_SCOPES
                 else "generation"
             ),
             step_status="running",
             engine=(
                 "RAG Query Planner"
-                if route.scope in {"internship", "career", "capstone"}
+                if route.scope in _ROUTER_RAG_SCOPES
                 else "Answer Generator"
             ),
             model=(
@@ -1754,7 +1766,7 @@ class QueryPipeline:
             ),
             detail=(
                 "planning_search"
-                if route.scope in {"internship", "career", "capstone"}
+                if route.scope in _ROUTER_RAG_SCOPES
                 else "generating_direct_answer"
             ),
         )
@@ -2208,7 +2220,7 @@ class QueryPipeline:
 # ------------------------------------------------------------------
         if not (
             getattr(route, "data_source", "none") == "rag"
-            and route.scope in {"internship", "career", "capstone"}
+            and route.scope in _ROUTER_RAG_SCOPES
         ):
             answer = (
                 "Mình chưa thể hoàn tất yêu cầu này ở lượt hiện tại. "
@@ -2574,11 +2586,27 @@ class QueryPipeline:
                 route=route,
             )
 
-            if (
-                evidence.evidence_status != "sufficient"
-                or not evidence.used_chunk_ids
-                or evidence.missing_evidence
-            ):
+            allowed_evidence_types = set(
+                route.allowed_document_types
+            )
+
+            allowed_evidence_hits = [
+                hit
+                for hit in final_hits
+                if hit.chunk.document_type
+                in allowed_evidence_types
+            ]
+
+            deterministic_fast_ok = (
+                _can_use_deterministic_fast_path(
+                    query=query,
+                    route=route,
+                    allowed_hits=allowed_evidence_hits,
+                    result=evidence,
+                )
+            )
+
+            if not deterministic_fast_ok:
                 evidence = observed_call(
                     "rag.evidence_semantic_fallback",
                     _check_semantic_evidence_once,
@@ -2958,6 +2986,17 @@ def _build_route_retrieval_expansion(
     fallback_query = normalize_query(route.user_goal or "") or normalized_contextual
     search_query = semantic_query or fallback_query
 
+    # Preserve both the semantic English retrieval query and the
+    # user's original wording. This is especially important for
+    # Vietnamese documents: BM25/vector retrieval can otherwise lose
+    # an exact Vietnamese passage before RRF/reranking.
+    search_queries = dedupe_queries(
+        [
+            search_query,
+            normalized_current,
+        ]
+    )
+
     route_language: QueryLanguage = (
         route.language
         if route.language in {"vi", "en", "unsupported", "unknown"}
@@ -2970,7 +3009,7 @@ def _build_route_retrieval_expansion(
         query_language=route_language,
         query_vi=(normalized_current if route_language == "vi" else None),
         query_en=(semantic_query if semantic_query else None),
-        search_queries=([search_query] if search_query else []),
+        search_queries=search_queries,
         used_openai=bool(semantic_query),
         warnings=(
             []

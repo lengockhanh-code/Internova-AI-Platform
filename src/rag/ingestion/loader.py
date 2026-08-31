@@ -29,6 +29,16 @@ DOCUMENT_RULES = (
 )
 
 
+SEMANTIC_DOCUMENT_TYPES = frozenset({
+    "policy",
+    "form",
+    "agreement",
+    "talent_handbook",
+    "capstone_booklet",
+    "knowledge",
+})
+
+
 @dataclass
 class ExtractedElement:
     document_name: str
@@ -110,6 +120,7 @@ def normalize_text(text: str) -> str:
 
 
 def classify_document(path: Path) -> str:
+    """Legacy filename-based semantic classification."""
     name = path.name
     for pattern, document_type in DOCUMENT_RULES:
         if pattern.lower() in name.lower():
@@ -117,26 +128,71 @@ def classify_document(path: Path) -> str:
     return "unknown"
 
 
-def load_document(path: Path) -> ExtractionResult:
+def resolve_document_type(
+    path: Path,
+    document_type_override: str | None = None,
+) -> str:
+    """Resolve the semantic RAG document type.
+
+    Admin-managed documents should provide ``document_type_override``.
+    Filename classification remains only as a backwards-compatible fallback
+    for the original built-in RAG corpus.
+    """
+    if document_type_override is None:
+        return classify_document(path)
+
+    normalized = str(document_type_override).strip().lower()
+
+    if normalized not in SEMANTIC_DOCUMENT_TYPES:
+        allowed = ", ".join(sorted(SEMANTIC_DOCUMENT_TYPES))
+        raise ValueError(
+            f"Unsupported semantic document type: "
+            f"{document_type_override!r}. Allowed: {allowed}"
+        )
+
+    return normalized
+
+
+def load_document(
+    path: Path,
+    document_type_override: str | None = None,
+) -> ExtractionResult:
     suffix = path.suffix.lower()
+
     if suffix == ".pdf":
-        return load_pdf(path)
+        return load_pdf(
+            path,
+            document_type_override=document_type_override,
+        )
+
     if suffix == ".docx":
-        return load_docx(path)
+        return load_docx(
+            path,
+            document_type_override=document_type_override,
+        )
 
     result = ExtractionResult(
         document_name=path.name,
-        document_type=classify_document(path),
+        document_type=resolve_document_type(
+            path,
+            document_type_override,
+        ),
         file_type=suffix.lstrip(".") or "unknown",
     )
     result.errors.append(f"Unsupported file type: {suffix}")
     return result
 
 
-def load_pdf(path: Path) -> ExtractionResult:
+def load_pdf(
+    path: Path,
+    document_type_override: str | None = None,
+) -> ExtractionResult:
     result = ExtractionResult(
         document_name=path.name,
-        document_type=classify_document(path),
+        document_type=resolve_document_type(
+            path,
+            document_type_override,
+        ),
         file_type="pdf",
     )
     _load_pdf_with_pypdf(path, result)
@@ -222,10 +278,16 @@ def _load_pdf_with_pymupdf(path: Path, result: ExtractionResult) -> None:
         result.errors.append(f"pymupdf: {exc}")
 
 
-def load_docx(path: Path) -> ExtractionResult:
+def load_docx(
+    path: Path,
+    document_type_override: str | None = None,
+) -> ExtractionResult:
     result = ExtractionResult(
         document_name=path.name,
-        document_type=classify_document(path),
+        document_type=resolve_document_type(
+            path,
+            document_type_override,
+        ),
         file_type="docx",
     )
     try:

@@ -16,7 +16,16 @@ from sqlalchemy.orm import Session
 MAX_PAGE_SIZE = 100
 DOCUMENT_STATUSES = {"ACTIVE", "INACTIVE", "ARCHIVED"}
 VERSION_STATUSES = {"ACTIVE", "SUPERSEDED", "ARCHIVED"}
-DOCUMENT_TYPES = {"PDF", "DOC"}
+DOCUMENT_TYPES = {"PDF", "DOCX"}
+
+RAG_DOCUMENT_TYPES = {
+    "policy",
+    "form",
+    "agreement",
+    "talent_handbook",
+    "capstone_booklet",
+    "knowledge",
+}
 UPLOAD_ROOT = Path("data/knowledge_base/documents")
 
 
@@ -84,6 +93,7 @@ def _document_from_row(row: dict[str, Any]) -> dict:
         "id": int(row["id"]),
         "title": row["title"],
         "documentType": row["document_type"],
+        "ragDocumentType": row.get("rag_document_type"),
         "description": row["description"],
         "fileUrl": row["file_url"],
         "currentVersion": row["current_version"],
@@ -156,6 +166,7 @@ def list_admin_knowledge_documents(
                 kd.id,
                 kd.title,
                 kd.document_type,
+                kd.rag_document_type,
                 kd.description,
                 kd.file_url,
                 kd.current_version,
@@ -239,6 +250,7 @@ def get_admin_knowledge_document_detail(
                 kd.id,
                 kd.title,
                 kd.document_type,
+                kd.rag_document_type,
                 kd.description,
                 kd.file_url,
                 kd.current_version,
@@ -318,6 +330,9 @@ def create_admin_knowledge_document(
 ) -> dict:
     title = _clean_required(payload.get("title"), "Document title is required.")
     document_type = _clean_document_type(payload.get("documentType"))
+    rag_document_type = _clean_rag_document_type(
+        payload.get("ragDocumentType")
+    )
     status = _clean_status(payload.get("status") or "ACTIVE")
 
     row = db.execute(
@@ -326,6 +341,7 @@ def create_admin_knowledge_document(
             INSERT INTO public.knowledge_documents (
                 title,
                 document_type,
+                rag_document_type,
                 description,
                 file_url,
                 current_version,
@@ -336,6 +352,7 @@ def create_admin_knowledge_document(
             VALUES (
                 :title,
                 :document_type,
+                :rag_document_type,
                 :description,
                 :file_url,
                 :current_version,
@@ -349,9 +366,10 @@ def create_admin_knowledge_document(
         {
             "title": title,
             "document_type": document_type,
+            "rag_document_type": rag_document_type,
             "description": _clean_optional(payload.get("description")),
             "file_url": _clean_optional(payload.get("fileUrl")),
-            "current_version": _clean_optional(payload.get("currentVersion")),
+            "current_version": None,
             "year": payload.get("year"),
             "status": status,
             "uploaded_by": uploaded_by,
@@ -378,9 +396,15 @@ def update_admin_knowledge_document(
             "document_type",
             _clean_document_type,
         ),
+        "ragDocumentType": (
+            "rag_document_type",
+            lambda value: _clean_rag_document_type(
+                value,
+                required=True,
+            ),
+        ),
         "description": ("description", _clean_optional),
         "fileUrl": ("file_url", _clean_optional),
-        "currentVersion": ("current_version", _clean_optional),
         "year": ("year", lambda value: value),
         "status": ("status", _clean_status),
     }
@@ -486,7 +510,36 @@ def create_admin_knowledge_document_version(
     version_value = _clean_required(version, "Version is required.")
     status_value = _clean_version_status(status)
 
+    existing_version = db.execute(
+    text(
+        """
+        SELECT 1
+        FROM public.knowledge_document_versions
+        WHERE document_id = :document_id
+          AND version = :version
+        LIMIT 1
+        """
+    ),
+    {
+        "document_id": document_id,
+        "version": version_value,
+    },
+).scalar()
+
+    if existing_version:
+        raise ValueError(
+        "This document version already exists."
+    )
+
     original_name = _safe_filename(file.filename or f"document-{document_id}")
+    uploaded_type = _document_type_from_filename(original_name)
+    expected_type = _get_document_type(db, document_id)
+
+    if uploaded_type != expected_type:
+        raise ValueError(
+            f"Uploaded file type {uploaded_type} does not match document type {expected_type}."
+        )
+
     content = file.file.read()
     if not content:
         raise ValueError("Uploaded file is empty.")
@@ -553,11 +606,11 @@ def set_admin_knowledge_current_version(
     version_row = db.execute(
         text(
             """
-            SELECT id, version, file_url
-            FROM public.knowledge_document_versions
-            WHERE id = :version_id
-              AND document_id = :document_id
-            LIMIT 1
+SELECT id, version, file_url, status
+FROM public.knowledge_document_versions
+WHERE id = :version_id
+  AND document_id = :document_id
+LIMIT 1
             """
         ),
         {
@@ -568,6 +621,11 @@ def set_admin_knowledge_current_version(
 
     if version_row is None:
         raise ValueError("Knowledge document version not found.")
+
+    if version_row["status"] != "ACTIVE":
+        raise ValueError(
+        "Only an ACTIVE document version can be set as current."
+    )
 
     db.execute(
         text(
@@ -593,6 +651,130 @@ def set_admin_knowledge_current_version(
         "message": "Current document version updated.",
     }
 
+def list_rag_index_source_versions(
+    db: Session,
+) -> list[dict[str, Any]]:
+    """Return the exact ACTIVE/current document versions allowed into RAG.
+
+    Fail closed if any ACTIVE document has an invalid or missing current
+    version. A rebuild must never silently omit an ACTIVE knowledge document.
+    """
+
+    rows = db.execute(
+        text(
+            """
+            SELECT
+                kd.id AS document_id,
+                kd.title,
+                kd.document_type,
+                kd.rag_document_type,
+                kd.current_version,
+
+                kdv.id AS version_id,
+                kdv.version,
+                kdv.file_url,
+                kdv.file_hash,
+                kdv.status AS version_status
+
+            FROM public.knowledge_documents AS kd
+
+            LEFT JOIN public.knowledge_document_versions AS kdv
+                ON kdv.document_id = kd.id
+               AND kdv.version = kd.current_version
+
+            WHERE kd.status = 'ACTIVE'
+
+            ORDER BY kd.id ASC
+            """
+        )
+    ).mappings().all()
+
+    sources: list[dict[str, Any]] = []
+    errors: list[str] = []
+
+    for row in rows:
+        document_id = int(row["document_id"])
+        title = str(row["title"] or "")
+        current_version = row["current_version"]
+
+        try:
+            rag_document_type = _clean_rag_document_type(
+                row["rag_document_type"],
+                required=True,
+            )
+        except ValueError as exc:
+            errors.append(
+                f"Document {document_id} ({title}) "
+                f"has invalid RAG document type: {exc}"
+            )
+            continue
+
+        if not current_version:
+            errors.append(
+                f"Document {document_id} ({title}) has no current version."
+            )
+            continue
+
+        if row["version_id"] is None:
+            errors.append(
+                f"Document {document_id} ({title}) current version "
+                f"{current_version} does not exist."
+            )
+            continue
+
+        if row["version_status"] != "ACTIVE":
+            errors.append(
+                f"Document {document_id} ({title}) current version "
+                f"{current_version} is not ACTIVE."
+            )
+            continue
+
+        file_url = str(row["file_url"] or "").strip()
+
+        if not file_url:
+            errors.append(
+                f"Document {document_id} ({title}) current version "
+                "has no file."
+            )
+            continue
+
+        file_path = Path(file_url)
+
+        if not file_path.is_file():
+            errors.append(
+                f"Document {document_id} ({title}) file not found: "
+                f"{file_path}"
+            )
+            continue
+
+        if file_path.suffix.lower() not in {".pdf", ".docx"}:
+            errors.append(
+                f"Document {document_id} ({title}) has unsupported "
+                f"file type: {file_path.suffix}"
+            )
+            continue
+
+        sources.append(
+            {
+                "document_id": document_id,
+                "title": title,
+                "document_type": row["document_type"],
+                "rag_document_type": rag_document_type,
+                "version_id": int(row["version_id"]),
+                "version": str(row["version"]),
+                "file_url": file_url,
+                "file_path": file_path,
+                "file_hash": row["file_hash"],
+            }
+        )
+
+    if errors:
+        raise RuntimeError(
+            "RAG source validation failed: "
+            + " | ".join(errors)
+        )
+
+    return sources
 
 def _get_document_filters(db: Session) -> dict:
     rows = db.execute(
@@ -677,9 +859,75 @@ def _clean_status(value: Any) -> str:
 
 def _clean_document_type(value: Any) -> str:
     cleaned = str(value or "").strip().upper()
+
     if cleaned not in DOCUMENT_TYPES:
-        raise ValueError("Document type must be PDF or DOC.")
+        raise ValueError(
+            "Document type must be PDF or DOCX."
+        )
+
     return cleaned
+
+
+def _clean_rag_document_type(
+    value: Any,
+    *,
+    required: bool = False,
+) -> str | None:
+    cleaned = str(value or "").strip().lower()
+
+    if not cleaned:
+        if required:
+            raise ValueError(
+                "RAG document type is required."
+            )
+        return None
+
+    if cleaned not in RAG_DOCUMENT_TYPES:
+        allowed = ", ".join(
+            sorted(RAG_DOCUMENT_TYPES)
+        )
+        raise ValueError(
+            f"RAG document type must be one of: {allowed}."
+        )
+
+    return cleaned
+
+
+def _document_type_from_filename(filename: str) -> str:
+    suffix = Path(filename).suffix.lower()
+
+    type_map = {
+        ".pdf": "PDF",
+        ".docx": "DOCX",
+    }
+
+    document_type = type_map.get(suffix)
+
+    if document_type is None:
+        raise ValueError(
+            "Only PDF and DOCX files are supported."
+        )
+
+    return document_type
+
+
+def _get_document_type(db: Session, document_id: int) -> str:
+    document_type = db.execute(
+        text(
+            """
+            SELECT document_type
+            FROM public.knowledge_documents
+            WHERE id = :document_id
+            LIMIT 1
+            """
+        ),
+        {"document_id": document_id},
+    ).scalar_one_or_none()
+
+    if document_type is None:
+        raise ValueError("Knowledge document not found.")
+
+    return _clean_document_type(document_type)
 
 
 def _clean_version_status(value: Any) -> str:

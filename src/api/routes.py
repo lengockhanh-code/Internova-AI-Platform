@@ -91,6 +91,7 @@ RAG_SCOPES = {
     "internship",
     "career",
     "capstone",
+    "knowledge",
 }
 
 

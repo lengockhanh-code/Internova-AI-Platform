@@ -238,26 +238,28 @@ def _can_use_deterministic_fast_path(
         route=route,
     )
 
-    # Do not trust the generic "pick diverse chunks" legacy path as a semantic
-    # proof. At least one explicit requirement must actually match.
-    if not requirements:
+    # Do not trust generic or soft-only legacy topic heuristics as semantic
+    # proof. The deterministic fast path is valid only when at least one
+    # explicit HARD requirement exists and every hard requirement matches.
+    hard_requirements = [
+        requirement
+        for requirement in requirements
+        if requirement.required
+    ]
+
+    if not hard_requirements:
         return False
 
-    matched_count = 0
-    for requirement in requirements:
+    for requirement in hard_requirements:
         matched_hit = find_matching_hit(
             requirement,
             allowed_hits,
         )
 
-        if matched_hit is not None:
-            matched_count += 1
-            continue
-
-        if requirement.required:
+        if matched_hit is None:
             return False
 
-    return matched_count > 0
+    return True
 
 EvidenceMethod = Literal[
     "semantic",

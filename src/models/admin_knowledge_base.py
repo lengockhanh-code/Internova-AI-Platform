@@ -7,6 +7,20 @@ from pydantic import BaseModel, Field
 
 DocumentStatus = Literal["ACTIVE", "INACTIVE", "ARCHIVED"]
 
+DocumentType = Literal[
+    "PDF",
+    "DOCX",
+]
+
+RagDocumentType = Literal[
+    "policy",
+    "form",
+    "agreement",
+    "talent_handbook",
+    "capstone_booklet",
+    "knowledge",
+]
+
 
 class AdminKnowledgeUser(BaseModel):
     id: int
@@ -40,7 +54,8 @@ class AdminKnowledgeIndexJob(BaseModel):
 class AdminKnowledgeDocumentListItem(BaseModel):
     id: int
     title: str
-    documentType: str
+    documentType: DocumentType
+    ragDocumentType: RagDocumentType | None = None
     description: str | None = None
     fileUrl: str | None = None
     currentVersion: str | None = None
@@ -80,7 +95,8 @@ class AdminKnowledgeDocumentDetailResponse(BaseModel):
 
 class AdminKnowledgeDocumentCreateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=255)
-    documentType: str = Field(min_length=1, max_length=100)
+    documentType: DocumentType
+    ragDocumentType: RagDocumentType
     description: str | None = None
     fileUrl: str | None = None
     currentVersion: str | None = Field(default=None, max_length=30)
@@ -90,7 +106,8 @@ class AdminKnowledgeDocumentCreateRequest(BaseModel):
 
 class AdminKnowledgeDocumentUpdateRequest(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
-    documentType: str | None = Field(default=None, min_length=1, max_length=100)
+    documentType: DocumentType | None = None
+    ragDocumentType: RagDocumentType | None = None
     description: str | None = None
     fileUrl: str | None = None
     currentVersion: str | None = Field(default=None, max_length=30)

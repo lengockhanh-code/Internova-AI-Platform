@@ -19,22 +19,60 @@ import {
 import {
   adminKnowledgeBaseApi,
   formatDateTime,
+  KnowledgeBaseApiError,
   type KnowledgeDocument,
   type KnowledgeDocumentDetail,
   type KnowledgeDocumentPayload,
+  type KnowledgeDocumentType,
+  type KnowledgeRagDocumentType,
   type KnowledgeDocumentVersion,
   type KnowledgeDocumentsResponse,
+  type KnowledgeIndexStatus,
 } from "@/lib/adminKnowledgeBase";
 import styles from "./page.module.css";
 
 const PAGE_SIZE = 10;
-const DOCUMENT_TYPE_OPTIONS = ["PDF", "DOC"];
+const ALLOWED_DOCUMENT_TYPES = ["PDF", "DOCX"] as const;
+
+const RAG_DOCUMENT_TYPE_OPTIONS: {
+  value: KnowledgeRagDocumentType;
+  label: string;
+}[] = [
+  {
+    value: "policy",
+    label: "Internship Policy",
+  },
+  {
+    value: "form",
+    label: "Form",
+  },
+  {
+    value: "agreement",
+    label: "Agreement",
+  },
+  {
+    value: "talent_handbook",
+    label: "Career / Talent Handbook",
+  },
+  {
+    value: "capstone_booklet",
+    label: "Capstone",
+  },
+  {
+    value: "knowledge",
+    label: "General Knowledge",
+  },
+];
+
+const DOCUMENT_FILE_ACCEPT =
+  ".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const STATUS_OPTIONS = ["ACTIVE", "INACTIVE", "ARCHIVED"];
 const VERSION_STATUS_OPTIONS = ["ACTIVE", "SUPERSEDED", "ARCHIVED"];
 
 type DocumentFormValues = {
   title: string;
-  documentType: string;
+  documentType: KnowledgeDocumentType | "";
+  ragDocumentType: KnowledgeRagDocumentType | "";
   description: string;
   fileUrl: string;
   currentVersion: string;
@@ -45,7 +83,8 @@ type DocumentFormValues = {
 
 const emptyForm: DocumentFormValues = {
   title: "",
-  documentType: "PDF",
+  documentType: "",
+  ragDocumentType: "",
   description: "",
   fileUrl: "",
   currentVersion: "",
@@ -70,7 +109,9 @@ const emptyVersionForm: VersionFormValues = {
 
 export default function KnowledgeDocumentsPage() {
   const [data, setData] = useState<KnowledgeDocumentsResponse | null>(null);
-  const [selected, setSelected] = useState<KnowledgeDocumentDetail | null>(null);
+  const [selected, setSelected] = useState<KnowledgeDocumentDetail | null>(
+    null,
+  );
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -89,6 +130,14 @@ export default function KnowledgeDocumentsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
+  const [indexStatus, setIndexStatus] = useState<KnowledgeIndexStatus | null>(
+    null,
+  );
+
+  const [indexStatusLoading, setIndexStatusLoading] = useState(true);
+  const [indexError, setIndexError] = useState<string | null>(null);
+  const [reindexing, setReindexing] = useState(false);
+  const [reindexMessage, setReindexMessage] = useState<string | null>(null);
   const [versionFormOpen, setVersionFormOpen] = useState(false);
   const [versionFormValues, setVersionFormValues] =
     useState<VersionFormValues>(emptyVersionForm);
@@ -116,25 +165,45 @@ export default function KnowledgeDocumentsPage() {
     [debouncedSearch, documentType, status, year, page],
   );
 
-  const loadDocuments = useCallback(async (showRefreshing = false) => {
-    if (showRefreshing) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
+  const loadDocuments = useCallback(
+    async (showRefreshing = false) => {
+      if (showRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
-    setError(null);
+      setError(null);
+
+      try {
+        const response = await adminKnowledgeBaseApi.documents(query);
+        setData(response);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Unable to load documents.",
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [query],
+  );
+  const loadIndexStatus = useCallback(async () => {
+    setIndexStatusLoading(true);
+    setIndexError(null);
 
     try {
-      const response = await adminKnowledgeBaseApi.documents(query);
-      setData(response);
+      const response = await adminKnowledgeBaseApi.indexStatus();
+      setIndexStatus(response);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load documents.");
+      setIndexError(
+        err instanceof Error ? err.message : "Unable to load RAG index status.",
+      );
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setIndexStatusLoading(false);
     }
-  }, [query]);
+  }, []);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -145,6 +214,14 @@ export default function KnowledgeDocumentsPage() {
   }, [loadDocuments]);
 
   useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadIndexStatus();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [loadIndexStatus]);
+
+  useEffect(() => {
     if (!data) return;
 
     const timeout = window.setTimeout(() => {
@@ -153,10 +230,7 @@ export default function KnowledgeDocumentsPage() {
         return;
       }
 
-      if (
-        selectedId &&
-        !data.items.some((item) => item.id === selectedId)
-      ) {
+      if (selectedId && !data.items.some((item) => item.id === selectedId)) {
         setSelected(null);
       }
     }, 0);
@@ -166,7 +240,6 @@ export default function KnowledgeDocumentsPage() {
 
   useEffect(() => {
     if (!selectedId) return;
-
     const loadDetail = async () => {
       setDetailLoading(true);
       setDetailError(null);
@@ -176,7 +249,9 @@ export default function KnowledgeDocumentsPage() {
         setSelected(response.document);
       } catch (err) {
         setDetailError(
-          err instanceof Error ? err.message : "Unable to load document detail.",
+          err instanceof Error
+            ? err.message
+            : "Unable to load document detail.",
         );
       } finally {
         setDetailLoading(false);
@@ -204,6 +279,7 @@ export default function KnowledgeDocumentsPage() {
     setFormValues({
       title: document.title,
       documentType: document.documentType,
+      ragDocumentType: document.ragDocumentType ?? "",
       description: document.description ?? "",
       fileUrl: document.fileUrl ?? "",
       currentVersion: document.currentVersion ?? "",
@@ -215,7 +291,11 @@ export default function KnowledgeDocumentsPage() {
     setFormOpen(true);
   };
 
-  const formPayload = (): KnowledgeDocumentPayload => {
+  const formPayload = (): KnowledgeDocumentPayload | null => {
+    if (!formValues.documentType || !formValues.ragDocumentType) {
+      return null;
+    }
+
     const uploadedVersion =
       formMode === "create" && formValues.file
         ? formValues.currentVersion.trim() || "1.0"
@@ -223,7 +303,8 @@ export default function KnowledgeDocumentsPage() {
 
     return {
       title: formValues.title.trim(),
-      documentType: formValues.documentType.trim(),
+      documentType: formValues.documentType,
+      ragDocumentType: formValues.ragDocumentType,
       description: nullableText(formValues.description),
       fileUrl: nullableText(formValues.fileUrl),
       currentVersion: nullableText(uploadedVersion),
@@ -233,9 +314,32 @@ export default function KnowledgeDocumentsPage() {
   };
 
   const submitForm = async () => {
+    if (!formValues.title.trim()) {
+      setFormError("Title is required.");
+      return;
+    }
+
+    if (formMode === "create" && !formValues.file) {
+      setFormError("A document file is required.");
+      return;
+    }
+
+    if (!formValues.documentType) {
+      setFormError(
+        "Unable to determine document type from the selected file.",
+      );
+      return;
+    }
+
+    if (!formValues.ragDocumentType) {
+      setFormError("Content type is required.");
+      return;
+    }
+
     const payload = formPayload();
-    if (!payload.title || !payload.documentType) {
-      setFormError("Title and type are required.");
+
+    if (!payload) {
+      setFormError("Document metadata is incomplete.");
       return;
     }
 
@@ -251,7 +355,10 @@ export default function KnowledgeDocumentsPage() {
       let response =
         formMode === "create"
           ? await adminKnowledgeBaseApi.createDocument(payload)
-          : await adminKnowledgeBaseApi.updateDocument(selectedId as number, payload);
+          : await adminKnowledgeBaseApi.updateDocument(
+              selectedId as number,
+              payload,
+            );
 
       if (formMode === "create" && formValues.file) {
         const version = payload.currentVersion || "1.0";
@@ -276,7 +383,9 @@ export default function KnowledgeDocumentsPage() {
       setFormOpen(false);
       await loadDocuments(true);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Unable to save document.");
+      setFormError(
+        err instanceof Error ? err.message : "Unable to save document.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -293,7 +402,9 @@ export default function KnowledgeDocumentsPage() {
       setSelected(response.document);
       await loadDocuments(true);
     } catch (err) {
-      setDetailError(err instanceof Error ? err.message : "Unable to archive document.");
+      setDetailError(
+        err instanceof Error ? err.message : "Unable to archive document.",
+      );
     } finally {
       setActionBusy(false);
     }
@@ -314,7 +425,9 @@ export default function KnowledgeDocumentsPage() {
       setSelectedId(null);
       await loadDocuments(true);
     } catch (err) {
-      setDetailError(err instanceof Error ? err.message : "Unable to delete document.");
+      setDetailError(
+        err instanceof Error ? err.message : "Unable to delete document.",
+      );
     } finally {
       setActionBusy(false);
     }
@@ -336,6 +449,19 @@ export default function KnowledgeDocumentsPage() {
     }
     if (!versionFormValues.file) {
       setVersionFormError("A file is required.");
+      return;
+    }
+
+    const versionDocumentType = getDocumentTypeFromFile(versionFormValues.file);
+    if (!versionDocumentType) {
+      setVersionFormError("Only PDF and DOCX files are supported.");
+      return;
+    }
+
+    if (versionDocumentType !== selected.documentType.toUpperCase()) {
+      setVersionFormError(
+        `This document is ${selected.documentType.toUpperCase()}. Please upload a ${selected.documentType.toUpperCase()} file.`,
+      );
       return;
     }
 
@@ -382,6 +508,47 @@ export default function KnowledgeDocumentsPage() {
     }
   };
 
+  const reindexKnowledgeBase = async () => {
+    const confirmed = window.confirm(
+      "Rebuild the RAG index from all ACTIVE documents and their current versions?",
+    );
+
+    if (!confirmed) return;
+
+    setReindexing(true);
+    setIndexError(null);
+    setReindexMessage(null);
+
+    try {
+      const result = await adminKnowledgeBaseApi.reindex();
+
+      setReindexMessage(
+        `Re-index completed: ${result.documentsIndexed} documents, ${result.chunksCreated} chunks.`,
+      );
+
+      await Promise.all([loadIndexStatus(), loadDocuments(true)]);
+
+      if (selectedId) {
+        const response = await adminKnowledgeBaseApi.document(selectedId);
+
+        setSelected(response.document);
+      }
+    } catch (err) {
+      const message =
+        err instanceof KnowledgeBaseApiError && err.status === 409
+          ? "Another RAG re-index operation is already running."
+          : err instanceof Error
+            ? err.message
+            : "Unable to rebuild the RAG index.";
+
+      await loadIndexStatus();
+
+      setIndexError(message);
+    } finally {
+      setReindexing(false);
+    }
+  };
+
   return (
     <main className={styles.page}>
       <section className={styles.header}>
@@ -414,6 +581,94 @@ export default function KnowledgeDocumentsPage() {
             <RefreshCw size={18} className={refreshing ? styles.spin : ""} />
           </button>
         </div>
+      </section>
+
+      <section className={styles.indexPanel}>
+        <div className={styles.indexPanelHeader}>
+          <div className={styles.indexPanelTitle}>
+            <Database size={19} />
+
+            <div>
+              <strong>RAG Index</strong>
+              <span>Published knowledge currently used by the chatbot</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            onClick={reindexKnowledgeBase}
+            disabled={reindexing}
+          >
+            <RefreshCw size={16} className={reindexing ? styles.spin : ""} />
+
+            {reindexing ? "Re-indexing..." : "Re-index"}
+          </button>
+        </div>
+
+        {indexError && <div className={styles.indexError}>{indexError}</div>}
+
+        <div className={styles.indexMetrics}>
+          <div className={styles.indexMetric}>
+            <span>Status</span>
+
+            <strong
+              className={`${styles.indexStatusBadge} ${
+                indexStatus?.status === "READY"
+                  ? styles.indexReady
+                  : indexStatus?.status === "DEGRADED"
+                    ? styles.indexDegraded
+                    : styles.indexNotReady
+              }`}
+            >
+              {indexStatusLoading
+                ? "LOADING"
+                : (indexStatus?.status ?? "UNKNOWN")}
+            </strong>
+          </div>
+
+          <div className={styles.indexMetric}>
+            <span>Documents</span>
+            <strong>{indexStatus?.documentsIndexed ?? "-"}</strong>
+          </div>
+
+          <div className={styles.indexMetric}>
+            <span>Chunks</span>
+            <strong>{indexStatus?.chunksIndexed ?? "-"}</strong>
+          </div>
+
+          <div className={styles.indexMetric}>
+            <span>Last indexed</span>
+            <strong>{formatDateTime(indexStatus?.activatedAt)}</strong>
+          </div>
+
+          <div className={styles.indexMetric}>
+            <span>Active build</span>
+            <strong title={indexStatus?.activeBuildId ?? undefined}>
+              {indexStatus?.activeBuildId ?? "-"}
+            </strong>
+          </div>
+        </div>
+
+        {indexStatus && (
+          <div className={styles.indexHealth}>
+            <span>
+              Chroma: {indexStatus.chromaReady ? "Ready" : "Unavailable"}
+            </span>
+
+            <span>BM25: {indexStatus.bm25Ready ? "Ready" : "Unavailable"}</span>
+
+            <span>
+              Manifest: {indexStatus.manifestReady ? "Ready" : "Unavailable"}
+            </span>
+
+            <span>Last job: {indexStatus.lastJobStatus ?? "-"}</span>
+          </div>
+        )}
+
+        {reindexMessage && (
+          <div className={styles.indexSuccess}>{reindexMessage}</div>
+        )}
       </section>
 
       <section className={styles.toolbar}>
@@ -585,6 +840,7 @@ export default function KnowledgeDocumentsPage() {
       {versionFormOpen && (
         <VersionFormModal
           values={versionFormValues}
+          documentType={selected?.documentType ?? ""}
           error={versionFormError}
           submitting={versionSubmitting}
           onChange={setVersionFormValues}
@@ -628,12 +884,16 @@ function DocumentRow({
       </td>
       <td>{document.documentType}</td>
       <td>
-        <span className={`${styles.badge} ${styles[document.status.toLowerCase()] ?? ""}`}>
+        <span
+          className={`${styles.badge} ${styles[document.status.toLowerCase()] ?? ""}`}
+        >
           {document.status}
         </span>
       </td>
       <td>{document.year ?? "-"}</td>
-      <td>{document.currentVersion || document.currentVersionInfo?.version || "-"}</td>
+      <td>
+        {document.currentVersion || document.currentVersionInfo?.version || "-"}
+      </td>
       <td>{formatDateTime(document.updatedAt)}</td>
     </tr>
   );
@@ -665,7 +925,12 @@ function DocumentDetail({
         </div>
 
         <div className={styles.detailActions}>
-          <button type="button" onClick={onEdit} disabled={actionBusy} title="Edit document">
+          <button
+            type="button"
+            onClick={onEdit}
+            disabled={actionBusy}
+            title="Edit document"
+          >
             <Pencil size={15} />
           </button>
           <button
@@ -689,7 +954,11 @@ function DocumentDetail({
       </div>
 
       <div className={styles.detailMeta}>
-        <Meta label="Type" value={document.documentType} />
+        <Meta label="File type" value={document.documentType} />
+        <Meta
+          label="Content type"
+          value={ragDocumentTypeLabel(document.ragDocumentType)}
+        />
         <Meta label="Status" value={document.status} />
         <Meta label="Year" value={document.year?.toString() ?? "-"} />
         <Meta label="Current version" value={document.currentVersion ?? "-"} />
@@ -713,7 +982,8 @@ function DocumentDetail({
             <strong>Latest index job</strong>
           </div>
           <p>
-            {document.latestIndexJob.status} · {document.latestIndexJob.chunksCreated} chunks
+            {document.latestIndexJob.status} ·{" "}
+            {document.latestIndexJob.chunksCreated} chunks
           </p>
           <span>{formatDateTime(document.latestIndexJob.completedAt)}</span>
         </div>
@@ -738,7 +1008,9 @@ function DocumentDetail({
               </div>
               <div>
                 <span>{version.effectiveDate || "No effective date"}</span>
-                <span>{version.chunkPath || version.extractedTextPath || "-"}</span>
+                <span>
+                  {version.chunkPath || version.extractedTextPath || "-"}
+                </span>
               </div>
               <div className={styles.versionActions}>
                 {document.currentVersion === version.version ? (
@@ -823,20 +1095,6 @@ function DocumentFormModal({
           </label>
 
           <label>
-            <span>Type</span>
-            <select
-              value={values.documentType}
-              onChange={(event) => update("documentType", event.target.value)}
-            >
-              {DOCUMENT_TYPE_OPTIONS.map((item) => (
-                <option value={item} key={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
             <span>Status</span>
             <select
               value={values.status}
@@ -848,6 +1106,32 @@ function DocumentFormModal({
                 </option>
               ))}
             </select>
+          </label>
+
+          <label>
+            <span>Content Type</span>
+            <select
+              value={values.ragDocumentType}
+              onChange={(event) =>
+                update(
+                  "ragDocumentType",
+                  event.target.value as
+                    | KnowledgeRagDocumentType
+                    | "",
+                )
+              }
+            >
+              <option value="">Select content type</option>
+              {RAG_DOCUMENT_TYPE_OPTIONS.map((item) => (
+                <option value={item.value} key={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            <em className={styles.fieldHint}>
+              Used by the chatbot to route this document to the correct
+              knowledge scope.
+            </em>
           </label>
 
           <label>
@@ -873,13 +1157,24 @@ function DocumentFormModal({
               <span>File</span>
               <input
                 type="file"
-                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={(event) =>
-                  update("file", event.target.files?.[0] ?? null)
-                }
+                accept={DOCUMENT_FILE_ACCEPT}
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  const detectedType = file
+                    ? getDocumentTypeFromFile(file)
+                    : null;
+
+                  onChange({
+                    ...values,
+                    file: detectedType ? file : null,
+                    documentType: detectedType ?? "",
+                  });
+                }}
               />
               <em className={styles.fieldHint}>
-                The selected file will be saved as the first version of this document.
+                Supported: PDF and DOCX. The document type is detected
+                automatically from the file extension
+                {values.documentType ? ` (${values.documentType})` : ""}.
               </em>
             </label>
           ) : (
@@ -899,7 +1194,11 @@ function DocumentFormModal({
         </div>
 
         <div className={styles.modalFooter}>
-          <button type="button" className={styles.secondaryButton} onClick={onClose}>
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            onClick={onClose}
+          >
             Cancel
           </button>
           <button
@@ -918,6 +1217,7 @@ function DocumentFormModal({
 
 function VersionFormModal({
   values,
+  documentType,
   error,
   submitting,
   onChange,
@@ -925,6 +1225,7 @@ function VersionFormModal({
   onSubmit,
 }: {
   values: VersionFormValues;
+  documentType: KnowledgeDocumentType | "";
   error: string | null;
   submitting: boolean;
   onChange: (values: VersionFormValues) => void;
@@ -949,7 +1250,11 @@ function VersionFormModal({
             <p className={styles.eyebrow}>Document Version</p>
             <h2>Add Version</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close version form">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close version form"
+          >
             <X size={18} />
           </button>
         </div>
@@ -994,15 +1299,23 @@ function VersionFormModal({
             <span>File</span>
             <input
               type="file"
+              accept={acceptForDocumentType(documentType)}
               onChange={(event) =>
                 update("file", event.target.files?.[0] ?? null)
               }
             />
+            <em className={styles.fieldHint}>
+              This version must use the same file type: {documentType || "-"}.
+            </em>
           </label>
         </div>
 
         <div className={styles.modalFooter}>
-          <button type="button" className={styles.secondaryButton} onClick={onClose}>
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            onClick={onClose}
+          >
             Cancel
           </button>
           <button
@@ -1016,6 +1329,47 @@ function VersionFormModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function getDocumentTypeFromFile(
+  file: File,
+): KnowledgeDocumentType | null {
+  const dotIndex = file.name.lastIndexOf(".");
+  if (dotIndex < 0 || dotIndex === file.name.length - 1) return null;
+
+  const extension = file.name
+    .slice(dotIndex + 1)
+    .trim()
+    .toUpperCase() as KnowledgeDocumentType;
+
+  return ALLOWED_DOCUMENT_TYPES.includes(extension)
+    ? extension
+    : null;
+}
+
+function acceptForDocumentType(
+  documentType: KnowledgeDocumentType | "",
+): string {
+  switch (documentType.toUpperCase()) {
+    case "PDF":
+      return ".pdf,application/pdf";
+    case "DOCX":
+      return ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    default:
+      return DOCUMENT_FILE_ACCEPT;
+  }
+}
+
+function ragDocumentTypeLabel(
+  value: KnowledgeRagDocumentType | null,
+): string {
+  if (!value) return "-";
+
+  return (
+    RAG_DOCUMENT_TYPE_OPTIONS.find(
+      (item) => item.value === value,
+    )?.label ?? value
   );
 }
 

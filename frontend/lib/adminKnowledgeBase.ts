@@ -55,6 +55,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export type KnowledgeDocumentType =
+  | "PDF"
+  | "DOCX";
+
+export type KnowledgeRagDocumentType =
+  | "policy"
+  | "form"
+  | "agreement"
+  | "talent_handbook"
+  | "capstone_booklet"
+  | "knowledge";
+
 export type KnowledgeDocumentVersion = {
   id: number;
   version: string;
@@ -78,6 +90,39 @@ export type KnowledgeIndexJob = {
   createdAt: string | null;
 };
 
+export type KnowledgeIndexStatus = {
+  status: "READY" | "DEGRADED" | "NOT_READY" | string;
+  activeBuildId: string | null;
+  documentsIndexed: number;
+  chunksIndexed: number;
+  activatedAtUnix: number | null;
+  activatedAt: string | null;
+  pointerExists: boolean;
+  chromaReady: boolean;
+  bm25Ready: boolean;
+  manifestReady: boolean;
+  pointerError: string | null;
+  lastJobStatus: string | null;
+  lastJobStartedAt: string | null;
+  lastJobCompletedAt: string | null;
+  lastJobError: string | null;
+};
+
+export type KnowledgeReindexResponse = {
+  buildId: string;
+  status: string;
+  documentsIndexed: number;
+  chunksCreated: number;
+  sourceDir: string;
+  ragDir: string;
+  chromaDir: string;
+  bm25Path: string;
+  manifestPath: string;
+  documents: string[];
+  durationSeconds: number;
+  removedBuilds: string[];
+};
+
 export type KnowledgeUser = {
   id: number;
   fullName: string;
@@ -87,7 +132,8 @@ export type KnowledgeUser = {
 export type KnowledgeDocument = {
   id: number;
   title: string;
-  documentType: string;
+  documentType: KnowledgeDocumentType;
+  ragDocumentType: KnowledgeRagDocumentType | null;
   description: string | null;
   fileUrl: string | null;
   currentVersion: string | null;
@@ -134,7 +180,8 @@ export type KnowledgeDocumentDetailResponse = {
 
 export type KnowledgeDocumentPayload = {
   title: string;
-  documentType: string;
+  documentType: KnowledgeDocumentType;
+  ragDocumentType: KnowledgeRagDocumentType;
   description: string | null;
   fileUrl: string | null;
   currentVersion: string | null;
@@ -178,6 +225,20 @@ function documentsQuery(params: KnowledgeDocumentsParams): string {
 }
 
 export const adminKnowledgeBaseApi = {
+
+    indexStatus: () =>
+    request<KnowledgeIndexStatus>(
+      "/api/v1/admin/knowledge/index-status",
+    ),
+
+  reindex: () =>
+    request<KnowledgeReindexResponse>(
+      "/api/v1/admin/knowledge/reindex",
+      {
+        method: "POST",
+      },
+    ),
+
   documents: (params: KnowledgeDocumentsParams = {}) =>
     request<KnowledgeDocumentsResponse>(
       `/api/v1/admin/knowledge/documents?${documentsQuery(params)}`,
