@@ -50,6 +50,26 @@ like the agent ignored them. Now extract_fields() also returns
 `invalid_field_attempts` per field in state so build_rejection_message
 can escalate wording on repeated invalid attempts, rather than
 repeating the same polite ask forever.
+
+FIX (profile identity protection): a fresh, non-null extraction wins
+for MOST fields (see above) — but NOT for profile identity fields
+(student name, ID, email, intake, college). Those come from the
+verified DB profile (pre-filled by bridge.py before this node ever
+runs) and must never be silently overwritten by whatever the
+extraction LLM re-reads from the conversation text on a later turn —
+e.g. a student casually mentioning a friend's name elsewhere in the
+conversation must never overwrite their own verified identity.
+
+FIX (REGRESSION FOUND & RESTORED — 2026): an earlier edit to this
+file deleted the call to build_optional_info_offer_message() from the
+final return block while leaving the import and the docstring above
+untouched, silently skipping the one-time "if you have a JD, paste it
+here" offer entirely — confirmed by a real test where the agent asked
+for the 2 missing required fields, then jumped straight to the review
+screen with 11 optional fields still blank, never asking about them.
+Restored the actual step 5/6 behavior described in the docstring:
+offer optional info ONCE (tracked via state["optional_offer_made"])
+before moving to "ready_to_fill".
 """
 
 from __future__ import annotations
@@ -62,6 +82,19 @@ from src.agents.form_agent.tools.form_tool import (
     extract_fields,
     find_missing_required,
 )
+
+# Profile identity fields — protected from being overwritten by a
+# fresh extraction once already set from the verified DB profile (see
+# module docstring, "profile identity protection").
+_PROFILE_IDENTITY_KEYS = {
+    "name_in_full",
+    "student_id",
+    "email",
+    "intake",
+    "college",
+    "student_full_name",
+    "student_name_printed",
+}
 
 
 def collect_info_node(state: FormAgentState) -> FormAgentState:
@@ -83,24 +116,13 @@ def collect_info_node(state: FormAgentState) -> FormAgentState:
 
     extracted_values, flags = extract_fields(conversation_text, form_code)
 
-    # Merge: a fresh, non-null extraction always wins for general fields.
-    # For profile identity fields (student name, ID, email, intake, college),
-    # if we already have a verified profile value from DB, preserve it to maintain
-    # personalization and ensure students only submit under their own verified identity.
-    profile_identity_keys = {
-        "name_in_full",
-        "student_id",
-        "email",
-        "intake",
-        "college",
-        "student_full_name",
-        "student_name_printed",
-    }
-
+    # Merge: a fresh, non-null extraction wins for general fields. For
+    # profile identity fields, an already-verified DB value is never
+    # overwritten by a later extraction (see module docstring).
     merged_values = dict(existing_values)
     for key, value in extracted_values.items():
         if value:
-            if key in profile_identity_keys and existing_values.get(key):
+            if key in _PROFILE_IDENTITY_KEYS and existing_values.get(key):
                 continue
             merged_values[key] = value
 
@@ -144,7 +166,24 @@ def collect_info_node(state: FormAgentState) -> FormAgentState:
             "status": "collecting_info",
         }
 
-    # All required fields satisfied -> proceed immediately to filling form and review
+    # All required fields satisfied. Before moving on, offer ONCE to
+    # add optional info — but only if that offer hasn't been made yet
+    # this session (avoid asking every single turn). THIS IS THE STEP
+    # THAT WAS ACCIDENTALLY DELETED — restored here.
+    if not state.get("optional_offer_made"):
+        offer_message = build_optional_info_offer_message(merged_values, form_code)
+
+        if offer_message:
+            return {
+                **state,
+                "field_values": merged_values,
+                "invalid_field_attempts": next_attempt_counts,
+                "missing_required_field_names": [],
+                "ask_message": offer_message,
+                "optional_offer_made": True,
+                "status": "collecting_info",
+            }
+
     return {
         **state,
         "field_values": merged_values,

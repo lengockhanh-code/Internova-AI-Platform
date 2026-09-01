@@ -60,9 +60,6 @@ const CHAT_MESSAGES_KEY_PREFIX =
 const CHAT_SESSION_KEY_PREFIX =
     "internova_chat_session_id";
 
-const CHAT_SESSION_DRAFT_KEY_PREFIX =
-    "internova_chat_session_draft";
-
 const CHAT_UPDATED_EVENT =
     "internova:chat-updated";
 
@@ -71,9 +68,6 @@ let unscopedChatStorageId: string | null = null;
 type ChatRuntimeWindow = Window & {
     __internovaChatStreamActive?: boolean;
     __internovaChatAbortController?: AbortController | null;
-    // Session that currently owns the active streaming request.
-    // This lets the stream continue safely while the user browses another chat.
-    __internovaChatStreamSessionId?: string | null;
 };
 
 
@@ -291,19 +285,11 @@ type StreamEvent = {
     route_scope?: string | null;
     step?: ProcessingStep | null;
     processing?: ProcessingSummary;
-    form_agent?: {
-        session_id?: string | null;
-        status?: string | null;
-        detected_form?: string | null;
-        docx_ready?: boolean;
-    };
     result?: {
         answer?: string;
         answer_status?: string;
         confidence?: number;
         needs_retrieval?: boolean;
-        route_intent?: string | null;
-        route_scope?: string | null;
         sources?: Source[];
     };
 };
@@ -405,60 +391,6 @@ function getChatSessionStorageKey(): string {
     return getChatStorageKey(CHAT_SESSION_KEY_PREFIX);
 }
 
-function getChatSessionDraftStorageKey(
-    sessionId: string,
-): string {
-    return `${getChatStorageKey(CHAT_SESSION_DRAFT_KEY_PREFIX)}:session:${sessionId}`;
-}
-
-function readChatSessionDraft(
-    sessionId: string,
-): Message[] | null {
-    if (typeof window === "undefined" || !sessionId) {
-        return null;
-    }
-
-    try {
-        const stored = sessionStorage.getItem(
-            getChatSessionDraftStorageKey(sessionId),
-        );
-
-        if (!stored) {
-            return null;
-        }
-
-        const parsed = JSON.parse(stored) as Message[];
-        return Array.isArray(parsed) ? parsed : null;
-    } catch {
-        return null;
-    }
-}
-
-function mergeChatMessages(
-    serverMessages: Message[],
-    draftMessages: Message[],
-): Message[] {
-    if (draftMessages.length === 0) {
-        return serverMessages;
-    }
-
-    const draftById = new Map(
-        draftMessages.map(message => [message.id, message]),
-    );
-    const serverIds = new Set(
-        serverMessages.map(message => message.id),
-    );
-
-    return [
-        ...serverMessages.map(
-            message => draftById.get(message.id) ?? message,
-        ),
-        ...draftMessages.filter(
-            message => !serverIds.has(message.id),
-        ),
-    ];
-}
-
 function formatChatTimestamp(
     value: string,
     locale: "vi" | "en",
@@ -510,12 +442,12 @@ function getPhaseLabel(
 ): string {
     const labels: Record<ChatPhase, { vi: string; en: string }> = {
         retrieving: { vi: "Đang tìm tài liệu", en: "Searching documents" },
-        thinking:   { vi: "Đang suy nghĩ", en: "Thinking" },
-        answering:  { vi: "Đang trả lời", en: "Answering" },
-        streaming:  { vi: "Đang trả lời", en: "Answering" },
-        done:       { vi: "Đã hoàn tất", en: "Completed" },
-        error:      { vi: "Đã dừng xử lý", en: "Processing stopped" },
-        idle:       { vi: "", en: "" },
+        thinking: { vi: "Đang suy nghĩ", en: "Thinking" },
+        answering: { vi: "Đang trả lời", en: "Answering" },
+        streaming: { vi: "Đang trả lời", en: "Answering" },
+        done: { vi: "Đã hoàn tất", en: "Completed" },
+        error: { vi: "Đã dừng xử lý", en: "Processing stopped" },
+        idle: { vi: "", en: "" },
     };
     return labels[phase]?.[locale] ?? "";
 }
@@ -645,6 +577,9 @@ export default function RagChatPage() {
     // hiện tự nhiên trong dòng chat — không còn panel cố định.
     const [activeFormAgentSessionId, setActiveFormAgentSessionId] = useState<string | null>(null);
     const [activeFormAgentStatus, setActiveFormAgentStatus] = useState<string | null>(null);
+    // Người dùng vừa bấm "Sửa" ở panel xem trước — đổi tạm placeholder
+    // ô nhập chat thành gợi ý sửa, tắt lại ngay khi họ gửi tin nhắn.
+    const [editHintActive, setEditHintActive] = useState(false);
 
     // Explicit fill-intent phrases — mirrors bridge.py _FILL_INTENT_PHRASES.
     // Kept in sync manually: if backend list changes, update here too.
@@ -669,8 +604,7 @@ export default function RagChatPage() {
     function hasFillIntentPhrase(text: string): boolean {
         const normalized = text
             .toLowerCase()
-            .replace(/\u0111/g, "d")
-            .replace(/\u0110/g, "d")
+            .replace(/đ/g, "d")
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "");
 
@@ -693,6 +627,35 @@ export default function RagChatPage() {
                 item.id === messageId ? updater(item) : item
             )
         );
+    }
+
+    // FIX (ĐÂY LÀ CHỖ TỪNG BỊ THIẾU): tìm tin nhắn form-agent MỚI
+    // NHẤT trong toàn bộ cuộc trò chuyện — bất kể trạng thái gì. Chỉ
+    // coi là "phiên đang hoạt động" nếu ĐÚNG tin mới nhất đó chưa kết
+    // thúc (chưa approved/cancelled). TUYỆT ĐỐI không được lùi về
+    // tin CŨ HƠN nếu tin mới nhất đã kết thúc — nếu không sẽ nhận
+    // nhầm 1 tin cũ (trạng thái đóng băng từ lâu, vd "collecting_info"
+    // từ lúc nó được tạo) là phiên vẫn đang mở, khiến mọi câu hỏi
+    // SAU KHI đơn đã "Hoàn thành" vẫn bị lôi vào form agent thay vì
+    // đi qua RAG bình thường.
+    function findActiveFormAgentSession(): { sessionId: string; status: string } | null {
+        const lastFormMsg = [...messagesRef.current]
+            .reverse()
+            .find(m => m.isFormAgentMessage && m.formAgentSessionId);
+
+        if (!lastFormMsg) return null;
+
+        if (
+            lastFormMsg.formAgentStatus === "approved" ||
+            lastFormMsg.formAgentStatus === "cancelled"
+        ) {
+            return null;
+        }
+
+        return {
+            sessionId: lastFormMsg.formAgentSessionId!,
+            status: lastFormMsg.formAgentStatus ?? "collecting_info",
+        };
     }
 
     // Bắt đầu phiên Form Agent trực tiếp (từ nút bấm hoặc từ câu chat xác nhận)
@@ -792,14 +755,9 @@ export default function RagChatPage() {
         userMessageId: string,
     ) {
         const newId = crypto.randomUUID();
-        const effectiveSessionId =
-            activeFormAgentSessionId ||
-            [...messagesRef.current]
-                .reverse()
-                .find(m => m.isFormAgentMessage && m.formAgentSessionId && m.formAgentStatus !== "approved" && m.formAgentStatus !== "cancelled")
-                ?.formAgentSessionId ||
-            null;
-        const effectiveStatus = activeFormAgentStatus || "collecting_info";
+        const activeSession = findActiveFormAgentSession();
+        const effectiveSessionId = activeFormAgentSessionId || activeSession?.sessionId || null;
+        const effectiveStatus = activeFormAgentStatus || activeSession?.status || "collecting_info";
 
         setMessages(current => [
             ...current,
@@ -924,6 +882,12 @@ export default function RagChatPage() {
             setActiveFormAgentSessionId(null);
             setActiveFormAgentStatus(null);
         }
+    }
+    function handleFormAgentRequestEdit() {
+        setEditHintActive(true);
+        requestAnimationFrame(() => {
+            chatInputRef.current?.focus();
+        });
     }
     // ── HẾT PHẦN FORM AGENT ──────────────────────────────────────────
 
@@ -1070,14 +1034,6 @@ export default function RagChatPage() {
     ) => {
         messagesRef.current = nextMessages;
 
-        const activeSessionId = sessionIdRef.current;
-        if (activeSessionId) {
-            sessionStorage.setItem(
-                getChatSessionDraftStorageKey(activeSessionId),
-                JSON.stringify(nextMessages),
-            );
-        }
-
         sessionStorage.setItem(
             getChatMessagesStorageKey(),
             JSON.stringify(nextMessages)
@@ -1152,11 +1108,12 @@ export default function RagChatPage() {
 
             const data = await response.json() as ChatSessionsResponse;
             setChatSessions(data.sessions ?? []);
-        } catch {
+        } catch (error) {
+            console.error("Không thể tải lịch sử trò chuyện:", error);
             setHistoryError(
                 locale === "en"
-                    ? "Unable to load chat history. Please check the backend connection."
-                    : "Không thể tải lịch sử trò chuyện. Vui lòng kiểm tra kết nối backend.",
+                    ? "Unable to load chat history."
+                    : "Không thể tải lịch sử trò chuyện.",
             );
         } finally {
             setHistoryLoading(false);
@@ -1213,12 +1170,7 @@ export default function RagChatPage() {
             return;
         }
 
-        /*
-         * IMPORTANT:
-         * Do NOT call stopGeneration() here.
-         * The current stream belongs to its original session and is allowed
-         * to finish in the background while the user browses another chat.
-         */
+        stopGeneration();
         setSwitchingSessionId(sessionId);
         setHistoryError("");
         olderLoadInFlightRef.current = false;
@@ -1240,25 +1192,7 @@ export default function RagChatPage() {
             }
 
             const data = await response.json() as ChatMessagesPageResponse;
-            const runtime = getChatRuntime();
-            const streamBelongsToTarget =
-                runtime.__internovaChatStreamActive === true
-                &&
-                runtime.__internovaChatStreamSessionId === sessionId;
-
-            const liveDraft =
-                streamBelongsToTarget
-                    ? readChatSessionDraft(sessionId)
-                    : null;
-
-            const restoredMessages =
-                liveDraft && liveDraft.length > 0
-                    ? mergeChatMessages(
-                        data.messages ?? [],
-                        liveDraft,
-                    )
-                    : (data.messages ?? []);
-
+            const restoredMessages = data.messages ?? [];
             const nextCursor = data.nextCursor ?? null;
             const hasMore =
                 Boolean(data.hasMore) &&
@@ -1269,12 +1203,6 @@ export default function RagChatPage() {
 
             persistMessages(restoredMessages);
             setMessages(restoredMessages);
-
-            // Keep the composer locked while any background stream is active.
-            // This prevents a second concurrent stream from reusing the same refs.
-            setLoading(
-                runtime.__internovaChatStreamActive === true,
-            );
             setVisibleMessageCount(
                 Math.max(
                     restoredMessages.length,
@@ -2023,16 +1951,6 @@ export default function RagChatPage() {
                 message.role === "user"
         );
 
-    // A history session can legitimately contain exactly one USER message
-    // (for example while the answer is still running). Do not treat every
-    // one-message session as the welcome screen.
-    const isWelcomeState =
-        messages.length === 1
-        &&
-        messages[0]?.id === "welcome"
-        &&
-        messages[0]?.role === "assistant";
-
 
 
     /* ============================================================
@@ -2044,12 +1962,20 @@ export default function RagChatPage() {
         const runtime =
             getChatRuntime();
 
-        /*
-         * Starting/browsing another chat must not cancel a response that is
-         * already streaming in a different session.
-         */
-        const hasBackgroundStream =
-            runtime.__internovaChatStreamActive === true;
+        (
+            runtime.__internovaChatAbortController
+            ??
+            abortControllerRef.current
+        )?.abort();
+
+        runtime.__internovaChatAbortController =
+            null;
+
+        runtime.__internovaChatStreamActive =
+            false;
+
+        abortControllerRef.current =
+            null;
 
         const newSessionId =
             crypto.randomUUID();
@@ -2101,23 +2027,21 @@ export default function RagChatPage() {
 
 
         setLoading(
-            hasBackgroundStream
+            false
         );
 
-        if (!hasBackgroundStream) {
-            if (
-                streamFrameRef.current !==
-                null
-            ) {
-                cancelAnimationFrame(
-                    streamFrameRef.current
-                );
+        if (
+            streamFrameRef.current !==
+            null
+        ) {
+            cancelAnimationFrame(
+                streamFrameRef.current
+            );
 
-                streamFrameRef.current = null;
-            }
-
-            streamBufferRef.current = "";
+            streamFrameRef.current = null;
         }
+
+        streamBufferRef.current = "";
         setShowJumpToLatest(false);
 
 
@@ -2145,7 +2069,6 @@ export default function RagChatPage() {
         abortControllerRef.current = null;
         runtime.__internovaChatAbortController = null;
         runtime.__internovaChatStreamActive = false;
-        runtime.__internovaChatStreamSessionId = null;
 
         setLoading(false);
         if (streamFrameRef.current !== null) {
@@ -2179,21 +2102,12 @@ export default function RagChatPage() {
             return;
         }
 
+        setEditHintActive(false);
+
         // ── FORM AGENT 1: Nếu đang có phiên Form Agent đang chạy ───────
-        const currentActiveSessionId =
-            activeFormAgentSessionId ||
-            [...messagesRef.current]
-                .reverse()
-                .find(m => m.isFormAgentMessage && m.formAgentSessionId && m.formAgentStatus !== "approved" && m.formAgentStatus !== "cancelled")
-                ?.formAgentSessionId ||
-            null;
-        const currentActiveStatus =
-            activeFormAgentStatus ||
-            [...messagesRef.current]
-                .reverse()
-                .find(m => m.isFormAgentMessage && m.formAgentSessionId && m.formAgentStatus !== "approved" && m.formAgentStatus !== "cancelled")
-                ?.formAgentStatus ||
-            null;
+        const activeSession = findActiveFormAgentSession();
+        const currentActiveSessionId = activeFormAgentSessionId || activeSession?.sessionId || null;
+        const currentActiveStatus = activeFormAgentStatus || activeSession?.status || null;
 
         if (
             currentActiveSessionId &&
@@ -2216,7 +2130,7 @@ export default function RagChatPage() {
 
             // Kiểm tra câu từ chối / hủy phiên thực sự (chỉ áp dụng với câu lệnh ngắn <= 6 từ)
             const cancelPhrases = [
-                "huy", "huy phien", "huy don", "huy dien don", "dung", "dung lai", "cancel",
+                "huy", "huy phien", "huy don", "huy dien don", "cancel",
                 "dung lai", "dung phien", "dung dien don", "khong dien nua",
                 "khong muon dien nua", "thoi khong lam nua", "thoi khong dien nua"
             ];
@@ -2231,7 +2145,11 @@ export default function RagChatPage() {
                 return tokens.includes(p);
             });
             if (isExplicitCancel) {
-                void handleFormAgentCancelSession(currentActiveSessionId, currentActiveSessionId);
+                const targetFormMsg = [...messagesRef.current]
+                    .reverse()
+                    .find(m => m.isFormAgentMessage && m.formAgentSessionId === currentActiveSessionId);
+                const targetMsgId = targetFormMsg?.id || userMessage.id;
+                void handleFormAgentCancelSession(targetMsgId, currentActiveSessionId);
                 return;
             }
 
@@ -2307,11 +2225,6 @@ export default function RagChatPage() {
         }
 
 
-        // Capture the owner session once. Never read sessionIdRef.current
-        // later inside the stream because the user may browse another chat.
-        const requestSessionId =
-            sessionIdRef.current;
-
         const userMessage:
             Message = {
 
@@ -2374,11 +2287,6 @@ export default function RagChatPage() {
             assistantMessage,
         ];
 
-        // This snapshot belongs permanently to requestSessionId even if the
-        // visible chat changes while the stream is still running.
-        let streamMessages =
-            nextMessages;
-
         persistMessages(
             nextMessages
         );
@@ -2404,8 +2312,8 @@ export default function RagChatPage() {
                 current: Message,
             ) => Message,
         ) => {
-            streamMessages =
-                streamMessages.map(
+            const nextMessages =
+                messagesRef.current.map(
                     item => {
                         if (
                             item.id !==
@@ -2418,34 +2326,12 @@ export default function RagChatPage() {
                     }
                 );
 
-            // Always persist the stream into its OWN session snapshot.
-            // Therefore switching history never loses the in-flight answer.
-            sessionStorage.setItem(
-                getChatSessionDraftStorageKey(requestSessionId),
-                JSON.stringify(streamMessages),
-            );
-
-            // Only paint into React state when the user is currently looking
-            // at the session that owns this stream. Otherwise keep streaming
-            // silently in the background.
-            if (sessionIdRef.current !== requestSessionId) {
-                return;
-            }
-
-            messagesRef.current =
-                streamMessages;
-
-            sessionStorage.setItem(
-                getChatMessagesStorageKey(),
-                JSON.stringify(streamMessages),
-            );
-
-            window.dispatchEvent(
-                new Event(CHAT_UPDATED_EVENT),
+            persistMessages(
+                nextMessages
             );
 
             setMessages(
-                streamMessages
+                nextMessages
             );
         };
 
@@ -2519,9 +2405,6 @@ export default function RagChatPage() {
             runtime.__internovaChatStreamActive =
                 true;
 
-            runtime.__internovaChatStreamSessionId =
-                requestSessionId;
-
             const response =
                 await fetch(
                     `${API_URL}/api/v1/chat/stream`,
@@ -2531,7 +2414,7 @@ export default function RagChatPage() {
                         signal: requestController.signal,
                         body: JSON.stringify({
                             message,
-                            session_id: requestSessionId,
+                            session_id: sessionIdRef.current,
                             client_message_id: userMessage.id,
                             assistant_message_id: assistantMessageId,
                         }),
@@ -2666,11 +2549,7 @@ export default function RagChatPage() {
                         event.type ===
                         "final"
                     ) {
-                        if (
-                            event.session_id
-                            &&
-                            sessionIdRef.current === requestSessionId
-                        ) {
+                        if (event.session_id) {
                             sessionIdRef.current = event.session_id;
                             sessionStorage.setItem(
                                 getChatSessionStorageKey(),
@@ -2694,28 +2573,6 @@ export default function RagChatPage() {
                                 ?.needs_retrieval
                             === true;
 
-                        const isFormAgentResponse =
-                            event.form_agent != null
-                            || event.route_intent === "form_agent"
-                            || event.result?.route_intent === "form_agent";
-                        const formAgentSessionId =
-                            event.form_agent?.session_id
-                            ?? event.session_id
-                            ?? requestSessionId;
-                        const formAgentStatus =
-                            event.form_agent?.status
-                            ?? (isFormAgentResponse ? "collecting_info" : null);
-
-                        if (isFormAgentResponse && sessionIdRef.current === requestSessionId) {
-                            if (formAgentStatus === "approved" || formAgentStatus === "cancelled") {
-                                setActiveFormAgentSessionId(null);
-                                setActiveFormAgentStatus(null);
-                            } else {
-                                setActiveFormAgentSessionId(formAgentSessionId);
-                                setActiveFormAgentStatus(formAgentStatus);
-                            }
-                        }
-
 
                         updateAssistantMessage(
                             current => ({
@@ -2727,34 +2584,6 @@ export default function RagChatPage() {
                                     event.response
                                     ??
                                     current.content,
-                                isFormAgentMessage:
-                                    isFormAgentResponse
-                                        ? true
-                                        : current.isFormAgentMessage,
-                                formAgentPhase:
-                                    isFormAgentResponse
-                                        ? "working"
-                                        : current.formAgentPhase,
-                                formAgentSessionId:
-                                    isFormAgentResponse
-                                        ? formAgentSessionId
-                                        : current.formAgentSessionId,
-                                formAgentStatus:
-                                    isFormAgentResponse
-                                        ? formAgentStatus
-                                        : current.formAgentStatus,
-                                formAgentDetectedName:
-                                    isFormAgentResponse
-                                        ? (event.form_agent?.detected_form ?? current.formAgentDetectedName)
-                                        : current.formAgentDetectedName,
-                                formAgentDocxReady:
-                                    isFormAgentResponse
-                                        ? Boolean(event.form_agent?.docx_ready)
-                                        : current.formAgentDocxReady,
-                                formAgentLoading:
-                                    isFormAgentResponse
-                                        ? false
-                                        : current.formAgentLoading,
                                 sources:
                                     needsRetrieval
                                         ? (
@@ -2826,11 +2655,7 @@ export default function RagChatPage() {
                     event.type ===
                     "final"
                 ) {
-                    if (
-                        event.session_id
-                        &&
-                        sessionIdRef.current === requestSessionId
-                    ) {
+                    if (event.session_id) {
                         sessionIdRef.current = event.session_id;
                         sessionStorage.setItem(
                             getChatSessionStorageKey(),
@@ -2852,28 +2677,6 @@ export default function RagChatPage() {
                             ?.needs_retrieval
                         === true;
 
-                    const isFormAgentResponse =
-                        event.form_agent != null
-                        || event.route_intent === "form_agent"
-                        || event.result?.route_intent === "form_agent";
-                    const formAgentSessionId =
-                        event.form_agent?.session_id
-                        ?? event.session_id
-                        ?? requestSessionId;
-                    const formAgentStatus =
-                        event.form_agent?.status
-                        ?? (isFormAgentResponse ? "collecting_info" : null);
-
-                    if (isFormAgentResponse && sessionIdRef.current === requestSessionId) {
-                        if (formAgentStatus === "approved" || formAgentStatus === "cancelled") {
-                            setActiveFormAgentSessionId(null);
-                            setActiveFormAgentStatus(null);
-                        } else {
-                            setActiveFormAgentSessionId(formAgentSessionId);
-                            setActiveFormAgentStatus(formAgentStatus);
-                        }
-                    }
-
 
                     updateAssistantMessage(
                         current => ({
@@ -2885,34 +2688,6 @@ export default function RagChatPage() {
                                 event.response
                                 ??
                                 current.content,
-                            isFormAgentMessage:
-                                isFormAgentResponse
-                                    ? true
-                                    : current.isFormAgentMessage,
-                            formAgentPhase:
-                                isFormAgentResponse
-                                    ? "working"
-                                    : current.formAgentPhase,
-                            formAgentSessionId:
-                                isFormAgentResponse
-                                    ? formAgentSessionId
-                                    : current.formAgentSessionId,
-                            formAgentStatus:
-                                isFormAgentResponse
-                                    ? formAgentStatus
-                                    : current.formAgentStatus,
-                            formAgentDetectedName:
-                                isFormAgentResponse
-                                    ? (event.form_agent?.detected_form ?? current.formAgentDetectedName)
-                                    : current.formAgentDetectedName,
-                            formAgentDocxReady:
-                                isFormAgentResponse
-                                    ? Boolean(event.form_agent?.docx_ready)
-                                    : current.formAgentDocxReady,
-                            formAgentLoading:
-                                isFormAgentResponse
-                                    ? false
-                                    : current.formAgentLoading,
                             sources:
                                 needsRetrieval
                                     ? (
@@ -3033,9 +2808,6 @@ export default function RagChatPage() {
             runtime.__internovaChatStreamActive =
                 false;
 
-            runtime.__internovaChatStreamSessionId =
-                null;
-
             abortControllerRef.current = null;
 
             window.dispatchEvent(
@@ -3109,6 +2881,15 @@ export default function RagChatPage() {
 
 
 
+    // Tin nhắn form-agent MỚI NHẤT trong toàn bộ cuộc trò chuyện —
+    // chỉ panel này được coi là "đang sống" (có xoay/nút Hủy phiên).
+    // Mọi panel form-agent CŨ hơn tự đóng băng thành trạng thái đã
+    // qua (component FormAgentPanel tự xử lý phần hiển thị khi nhận
+    // isLatest=false, không cần tính toán gì thêm ở đây).
+    const latestFormAgentMessageId = [...messages]
+        .reverse()
+        .find(m => m.isFormAgentMessage)?.id ?? null;
+
     /* ============================================================
        RENDER
     ============================================================ */
@@ -3134,11 +2915,10 @@ export default function RagChatPage() {
 
 
                 <main
-                    className={`${styles.chatPage} ${
-                        isWelcomeState
+                    className={`${styles.chatPage} ${messages.length === 1
                             ? styles.chatPageWelcome
                             : ""
-                    }`}
+                        }`}
                 >
 
                     {/* =================================================
@@ -3495,8 +3275,11 @@ export default function RagChatPage() {
                                                     : message
                                             }
                                             locale={locale}
+                                            isLatestFormAgentMessage={message.id === latestFormAgentMessageId}
+                                            onFillRequest={(formName) => handleFormAgentRequest(formName)}
                                             onFormAgentApprove={handleFormAgentApprove}
                                             onFormAgentCancelSession={handleFormAgentCancelSession}
+                                            onFormAgentRequestEdit={handleFormAgentRequestEdit}
                                         />
                                     </div>
 
@@ -3507,7 +3290,8 @@ export default function RagChatPage() {
                                 SUGGESTIONS
                             ================================================= */}
 
-                            {isWelcomeState && (
+                            {messages.length ===
+                                1 && (
 
                                     <div
                                         className={
@@ -3698,9 +3482,13 @@ export default function RagChatPage() {
                                         placeholder={
                                             activeFormAgentSessionId &&
                                                 (activeFormAgentStatus === "collecting_info" || activeFormAgentStatus === "awaiting_review")
-                                                ? (locale === "en"
-                                                    ? "Enter information for the form (or type 'cancel' to stop)..."
-                                                    : "Nhập thông tin cho đơn (hoặc gõ 'hủy' để dừng)...")
+                                                ? (editHintActive
+                                                    ? (locale === "en"
+                                                        ? "What would you like to fix? e.g. \"the company is Lazada, not VinFast\""
+                                                        : "Bạn muốn sửa thông tin nào? Cứ nói rõ, ví dụ: 'công ty là Lazada chứ không phải VinFast'")
+                                                    : (locale === "en"
+                                                        ? "Enter information for the form (or type 'cancel' to stop)..."
+                                                        : "Nhập thông tin cho đơn (hoặc gõ 'hủy' để dừng)..."))
                                                 : (locale === "en"
                                                     ? "Ask about internship policies, procedures, forms..."
                                                     : "Nhập câu hỏi của bạn về học vụ, quy định, thủ tục thực tập...")
@@ -3785,15 +3573,19 @@ function formatProcessingDuration(milliseconds: number, locale: "vi" | "en") {
 const MessageBubble = memo(function MessageBubble({
     message,
     locale = "vi",
+    isLatestFormAgentMessage = true,
     onFillRequest,
     onFormAgentApprove,
     onFormAgentCancelSession,
+    onFormAgentRequestEdit,
 }: {
     message: Message;
     locale?: "vi" | "en";
+    isLatestFormAgentMessage?: boolean;
     onFillRequest?: (formName?: string) => void;
     onFormAgentApprove?: (messageId: string, sessionId: string) => void;
     onFormAgentCancelSession?: (messageId: string, sessionId: string) => void;
+    onFormAgentRequestEdit?: () => void;
 }) {
 
     const isUser =
@@ -3862,7 +3654,7 @@ const MessageBubble = memo(function MessageBubble({
             ? message.processing.latencyMs
             : (
                 typeof message.startedAtMs === "number"
-                && typeof message.completedAtMs === "number"
+                    && typeof message.completedAtMs === "number"
                     ? Math.max(0, message.completedAtMs - message.startedAtMs)
                     : null
             );
@@ -3874,7 +3666,7 @@ const MessageBubble = memo(function MessageBubble({
             className={`${isUser
                 ? styles.userMessageRow
                 : styles.aiMessageRow
-            } ${message.id === "welcome" ? styles.welcomeMessageRow : ""}`}
+                } ${message.id === "welcome" ? styles.welcomeMessageRow : ""}`}
         >
 
             {isUser ? (
@@ -3921,101 +3713,114 @@ const MessageBubble = memo(function MessageBubble({
                         || message.isFormAgentMessage
                         || (message.sources && message.sources.length > 0)
                     ) && (
-                        <div className={styles.aiBubble}>
-                            {message.isFormAgentMessage ? (
-                                <FormAgentPanel
-                                    phase={message.formAgentPhase ?? "working"}
-                                    detectedFormName={message.formAgentDetectedName}
-                                    status={message.formAgentStatus}
-                                    displayText={message.content}
-                                    loading={message.formAgentLoading}
-                                    error={message.formAgentErrorMsg}
-                                    docxReady={message.formAgentDocxReady}
-                                    sessionId={message.formAgentSessionId}
-                                    locale={locale}
-                                    onApprove={() =>
-                                        message.formAgentSessionId &&
-                                        onFormAgentApprove?.(message.id, message.formAgentSessionId)
-                                    }
-                                    onCancelSession={() =>
-                                        message.formAgentSessionId &&
-                                        onFormAgentCancelSession?.(message.id, message.formAgentSessionId)
-                                    }
-                                />
-                            ) : hasRenderableContent ? (
-                                <div
-                                    className={`${styles.markdownContent} notranslate`}
-                                    translate="no"
-                                >
-                                    <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
-                                        components={{
-                                            table: ({ node, ...props }) => (
-                                                <div className={styles.tableResponsive}>
-                                                    <table {...props} />
-                                                </div>
-                                            ),
-                                            pre: ({ node, ...props }) => (
-                                                <div className={styles.codeResponsive}>
-                                                    <pre {...props} />
-                                                </div>
-                                            ),
-                                        }}
+                            <div className={styles.aiBubble}>
+                                {message.isFormAgentMessage ? (
+                                    <FormAgentPanel
+                                        phase={message.formAgentPhase ?? "working"}
+                                        detectedFormName={message.formAgentDetectedName}
+                                        status={message.formAgentStatus}
+                                        displayText={message.content}
+                                        loading={message.formAgentLoading}
+                                        error={message.formAgentErrorMsg}
+                                        docxReady={message.formAgentDocxReady}
+                                        sessionId={message.formAgentSessionId}
+                                        locale={locale}
+                                        isLatest={isLatestFormAgentMessage}
+                                        onApprove={() =>
+                                            message.formAgentSessionId &&
+                                            onFormAgentApprove?.(message.id, message.formAgentSessionId)
+                                        }
+                                        onCancelSession={() =>
+                                            message.formAgentSessionId &&
+                                            onFormAgentCancelSession?.(message.id, message.formAgentSessionId)
+                                        }
+                                        onRequestEdit={onFormAgentRequestEdit}
+                                    />
+                                ) : hasRenderableContent ? (
+                                    <div
+                                        className={`${styles.markdownContent} notranslate`}
+                                        translate="no"
                                     >
-                                        {message.content}
-                                    </ReactMarkdown>
-                                </div>
-                            ) : null}
-
-                            {formSource && (
-                                <FormResourceCard
-                                    source={formSource}
-                                    locale={locale}
-                                    onFillRequest={onFillRequest}
-                                />
-                            )}
-
-                            {!formSource && message.detectedForm && onFillRequest && (
-                                <button
-                                    type="button"
-                                    onClick={() => onFillRequest?.(message.detectedForm ?? undefined)}
-                                    className={styles.formFillButton}
-                                >
-                                    🤖 {locale === "en"
-                                        ? `Need help filling ${message.detectedForm}?`
-                                        : `Cần mình giúp điền ${message.detectedForm} luôn không?`}
-                                </button>
-                            )}
-
-                            {message.needsRetrieval === true &&
-                                confidencePercent !== null &&
-                                confidencePercent > 0 && (
-                                    <div className={styles.answerMeta}>
-                                        <span>
-                                            {locale === "en" ? "Confidence" : "Độ tin cậy"}
-                                        </span>
-                                        <div
-                                            className={styles.confidenceTrack}
-                                            aria-hidden="true"
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkGfm]}
+                                            components={{
+                                                table: ({ node, ...props }) => (
+                                                    <div className={styles.tableResponsive}>
+                                                        <table {...props} />
+                                                    </div>
+                                                ),
+                                                pre: ({ node, ...props }) => (
+                                                    <div className={styles.codeResponsive}>
+                                                        <pre {...props} />
+                                                    </div>
+                                                ),
+                                            }}
                                         >
-                                            <div
-                                                className={styles.confidenceFill}
-                                                style={{ width: `${confidencePercent}%` }}
-                                            />
-                                        </div>
-                                        <strong>{confidencePercent}%</strong>
+                                            {message.content}
+                                        </ReactMarkdown>
                                     </div>
+                                ) : null}
+
+                                {formSource && (
+                                    <FormResourceCard
+                                        source={formSource}
+                                        locale={locale}
+                                        onFillRequest={onFillRequest}
+                                    />
                                 )}
 
-                            {message.sources && message.sources.length > 0 && (
-                                <Sources
-                                    sources={message.sources}
-                                    locale={locale}
-                                    onFillRequest={onFillRequest}
-                                />
-                            )}
-                        </div>
-                    )}
+                                {!formSource && message.detectedForm && (
+                                    <button
+                                        type="button"
+                                        onClick={() => onFillRequest?.(message.detectedForm ?? undefined)}
+                                        style={{
+                                            marginTop: 10,
+                                            width: "100%",
+                                            padding: "8px 14px",
+                                            borderRadius: 8,
+                                            border: "1px solid #93c5fd",
+                                            background: "#eff6ff",
+                                            color: "#1d4ed8",
+                                            cursor: "pointer",
+                                            fontSize: 13,
+                                            fontWeight: 500,
+                                        }}
+                                    >
+                                        🤖 {locale === "en"
+                                            ? `Need help filling ${message.detectedForm}?`
+                                            : `Cần mình giúp điền ${message.detectedForm} luôn không?`}
+                                    </button>
+                                )}
+
+                                {message.needsRetrieval === true &&
+                                    confidencePercent !== null &&
+                                    confidencePercent > 0 && (
+                                        <div className={styles.answerMeta}>
+                                            <span>
+                                                {locale === "en" ? "Confidence" : "Độ tin cậy"}
+                                            </span>
+                                            <div
+                                                className={styles.confidenceTrack}
+                                                aria-hidden="true"
+                                            >
+                                                <div
+                                                    className={styles.confidenceFill}
+                                                    style={{ width: `${confidencePercent}%` }}
+                                                />
+                                            </div>
+                                            <strong>{confidencePercent}%</strong>
+                                        </div>
+                                    )}
+
+                                {message.sources && message.sources.length > 0 && (
+                                    <Sources
+                                        sources={message.sources}
+                                        locale={locale}
+                                        onFillRequest={onFillRequest}
+                                    />
+                                )}
+                            </div>
+                        )}
                 </div>
             )}
 
