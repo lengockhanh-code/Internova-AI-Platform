@@ -513,10 +513,10 @@ export default function LecturerStudentsPage() {
           <div className={styles.brandIcon}>
             <Image
               alt="AI Internova logo"
-              height={48}
+              height={44}
               priority
-              src="/vinuni-internship-logo.svg"
-              width={48}
+              src="/intern.png"
+              width={44}
             />
           </div>
           <div className="notranslate" translate="no">

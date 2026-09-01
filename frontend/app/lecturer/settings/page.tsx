@@ -17,14 +17,13 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import LecturerShell from "@/components/lecturer/LecturerShell";
 import {
   API_BASE_URL,
-  clearLecturerSession,
   getStoredUser,
   lecturerFetch,
+  signOutLecturer,
   USER_STORAGE_KEY,
 } from "@/lib/lecturerAuth";
 
@@ -78,7 +77,6 @@ function initials(name: string): string {
 }
 
 export default function LecturerSettingsPage() {
-  const router = useRouter();
   const fileInput = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<Tab>("profile");
   const [data, setData] = useState<SettingsResponse | null>(null);
@@ -266,8 +264,7 @@ export default function LecturerSettingsPage() {
 
   function logout() {
     if (!window.confirm("Bạn có chắc chắn muốn đăng xuất?")) return;
-    clearLecturerSession();
-    router.replace("/auth/login");
+    signOutLecturer();
   }
 
   if (loading) {

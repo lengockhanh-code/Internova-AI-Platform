@@ -124,6 +124,14 @@ export default function LecturerReportsPage() {
   const [error, setError] = useState("");
   const [detailError, setDetailError] = useState("");
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search).get("q");
+    if (!query) return;
+
+    const timeout = window.setTimeout(() => setSearch(query), 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
   const [periodId, setPeriodId] = useState("ALL");
   const [submission, setSubmission] = useState<SubmissionFilter>("ALL");
   const [workflow, setWorkflow] = useState<WorkflowFilter>("ALL");

@@ -31,14 +31,20 @@
 
 .brandIcon {
   display: grid;
-  width: 46px;
-  height: 46px;
-  flex: 0 0 46px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   place-items: center;
-  border-radius: 14px;
   overflow: hidden;
   background: transparent;
   box-shadow: none;
+}
+
+.brandIcon img {
+  display: block;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
 }
 
 .brand strong,
@@ -47,9 +53,10 @@
 }
 
 .brand strong {
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: -0.2px;
+  color: #f1f5fa;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
 }
 
 .brand span {
@@ -1150,7 +1157,7 @@
 
 .centerState {
   display: grid;
-  min-height: 100vh;
+  min-height: calc(100vh - 72px);
   place-items: center;
   align-content: center;
   gap: 12px;

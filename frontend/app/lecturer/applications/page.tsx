@@ -101,6 +101,14 @@ export default function LecturerApplicationsPage() {
   const [error, setError] = useState("");
   const [detailError, setDetailError] = useState("");
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search).get("q");
+    if (!query) return;
+
+    const timeout = window.setTimeout(() => setSearch(query), 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
   const [status, setStatus] = useState<"ALL" | ApplicationStatus>("ALL");
   const [periodId, setPeriodId] = useState("ALL");
   const [workMode, setWorkMode] = useState("ALL");

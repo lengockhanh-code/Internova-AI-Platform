@@ -6,6 +6,8 @@ export const API_BASE_URL =
 export const ACCESS_TOKEN_KEY = "internova_access_token";
 export const USER_STORAGE_KEY = "internova_user";
 
+let lecturerSignOutInProgress = false;
+
 export interface StoredUser {
   id: number;
   email: string;
@@ -38,6 +40,14 @@ export function clearLecturerSession(): void {
   window.localStorage.removeItem(USER_STORAGE_KEY);
 }
 
+export function signOutLecturer(): void {
+  if (typeof window === "undefined") return;
+
+  lecturerSignOutInProgress = true;
+  clearLecturerSession();
+  window.location.replace("/auth/login");
+}
+
 export async function lecturerFetch(
   input: RequestInfo | URL,
   init: RequestInit = {},
@@ -57,8 +67,11 @@ export async function lecturerFetch(
   if (response.status === 401) {
     if (typeof window !== "undefined") {
       clearLecturerSession();
-      window.alert("Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.");
-      window.location.replace("/auth/login");
+
+      if (!lecturerSignOutInProgress) {
+        window.alert("Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.");
+        window.location.replace("/auth/login");
+      }
     }
     throw new Error("Session expired");
   }

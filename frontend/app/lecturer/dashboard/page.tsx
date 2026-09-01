@@ -2,37 +2,23 @@
 
 import {
   AlertTriangle,
-  Bell,
-  Bot,
-  CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
   FileText,
-  LayoutDashboard,
   LoaderCircle,
-  Menu,
-  PanelLeftClose,
-  Search,
-  Settings,
   Star,
   UsersRound,
 } from "lucide-react";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 
-import LecturerLanguageSwitcher from "@/components/lecturer/LecturerLanguageSwitcher";
+import LecturerShell from "@/components/lecturer/LecturerShell";
 import { lecturerFetch as fetch } from "@/lib/lecturerAuth";
-import {
-  fetchLecturerUnreadCount,
-  subscribeLecturerUnreadCount,
-} from "@/lib/lecturerNotifications";
 
 import {
   type CSSProperties,
-  type ComponentType,
   useEffect,
   useMemo,
   useState,
@@ -224,56 +210,6 @@ interface LecturerDashboardData {
 
 
 // =============================================================================
-// Sidebar
-// =============================================================================
-
-interface NavItem {
-  label: string;
-  icon: ComponentType<{
-    size?: number;
-    strokeWidth?: number;
-    className?: string;
-  }>;
-  expandable?: boolean;
-}
-
-const managementItems: NavItem[] = [
-  {
-    label: "Sinh viên của tôi",
-    icon: UsersRound,
-  },
-  {
-    label: "Đợt thực tập",
-    icon: CalendarDays,
-  },
-  {
-    label: "Hồ sơ đăng ký",
-    icon: ClipboardCheck,
-  },
-  {
-    label: "Nhật ký & Báo cáo",
-    icon: FileText,
-  },
-  {
-    label: "Đánh giá",
-    icon: Star,
-    expandable: true,
-  },
-  {
-    label: "Nhắc nhở & Cảnh báo",
-    icon: Bell,
-  },
-];
-
-const aiItems: NavItem[] = [
-  {
-    label: "Trợ lý AI",
-    icon: Bot,
-  },
-];
-
-
-// =============================================================================
 // Labels
 // =============================================================================
 
@@ -429,59 +365,6 @@ function getReportDisplayTitle(
 }
 
 
-// =============================================================================
-// Small components
-// =============================================================================
-
-function SidebarGroup({
-  title,
-  items,
-  onItemClick,
-}: {
-  title: string;
-  items: NavItem[];
-  onItemClick?: (item: NavItem) => void;
-}) {
-  return (
-    <section className={styles.sidebarGroup}>
-      <p className={styles.sidebarLabel}>
-        {title}
-      </p>
-
-      <div className={styles.sidebarList}>
-        {items.map((item) => {
-          const Icon = item.icon;
-
-          return (
-            <button
-              className={styles.sidebarItem}
-              key={item.label}
-              onClick={() => onItemClick?.(item)}
-              type="button"
-            >
-              <Icon
-                size={19}
-                strokeWidth={1.8}
-              />
-
-              <span>
-                {item.label}
-              </span>
-
-              {item.expandable ? (
-                <ChevronDown
-                  className={styles.itemChevron}
-                  size={16}
-                />
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 function EmptyState({
   text,
 }: {
@@ -525,13 +408,6 @@ export default function LecturerDashboardPage() {
 
   const [isLoading, setIsLoading] =
     useState<boolean>(true);
-
-  const [sidebarOpen, setSidebarOpen] =
-    useState<boolean>(false);
-
-  const [unreadNotificationCount, setUnreadNotificationCount] =
-    useState<number>(0);
-
 
   // ===========================================================================
   // Load dashboard
@@ -612,23 +488,6 @@ export default function LecturerDashboardPage() {
       controller.abort();
     };
   }, [apiBaseUrl]);
-
-  useEffect(() => {
-    let active = true;
-    void fetchLecturerUnreadCount()
-      .then((count) => {
-        if (active) setUnreadNotificationCount(count);
-      })
-      .catch(() => undefined);
-    const unsubscribe = subscribeLecturerUnreadCount(
-      setUnreadNotificationCount,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, []);
-
 
   // ===========================================================================
   // Calendar
@@ -805,88 +664,26 @@ export default function LecturerDashboardPage() {
   // Navigation
   // ===========================================================================
 
-  function goToDashboard(): void {
-    setSidebarOpen(false);
-
-    router.push(
-      "/lecturer/dashboard",
-    );
-  }
-
   function goToStudents(): void {
-    setSidebarOpen(false);
-
     router.push(
       "/lecturer/students",
     );
   }
 
-  function goToInternshipPeriods(): void {
-    setSidebarOpen(false);
-    router.push("/lecturer/internship-periods");
-  }
-
   function goToReports(): void {
-    setSidebarOpen(false);
     router.push("/lecturer/reports");
   }
 
   function goToApplications(): void {
-    setSidebarOpen(false);
     router.push("/lecturer/applications");
   }
 
   function goToEvaluations(): void {
-    setSidebarOpen(false);
     router.push("/lecturer/evaluations");
   }
 
   function goToReminders(): void {
-    setSidebarOpen(false);
     router.push("/lecturer/reminders");
-  }
-
-  function goToNotifications(): void {
-    setSidebarOpen(false);
-    router.push("/lecturer/notifications");
-  }
-
-  function goToSettings(): void {
-    setSidebarOpen(false);
-    router.push("/lecturer/settings");
-  }
-
-  function handleSidebarItemClick(
-    item: NavItem,
-  ): void {
-    switch (item.label) {
-      case "Sinh viên của tôi":
-        goToStudents();
-        break;
-
-      case "Đợt thực tập":
-        goToInternshipPeriods();
-        break;
-
-      case "Hồ sơ đăng ký":
-        goToApplications();
-        break;
-
-      case "Nhật ký & Báo cáo":
-        goToReports();
-        break;
-
-      case "Đánh giá":
-        goToEvaluations();
-        break;
-
-      case "Nhắc nhở & Cảnh báo":
-        goToReminders();
-        break;
-
-      default:
-        break;
-    }
   }
 
 
@@ -896,58 +693,31 @@ export default function LecturerDashboardPage() {
 
   if (isLoading) {
     return (
-      <main
-        className={
-          styles.centerState
-        }
-      >
-        <LoaderCircle
-          className={styles.spinner}
-          size={38}
-        />
-
-        <p>
-          Đang tải dữ liệu từ
-          PostgreSQL...
-        </p>
-      </main>
+      <LecturerShell title="Tổng quan">
+        <main className={styles.centerState}>
+          <LoaderCircle className={styles.spinner} size={38} />
+          <p>Đang tải dữ liệu từ PostgreSQL...</p>
+        </main>
+      </LecturerShell>
     );
   }
 
   if (error || !data) {
     return (
-      <main
-        className={
-          styles.centerState
-        }
-      >
-        <AlertTriangle
-          size={42}
-        />
-
-        <h1>
-          Không thể hiển thị
-          dashboard
-        </h1>
-
-        <p>
-          {error ||
-            "Không nhận được dữ liệu."}
-        </p>
-
-        <p
-          className={
-            styles.errorHint
-          }
-        >
-          Kiểm tra FastAPI tại
-          {" "}
-          http://localhost:8000/api/v1/lecturers/dashboard
-          {" "}
-          và xem log terminal
-          backend.
-        </p>
-      </main>
+      <LecturerShell title="Tổng quan">
+        <main className={styles.centerState}>
+          <AlertTriangle size={42} />
+          <h1>Không thể hiển thị dashboard</h1>
+          <p>{error || "Không nhận được dữ liệu."}</p>
+          <p className={styles.errorHint}>
+            Kiểm tra FastAPI tại
+            {" "}
+            http://localhost:8000/api/v1/lecturers/dashboard
+            {" "}
+            và xem log terminal backend.
+          </p>
+        </main>
+      </LecturerShell>
     );
   }
 
@@ -959,7 +729,7 @@ export default function LecturerDashboardPage() {
   const statCards: Array<{
     label: string;
     value: string | number;
-    icon: NavItem["icon"];
+    icon: typeof UsersRound;
     tone: string;
     linkText: string;
     onClick?: () => void;
@@ -1072,309 +842,8 @@ export default function LecturerDashboardPage() {
   // ===========================================================================
 
   return (
-    <div
-      className={
-        styles.dashboardShell
-      }
-    >
-      {/* =======================================================
-          SIDEBAR
-      ======================================================= */}
-
-      <aside
-        className={`${styles.sidebar} ${
-          sidebarOpen
-            ? styles.sidebarOpen
-            : ""
-        }`}
-      >
-        <div
-          className={
-            styles.brand
-          }
-        >
-          <div
-            className={
-              styles.brandIcon
-            }
-          >
-            <Image
-              alt="AI Internova logo"
-              height={46}
-              priority
-              src="/vinuni-internship-logo.svg"
-              width={46}
-            />
-          </div>
-
-          <div className="notranslate" translate="no">
-            <strong>
-              AI Internova
-            </strong>
-
-            <span>
-              Hỗ trợ thực tập
-              sinh viên
-            </span>
-          </div>
-        </div>
-
-        <button
-          className={
-            styles.activeNavItem
-          }
-          onClick={
-            goToDashboard
-          }
-          type="button"
-        >
-          <LayoutDashboard
-            size={20}
-          />
-
-          <span>
-            Tổng quan
-          </span>
-        </button>
-
-        <SidebarGroup
-          title="QUẢN LÝ"
-          items={
-            managementItems
-          }
-          onItemClick={
-            handleSidebarItemClick
-          }
-        />
-
-        <SidebarGroup
-          title="AI HỖ TRỢ"
-          items={aiItems}
-        />
-
-        <section
-          className={
-            styles.sidebarGroup
-          }
-        >
-          <p
-            className={
-              styles.sidebarLabel
-            }
-          >
-            CÀI ĐẶT
-          </p>
-
-          <div
-            className={
-              styles.sidebarList
-            }
-          >
-            <button
-              className={
-                styles.sidebarItem
-              }
-              onClick={goToNotifications}
-              type="button"
-            >
-              <Bell size={19} />
-
-              <span>
-                Thông báo
-              </span>
-            </button>
-
-            <button
-              className={
-                styles.sidebarItem
-              }
-              onClick={goToSettings}
-              type="button"
-            >
-              <Settings
-                size={19}
-              />
-
-              <span>
-                Cài đặt cá nhân
-              </span>
-            </button>
-          </div>
-        </section>
-
-        <button
-          className={
-            styles.collapseButton
-          }
-          type="button"
-        >
-          <PanelLeftClose
-            size={18}
-          />
-
-          <span>
-            Thu gọn
-          </span>
-        </button>
-      </aside>
-
-
-      {/* =======================================================
-          MOBILE OVERLAY
-      ======================================================= */}
-
-      {sidebarOpen ? (
-        <button
-          aria-label="Đóng menu"
-          className={
-            styles.overlay
-          }
-          onClick={() =>
-            setSidebarOpen(false)
-          }
-          type="button"
-        />
-      ) : null}
-
-
-      {/* =======================================================
-          MAIN AREA
-      ======================================================= */}
-
-      <div
-        className={
-          styles.mainArea
-        }
-      >
-        <header
-          className={
-            styles.topbar
-          }
-        >
-          <div
-            className={
-              styles.topbarTitle
-            }
-          >
-            <button
-              aria-label="Mở menu"
-              className={
-                styles.mobileMenuButton
-              }
-              onClick={() =>
-                setSidebarOpen(true)
-              }
-              type="button"
-            >
-              <Menu size={22} />
-            </button>
-
-            <Menu
-              className={
-                styles.desktopMenuIcon
-              }
-              size={22}
-            />
-
-            <strong>
-              Tổng quan
-            </strong>
-          </div>
-
-          <div
-            className={
-              styles.topbarActions
-            }
-          >
-            <LecturerLanguageSwitcher />
-
-            <button
-              aria-label="Tìm kiếm"
-              className={
-                styles.iconButton
-              }
-              type="button"
-            >
-              <Search size={20} />
-            </button>
-
-            <button
-              aria-label="Thông báo"
-              className={
-                styles.notificationButton
-              }
-              onClick={goToNotifications}
-              type="button"
-            >
-              <Bell size={20} />
-
-              {unreadNotificationCount > 0 ? (
-                <span>
-                  {Math.min(
-                    unreadNotificationCount,
-                    99,
-                  )}
-                </span>
-              ) : null}
-            </button>
-
-            <div
-              className={
-                styles.account
-              }
-            >
-              <div
-                className={
-                  styles.avatar
-                }
-              >
-                {getInitials(
-                  data.lecturer
-                    .fullName,
-                )}
-              </div>
-
-              <div
-                className={
-                  styles.accountText
-                }
-              >
-                <strong>
-                  {data.lecturer
-                    .academicTitle
-                    ? `${data.lecturer.academicTitle}. `
-                    : ""}
-
-                  {
-                    data.lecturer
-                      .fullName
-                  }
-                </strong>
-
-                <span>
-                  {data.lecturer.specialization
-                    ? data.lecturer.specialization
-                    : "Giảng viên"}
-                </span>
-              </div>
-
-              <ChevronDown
-                size={17}
-              />
-            </div>
-          </div>
-        </header>
-
-
-        {/* =====================================================
-            CONTENT
-        ===================================================== */}
-
-        <main
-          className={
-            styles.content
-          }
-        >
+    <LecturerShell title="Tổng quan">
+      <main className={styles.content}>
           <section
             className={
               styles.welcomeSection
@@ -2301,8 +1770,7 @@ export default function LecturerDashboardPage() {
               )}
             </article>
           </section>
-        </main>
-      </div>
-    </div>
+      </main>
+    </LecturerShell>
   );
 }

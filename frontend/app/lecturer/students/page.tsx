@@ -383,6 +383,14 @@ export default function LecturerStudentsPage() {
     "ALL" | InternshipStatus
   >("ALL");
 
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search).get("q");
+    if (!query) return;
+
+    const timeout = window.setTimeout(() => setSearch(query), 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
 
   // ===========================================================================
   // LOAD STUDENTS
