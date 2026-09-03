@@ -14,7 +14,7 @@
     min-height: 100svh;
     grid-template-columns: minmax(0, 1.42fr) minmax(430px, 0.92fr);
     overflow: hidden;
-    background: var(--paper);
+    background: rgba(247, 249, 252, 0.72);
     color: var(--ink);
 }
 
@@ -99,9 +99,9 @@
     width: 50px;
     height: 50px;
     place-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    background: rgba(255, 255, 255, 0.9);
-    box-shadow: 0 10px 30px rgba(4, 17, 31, 0.13);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: transparent;
+    box-shadow: none;
 }
 
 .brandLogo {
@@ -230,8 +230,9 @@
     overflow: hidden;
     padding: 90px clamp(46px, 5vw, 78px) 60px;
     background:
-        linear-gradient(145deg, rgba(232, 240, 255, 0.58), transparent 31%),
-        linear-gradient(180deg, #fbfcfe 0%, #f7f9fc 100%);
+        linear-gradient(145deg, rgba(232, 240, 255, 0.28), transparent 31%),
+        linear-gradient(180deg, rgba(251, 252, 254, 0.74) 0%, rgba(247, 249, 252, 0.68) 100%);
+    backdrop-filter: blur(18px);
 }
 
 .authAmbient {
@@ -750,7 +751,7 @@
         display: block;
         min-height: 100svh;
         overflow: visible;
-        background: var(--paper);
+        background: rgba(247, 249, 252, 0.72);
     }
 
     .visualPanel {

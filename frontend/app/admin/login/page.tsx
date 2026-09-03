@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Mail, Lock, ShieldAlert, KeyRound, Loader2 } from "lucide-react";
+import { Mail, Lock, ShieldAlert, Loader2 } from "lucide-react";
 import styles from "./page.module.css";
 
 const API_URL = (
@@ -78,7 +79,14 @@ export default function AdminLoginPage() {
         <div className={styles.header}>
           <div className={styles.brand}>
             <span className={styles.brandIcon}>
-              <KeyRound size={20} strokeWidth={2} />
+              <Image
+                src="/intern.png"
+                alt="Internova"
+                width={40}
+                height={40}
+                className={styles.brandLogo}
+                priority
+              />
             </span>
             <span className={styles.brandText}>Internova Admin</span>
           </div>

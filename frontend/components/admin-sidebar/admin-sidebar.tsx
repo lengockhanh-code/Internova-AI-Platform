@@ -16,12 +16,12 @@ import {
     ScrollText,
     Settings,
     ShieldCheck,
-    Sparkles,
     Users,
     UserRoundCog,
     Workflow,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -231,7 +231,14 @@ export default function AdminSidebar() {
             <Link href="/admin" className={styles.brandLink}>
                 <div className={styles.brand}>
                     <div className={styles.brandIcon}>
-                        <Sparkles size={20} />
+                        <Image
+                            src="/intern.png"
+                            alt="Internova"
+                            width={44}
+                            height={44}
+                            className={styles.brandLogo}
+                            priority
+                        />
                     </div>
 
                     <div className={styles.brandText}>
