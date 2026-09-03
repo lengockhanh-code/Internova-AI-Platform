@@ -12,6 +12,7 @@ import {
     Gauge,
     LayoutDashboard,
     LogOut,
+    Presentation,
     ScrollText,
     Settings,
     ShieldCheck,
@@ -73,6 +74,12 @@ const MENU: MenuSection[] = [
                 label: "Sinh viên",
                 href: "/admin/students",
                 icon: Users,
+            },
+            {
+                type: "link",
+                label: "Giảng viên",
+                href: "/admin/lecturers",
+                icon: Presentation,
             },
             {
                 type: "link",
@@ -199,10 +206,10 @@ export default function AdminSidebar() {
     const pathname = usePathname();
     const router = useRouter();
 
-    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-        "AI Monitoring": true,
-        "Knowledge Base": false,
-    });
+    const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
+        "AI Monitoring": pathname.startsWith("/admin/ai-monitoring"),
+        "Knowledge Base": pathname.startsWith("/admin/knowledge"),
+    }));
 
     const isActive = (href: string): boolean => {
         if (href === "/admin") {
@@ -275,13 +282,13 @@ export default function AdminSidebar() {
                                 );
                             }
 
-                            const isOpen =
-                                openGroups[item.label] ?? false;
-
                             const childActive =
                                 item.children.some((child) =>
                                     isActive(child.href),
                                 );
+
+                            const isOpen =
+                                childActive || (openGroups[item.label] ?? false);
 
                             return (
                                 <div

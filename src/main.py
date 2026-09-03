@@ -4,14 +4,25 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Admin
+from src.api.admin_audit_logs_routes import router as admin_audit_logs_router
+from src.api.admin_configuration_routes import router as admin_configuration_router
+from src.api.admin_evaluations_routes import router as admin_evaluations_router
+from src.api.admin_internships_routes import (
+    router as admin_internships_router,
+)
 from src.api.admin_knowledge_base_routes import (
     router as admin_knowledge_base_router,
 )
-
-# Admin
+from src.api.admin_lecturers_routes import router as admin_lecturers_router
 from src.api.admin_observability_routes import (
     router as admin_observability_router,
 )
+from src.api.admin_reports_routes import router as admin_reports_router
+from src.api.admin_students_routes import (
+    router as admin_students_router,
+)
+from src.api.admin_users_routes import router as admin_users_router
 
 # Auth
 from src.api.auth_routes import router as auth_router
@@ -83,6 +94,7 @@ from src.api.student_settings_routes import (
 
 # Config
 from src.config import get_settings
+from src.middleware.admin_audit import AdminAuditMiddleware
 
 # ============================================================
 # APP LIFESPAN
@@ -176,6 +188,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(AdminAuditMiddleware)
 
 
 # ============================================================
@@ -297,6 +311,38 @@ app.include_router(
 
 app.include_router(
     admin_knowledge_base_router,
+)
+
+app.include_router(
+    admin_students_router,
+)
+
+app.include_router(
+    admin_lecturers_router,
+)
+
+app.include_router(
+    admin_users_router,
+)
+
+app.include_router(
+    admin_audit_logs_router,
+)
+
+app.include_router(
+    admin_configuration_router,
+)
+
+app.include_router(
+    admin_internships_router,
+)
+
+app.include_router(
+    admin_reports_router,
+)
+
+app.include_router(
+    admin_evaluations_router,
 )
 
 app.include_router(

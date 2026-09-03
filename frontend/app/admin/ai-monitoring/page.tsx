@@ -12,18 +12,29 @@ import type { TimeRange } from "@/lib/adminObservability";
 
 export default function AiMonitoringPage() {
   const [range, setRange] = useState<TimeRange>("24h");
-  const state = useResource(
+  const overviewState = useResource(
     `overview:${range}`,
-    () => Promise.all([
-      observabilityApi.overview(range),
-      observabilityApi.alerts(range),
-      observabilityApi.status(),
-    ]).then(([overview, alerts, status]) => ({ overview, alerts, status })),
+    () => observabilityApi.overview(range),
+  );
+  const alertsState = useResource(
+    `alerts:${range}`,
+    () => observabilityApi.alerts(range),
+  );
+  const statusState = useResource(
+    "observability:status",
+    () => observabilityApi.status(),
   );
 
-  const o = state.data?.overview;
-  const alerts = state.data?.alerts;
-  const langfuseStatus = state.data?.status;
+  const o = overviewState.data;
+  const alerts = alertsState.data;
+  const langfuseStatus = statusState.data;
+  const auxiliaryError = alertsState.error ?? statusState.error;
+  const refreshing = overviewState.refreshing || alertsState.refreshing || statusState.refreshing;
+  const refresh = () => {
+    void overviewState.refresh();
+    void alertsState.refresh();
+    void statusState.refresh();
+  };
   const systemStatus: "healthy" | "warning" | "error" = !langfuseStatus?.configured
     ? "error"
     : (alerts?.critical ?? 0) > 0
@@ -38,12 +49,13 @@ export default function AiMonitoringPage() {
       description="Quan sát end-to-end chatbot RAG: traffic, latency, retrieval, generation, quality, token/cost, lỗi và cảnh báo."
       range={range}
       setRange={setRange}
-      refreshing={state.refreshing}
-      onRefresh={state.refresh}
-      status={state.data ? systemStatus : undefined}
+      refreshing={refreshing}
+      onRefresh={refresh}
+      status={o ? systemStatus : undefined}
     >
-      {state.error && <ErrorBox error={state.error}/>}
-      {state.loading && !o ? <Loading/> : !o ? (
+      {overviewState.error && <ErrorBox error={overviewState.error}/>}
+      {!overviewState.error && auxiliaryError && <ErrorBox error={auxiliaryError}/>}
+      {overviewState.loading && !o ? <Loading/> : !o ? (
         <div className={styles.emptyBox}>Chưa có dữ liệu. Hệ thống sẽ tự động cập nhật khi có trace từ chatbot.</div>
       ) : (
         <>
@@ -70,7 +82,7 @@ export default function AiMonitoringPage() {
             </Panel>
 
             <Panel title="Active Alerts" subtitle="Cảnh báo vận hành" right={<span className={`${styles.badge} ${alerts?.critical ? styles.error : alerts?.active ? styles.warning : styles.success}`}>{alerts?.active ?? 0} active</span>}>
-              {!alerts?.items?.length ? <div className={styles.emptyBox}>Không có alert đang kích hoạt.</div> : alerts.items.slice(0, 4).map((a:any) => (
+              {!alerts?.items?.length ? <div className={styles.emptyBox}>Không có alert đang kích hoạt.</div> : alerts.items.slice(0, 4).map(a => (
                 <div key={a.id} className={`${styles.alertCard} ${a.severity === "critical" ? styles.critical : styles.warning}`}>
                   <div><h3>{a.title}</h3><p>{a.message}</p></div>
                   <Link className={styles.link} href={a.investigate_url}>Investigate</Link>
@@ -115,7 +127,7 @@ export default function AiMonitoringPage() {
               <div className={styles.list}>
                 {!(o.service_health?.length) ? (
                   <div className={styles.emptyBox}>Chưa có dữ liệu service health.</div>
-                ) : (o.service_health ?? []).map((service:any) => (
+                ) : (o.service_health ?? []).map(service => (
                   <div className={styles.listRow} key={service.name}>
                     <span>{service.name}</span>
                     <span className={`${styles.badge} ${service.status === "healthy" ? styles.success : service.status === "error" ? styles.error : styles.warning}`}>{service.status}</span>

@@ -12,7 +12,6 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-
 MAX_PAGE_SIZE = 100
 DOCUMENT_STATUSES = {"ACTIVE", "INACTIVE", "ARCHIVED"}
 VERSION_STATUSES = {"ACTIVE", "SUPERSEDED", "ARCHIVED"}
@@ -26,7 +25,8 @@ RAG_DOCUMENT_TYPES = {
     "capstone_booklet",
     "knowledge",
 }
-UPLOAD_ROOT = Path("data/knowledge_base/documents")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+UPLOAD_ROOT = PROJECT_ROOT / "data" / "knowledge_base" / "documents"
 
 
 def _to_iso(value: datetime | date | str | None) -> str | None:
@@ -200,15 +200,8 @@ def list_admin_knowledge_documents(
                 SELECT kdv.*
                 FROM public.knowledge_document_versions AS kdv
                 WHERE kdv.document_id = kd.id
-                ORDER BY
-                    CASE
-                        WHEN kd.current_version IS NOT NULL
-                         AND kdv.version = kd.current_version THEN 0
-                        ELSE 1
-                    END,
-                    kdv.effective_date DESC NULLS LAST,
-                    kdv.created_at DESC,
-                    kdv.id DESC
+                  AND kdv.version = kd.current_version
+                ORDER BY kdv.created_at DESC, kdv.id DESC
                 LIMIT 1
             ) AS current_version ON TRUE
             LEFT JOIN LATERAL (
@@ -284,15 +277,8 @@ def get_admin_knowledge_document_detail(
                 SELECT kdv.*
                 FROM public.knowledge_document_versions AS kdv
                 WHERE kdv.document_id = kd.id
-                ORDER BY
-                    CASE
-                        WHEN kd.current_version IS NOT NULL
-                         AND kdv.version = kd.current_version THEN 0
-                        ELSE 1
-                    END,
-                    kdv.effective_date DESC NULLS LAST,
-                    kdv.created_at DESC,
-                    kdv.id DESC
+                  AND kdv.version = kd.current_version
+                ORDER BY kdv.created_at DESC, kdv.id DESC
                 LIMIT 1
             ) AS current_version ON TRUE
             LEFT JOIN LATERAL (
@@ -550,7 +536,7 @@ def create_admin_knowledge_document_version(
     target_path = target_dir / original_name
     target_path.write_bytes(content)
 
-    file_url = str(target_path.as_posix())
+    file_url = _stored_document_path(target_path)
 
     try:
         row = db.execute(
@@ -651,6 +637,124 @@ LIMIT 1
         "message": "Current document version updated.",
     }
 
+
+def get_admin_knowledge_document_version_file(
+    db: Session,
+    *,
+    document_id: int,
+    version_id: int,
+) -> dict | None:
+    row = db.execute(
+        text(
+            """
+            SELECT kdv.file_url
+            FROM public.knowledge_document_versions AS kdv
+            WHERE kdv.id = :version_id
+              AND kdv.document_id = :document_id
+            LIMIT 1
+            """
+        ),
+        {"document_id": document_id, "version_id": version_id},
+    ).mappings().first()
+    if row is None or not row["file_url"]:
+        return None
+
+    file_path = _resolve_managed_document_path(str(row["file_url"]))
+
+    if not file_path.is_file():
+        return None
+
+    media_types = {
+        ".pdf": "application/pdf",
+        ".docx": (
+            "application/vnd.openxmlformats-officedocument."
+            "wordprocessingml.document"
+        ),
+    }
+    return {
+        "filePath": file_path,
+        "fileName": file_path.name,
+        "mediaType": media_types.get(file_path.suffix.lower(), "application/octet-stream"),
+    }
+
+
+def repair_missing_managed_current_versions(db: Session) -> int:
+    """Restore version metadata only when its managed upload is intact."""
+
+    rows = db.execute(
+        text(
+            """
+            SELECT
+                kd.id AS document_id,
+                kd.document_type,
+                kd.current_version,
+                kd.file_url
+            FROM public.knowledge_documents AS kd
+            LEFT JOIN public.knowledge_document_versions AS kdv
+                ON kdv.document_id = kd.id
+               AND kdv.version = kd.current_version
+            WHERE kd.current_version IS NOT NULL
+              AND kd.file_url IS NOT NULL
+              AND kdv.id IS NULL
+            ORDER BY kd.id
+            """
+        )
+    ).mappings().all()
+
+    repaired = 0
+    for row in rows:
+        document_id = int(row["document_id"])
+        version = str(row["current_version"])
+
+        try:
+            file_path = _resolve_managed_document_path(str(row["file_url"]))
+            version_root = (
+                UPLOAD_ROOT / str(document_id) / _safe_path_part(version)
+            ).resolve()
+            file_path.relative_to(version_root)
+            file_type = _document_type_from_filename(file_path.name)
+            expected_type = _clean_document_type(row["document_type"])
+        except ValueError:
+            continue
+
+        if not file_path.is_file() or file_type != expected_type:
+            continue
+
+        db.execute(
+            text(
+                """
+                INSERT INTO public.knowledge_document_versions (
+                    document_id,
+                    version,
+                    file_url,
+                    file_hash,
+                    status
+                )
+                VALUES (
+                    :document_id,
+                    :version,
+                    :file_url,
+                    :file_hash,
+                    'ACTIVE'
+                )
+                ON CONFLICT (document_id, version) DO NOTHING
+                """
+            ),
+            {
+                "document_id": document_id,
+                "version": version,
+                "file_url": _stored_document_path(file_path),
+                "file_hash": _sha256_file(file_path),
+            },
+        )
+        repaired += 1
+
+    if repaired:
+        db.commit()
+
+    return repaired
+
+
 def list_rag_index_source_versions(
     db: Session,
 ) -> list[dict[str, Any]]:
@@ -738,7 +842,14 @@ def list_rag_index_source_versions(
             )
             continue
 
-        file_path = Path(file_url)
+        try:
+            file_path = _resolve_managed_document_path(file_url)
+        except ValueError:
+            errors.append(
+                f"Document {document_id} ({title}) file is outside "
+                "the managed upload directory."
+            )
+            continue
 
         if not file_path.is_file():
             errors.append(
@@ -775,6 +886,37 @@ def list_rag_index_source_versions(
         )
 
     return sources
+
+
+def _resolve_managed_document_path(file_url: str) -> Path:
+    file_path = Path(file_url)
+    if not file_path.is_absolute():
+        file_path = PROJECT_ROOT / file_path
+    file_path = file_path.resolve()
+
+    try:
+        file_path.relative_to(UPLOAD_ROOT.resolve())
+    except ValueError as exc:
+        raise ValueError(
+            "Document file path is outside the upload directory."
+        ) from exc
+
+    return file_path
+
+
+def _sha256_file(file_path: Path) -> str:
+    digest = hashlib.sha256()
+    with file_path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _stored_document_path(file_path: Path) -> str:
+    try:
+        return file_path.relative_to(PROJECT_ROOT).as_posix()
+    except ValueError:
+        return file_path.as_posix()
 
 def _get_document_filters(db: Session) -> dict:
     rows = db.execute(

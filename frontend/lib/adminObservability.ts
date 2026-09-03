@@ -32,6 +32,31 @@ export interface RagAnalyticsResponse {
   data_truncated: boolean;
 }
 
+export interface ObservabilityAlert {
+  id: string;
+  severity: "critical" | "warning";
+  status: "active" | "acknowledged" | "resolved";
+  title: string;
+  message: string;
+  threshold: string | number;
+  investigate_url: string;
+}
+
+export interface AlertsResponse {
+  active: number;
+  critical: number;
+  items: ObservabilityAlert[];
+}
+
+export interface ObservabilityStatusResponse {
+  enabled: boolean;
+  configured: boolean;
+  capture_content: boolean;
+  environment: string;
+  release: string;
+  health: { ok: boolean; projects?: number | null } | null;
+}
+
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
 
 export class ApiError extends Error {
@@ -119,7 +144,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const observabilityApi = {
-  status: () => request<any>("/api/v1/admin/observability/status"),
+  status: () => request<ObservabilityStatusResponse>("/api/v1/admin/observability/status"),
   overview: (range: TimeRange) => request<OverviewResponse>(`/api/v1/admin/observability/overview?range=${range}`),
   rag: (range: TimeRange) => request<RagAnalyticsResponse>(`/api/v1/admin/observability/rag?range=${range}`),
   llm: (range: TimeRange) => request<any>(`/api/v1/admin/observability/llm?range=${range}`),
@@ -127,7 +152,7 @@ export const observabilityApi = {
   errors: (range: TimeRange, limit = 200) => request<any>(`/api/v1/admin/observability/errors?range=${range}&limit=${limit}`),
   traces: (range: TimeRange, limit = 200) => request<any>(`/api/v1/admin/observability/traces?range=${range}&limit=${limit}`),
   trace: (traceId: string, range: TimeRange = "30d") => request<any>(`/api/v1/admin/observability/traces/${encodeURIComponent(traceId)}?range=${range}`),
-  alerts: (range: TimeRange) => request<any>(`/api/v1/admin/observability/alerts?range=${range}`),
+  alerts: (range: TimeRange) => request<AlertsResponse>(`/api/v1/admin/observability/alerts?range=${range}`),
   acknowledgeAlert: (id: string) => request<any>(`/api/v1/admin/observability/alerts/${encodeURIComponent(id)}/acknowledge`, { method: "POST" }),
   resolveAlert: (id: string) => request<any>(`/api/v1/admin/observability/alerts/${encodeURIComponent(id)}/resolve`, { method: "POST" }),
 };

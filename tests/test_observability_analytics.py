@@ -1,4 +1,8 @@
+from datetime import UTC, datetime, timedelta
+
+from src.api import admin_observability_routes
 from src.observability import analytics
+from src.observability.langfuse_api import LangfuseAPIError
 
 
 def _observation(name: str, start_ms: int, duration_ms: int, **extra):
@@ -81,3 +85,38 @@ def test_rag_analytics_exposes_reranker_fallback_reasons(monkeypatch):
     assert result['rerank']['fallback_reasons'] == [
         {'reason': 'no_cohere_api_key', 'count': 1},
     ]
+
+
+def test_observability_route_cache_reuses_fresh_payload():
+    admin_observability_routes._CACHE.clear()
+    calls = 0
+
+    def loader():
+        nonlocal calls
+        calls += 1
+        return {'requests': {'total': 7}}
+
+    first = admin_observability_routes._handle('overview:24h', loader)
+    second = admin_observability_routes._handle('overview:24h', loader)
+
+    assert first == second == {'requests': {'total': 7}}
+    assert calls == 1
+
+
+def test_observability_route_cache_survives_temporary_langfuse_failure():
+    admin_observability_routes._CACHE.clear()
+    cached_at = datetime.now(UTC) - timedelta(minutes=5)
+    admin_observability_routes._CACHE['overview:24h'] = {
+        'payload': {'requests': {'total': 11}},
+        'cached_at': cached_at.isoformat(),
+    }
+
+    def unavailable():
+        raise LangfuseAPIError('temporary outage')
+
+    result = admin_observability_routes._handle('overview:24h', unavailable)
+
+    assert result['requests']['total'] == 11
+    assert result['_meta']['stale'] is True
+    assert result['_meta']['rate_limited'] is False
+    assert result['_meta']['stale_reason'] == 'langfuse_unavailable'

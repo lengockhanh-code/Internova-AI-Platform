@@ -3,13 +3,14 @@ from __future__ import annotations
 import hashlib
 import json
 import threading
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from src.observability.analytics import build_llm_analytics, build_overview, build_rag_analytics
 from src.observability.config import get_observability_settings
-from src.observability.langfuse_api import LangfuseAPI, LangfuseAPIError
+from src.observability.langfuse_api import LangfuseAPI
 
 _STATE_PATH = Path("data/observability_alert_state.json")
 _LOCK = threading.Lock()
@@ -43,13 +44,20 @@ def set_alert_state(alert_id: str, status: str) -> dict[str, Any]:
     state = _load_state()
     state[alert_id] = {
         "status": status,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }
     _save_state(state)
     return state[alert_id]
 
 
-def build_alerts(range_name: str = "24h") -> dict[str, Any]:
+def build_alerts(
+    range_name: str = "24h",
+    *,
+    health_check: Callable[[], Any] | None = None,
+    overview_loader: Callable[[str], dict[str, Any]] | None = None,
+    rag_loader: Callable[[str], dict[str, Any]] | None = None,
+    llm_loader: Callable[[str], dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     settings = get_observability_settings()
     state = _load_state()
     alerts: list[dict[str, Any]] = []
@@ -85,7 +93,7 @@ def build_alerts(range_name: str = "24h") -> dict[str, Any]:
             _save_state(state)
 
     try:
-        LangfuseAPI().health()
+        (health_check or (lambda: LangfuseAPI().health()))()
     except Exception as exc:
         add(
             "LANGFUSE_UNAVAILABLE", "critical", "Langfuse unavailable",
@@ -99,9 +107,9 @@ def build_alerts(range_name: str = "24h") -> dict[str, Any]:
             "critical": sum(1 for a in alerts if a["severity"] == "critical" and a["status"] == "active"),
         }
 
-    overview = build_overview(range_name)
-    rag = build_rag_analytics(range_name)
-    llm = build_llm_analytics(range_name)
+    overview = (overview_loader or build_overview)(range_name)
+    rag = (rag_loader or build_rag_analytics)(range_name)
+    llm = (llm_loader or build_llm_analytics)(range_name)
     p95 = float(overview["latency"]["p95_ms"])
     error = float(overview["requests"]["error_rate_pct"])
 

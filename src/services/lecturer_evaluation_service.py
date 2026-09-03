@@ -9,7 +9,6 @@ from src.models.lecturer_evaluations import LecturerEvaluationSaveRequest
 from src.services.lecturer_common_service import _get_lecturer, to_iso
 from src.services.score_utils import normalize_grade_score
 
-
 EVALUATION_TYPES = ("MIDTERM", "FINAL")
 
 
@@ -65,10 +64,23 @@ def _map_item(row: Any) -> dict:
         "reportLate": int(row["report_late"] or 0),
         "reportOverdue": int(row["report_overdue"] or 0),
         "reportAverageScore": _score(row["report_average_score"]),
+        "assignedLecturer": (
+            {
+                "id": int(row["lecturer_id"]),
+                "fullName": row["lecturer_name"] or "",
+                "lecturerCode": row["lecturer_code"] or "",
+                "faculty": row["lecturer_faculty"] or "",
+            }
+            if row["lecturer_id"] is not None
+            else None
+        ),
     }
 
 
-def _evaluation_slots(db: Session, lecturer_id: int) -> list[dict]:
+def get_evaluation_slots(
+    db: Session,
+    lecturer_id: int | None = None,
+) -> list[dict]:
     rows = db.execute(
         text(
             """
@@ -132,6 +144,10 @@ def _evaluation_slots(db: Session, lecturer_id: int) -> list[dict]:
                 i.progress_percentage,
                 i.completed_hours,
                 i.required_hours,
+                lecturer.id AS lecturer_id,
+                lecturer.full_name AS lecturer_name,
+                lp.lecturer_code,
+                lp.faculty AS lecturer_faculty,
                 COALESCE(rs.report_total, 0) AS report_total,
                 COALESCE(rs.report_submitted, 0) AS report_submitted,
                 COALESCE(rs.report_approved, 0) AS report_approved,
@@ -146,6 +162,9 @@ def _evaluation_slots(db: Session, lecturer_id: int) -> list[dict]:
             LEFT JOIN public.companies AS c ON c.id = i.company_id
             LEFT JOIN public.company_mentors AS cm
                 ON cm.id = i.company_mentor_id
+            LEFT JOIN public.users AS lecturer ON lecturer.id = i.lecturer_id
+            LEFT JOIN public.lecturer_profiles AS lp
+                ON lp.lecturer_id = lecturer.id
             CROSS JOIN (
                 VALUES ('MIDTERM'), ('FINAL')
             ) AS slot(evaluation_type)
@@ -154,13 +173,13 @@ def _evaluation_slots(db: Session, lecturer_id: int) -> list[dict]:
                 SELECT e.*
                 FROM public.evaluations AS e
                 WHERE e.internship_id = i.id
-                  AND e.evaluator_id = :lecturer_id
+                  AND e.evaluator_id = i.lecturer_id
                   AND e.evaluator_type = 'LECTURER'
                   AND e.evaluation_type = slot.evaluation_type
                 ORDER BY e.updated_at DESC, e.id DESC
                 LIMIT 1
             ) AS own_evaluation ON TRUE
-            WHERE i.lecturer_id = :lecturer_id
+            WHERE (:lecturer_id IS NULL OR i.lecturer_id = :lecturer_id)
               AND i.status <> 'CANCELLED'
             ORDER BY
                 CASE COALESCE(own_evaluation.status, 'NOT_STARTED')
@@ -179,28 +198,42 @@ def _evaluation_slots(db: Session, lecturer_id: int) -> list[dict]:
     return [_map_item(row) for row in rows]
 
 
-def get_lecturer_evaluations(
+def get_evaluation_periods(
     db: Session,
-    lecturer_id: int | str | None = None,
-) -> dict:
-    current_lecturer_id = _lecturer_id(db, lecturer_id)
-    evaluations = _evaluation_slots(db, current_lecturer_id)
-    scored = [item["totalScore"] for item in evaluations if item["totalScore"] is not None]
-
-    periods = db.execute(
+    lecturer_id: int | None = None,
+) -> list[dict]:
+    rows = db.execute(
         text(
             """
             SELECT DISTINCT s.id, s.name, s.semester_code, s.academic_year,
                 s.start_date
             FROM public.internships AS i
             INNER JOIN public.semesters AS s ON s.id = i.semester_id
-            WHERE i.lecturer_id = :lecturer_id
+            WHERE (:lecturer_id IS NULL OR i.lecturer_id = :lecturer_id)
               AND i.status <> 'CANCELLED'
             ORDER BY s.start_date DESC NULLS LAST, s.id DESC
             """
         ),
-        {"lecturer_id": current_lecturer_id},
+        {"lecturer_id": lecturer_id},
     ).mappings().all()
+    return [
+        {
+            "id": int(row["id"]),
+            "name": row["name"],
+            "semesterCode": row["semester_code"] or "",
+            "academicYear": row["academic_year"] or "",
+        }
+        for row in rows
+    ]
+
+
+def get_lecturer_evaluations(
+    db: Session,
+    lecturer_id: int | str | None = None,
+) -> dict:
+    current_lecturer_id = _lecturer_id(db, lecturer_id)
+    evaluations = get_evaluation_slots(db, current_lecturer_id)
+    scored = [item["totalScore"] for item in evaluations if item["totalScore"] is not None]
 
     return {
         "summary": {
@@ -213,15 +246,7 @@ def get_lecturer_evaluations(
                 round(sum(scored) / len(scored), 2) if scored else None
             ),
         },
-        "periods": [
-            {
-                "id": int(row["id"]),
-                "name": row["name"],
-                "semesterCode": row["semester_code"] or "",
-                "academicYear": row["academic_year"] or "",
-            }
-            for row in periods
-        ],
+        "periods": get_evaluation_periods(db, current_lecturer_id),
         "evaluations": evaluations,
     }
 
@@ -255,7 +280,7 @@ def get_lecturer_evaluation_detail(
     item = next(
         (
             value
-            for value in _evaluation_slots(db, current_lecturer_id)
+            for value in get_evaluation_slots(db, current_lecturer_id)
             if value["internshipId"] == internship_id
             and value["evaluationType"] == evaluation_type
         ),
@@ -264,6 +289,20 @@ def get_lecturer_evaluation_detail(
     if item is None:
         raise ValueError("Không tìm thấy kỳ thực tập thuộc quyền đánh giá của bạn.")
 
+    return get_evaluation_detail_data(
+        db=db,
+        item=item,
+        evaluation_type=evaluation_type,
+        lecturer_id=current_lecturer_id,
+    )
+
+
+def get_evaluation_detail_data(
+    db: Session,
+    item: dict,
+    evaluation_type: str,
+    lecturer_id: int | None,
+) -> dict:
     evaluation_rows = db.execute(
         text(
             """
@@ -282,7 +321,7 @@ def get_lecturer_evaluation_detail(
             """
         ),
         {
-            "internship_id": internship_id,
+            "internship_id": item["internshipId"],
             "evaluation_type": evaluation_type,
         },
     ).mappings().all()
@@ -294,7 +333,7 @@ def get_lecturer_evaluation_detail(
             if record["evaluatorType"] == "LECTURER"
             and any(
                 int(row["id"]) == record["id"]
-                and row["evaluator_id"] == current_lecturer_id
+                and row["evaluator_id"] == lecturer_id
                 for row in evaluation_rows
             )
         ),
@@ -331,7 +370,7 @@ def get_lecturer_evaluation_detail(
                 wr.id
             """
         ),
-        {"internship_id": internship_id},
+        {"internship_id": item["internshipId"]},
     ).mappings().all()
 
     reports = [

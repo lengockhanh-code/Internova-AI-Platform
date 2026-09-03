@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import shutil
+import unicodedata
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,6 +18,7 @@ from src.rag.ingestion.pipeline import run_ingestion
 from src.rag.schemas import DocumentChunk
 from src.services.admin_knowledge_base_service import (
     list_rag_index_source_versions,
+    repair_missing_managed_current_versions,
 )
 from src.services.chat_service import chat_service
 from src.services.redis_cache_service import redis_cache
@@ -106,6 +108,13 @@ def _rebuild_rag_index_locked(db: Session) -> dict:
         # --------------------------------------------------------------
         # 1. Resolve strict ACTIVE/current sources from Admin DB.
         # --------------------------------------------------------------
+
+        repaired_versions = repair_missing_managed_current_versions(db)
+        if repaired_versions:
+            logger.warning(
+                "Restored %s missing knowledge document version record(s)",
+                repaired_versions,
+            )
 
         sources = list_rag_index_source_versions(db)
 
@@ -918,6 +927,184 @@ def get_rag_index_status(
         "lastJobCompletedAt": last_job_completed_at,
         "lastJobError": last_job_error,
     }
+
+
+def list_admin_rag_chunks(
+    *,
+    search: str | None = None,
+    document_name: str | None = None,
+    document_type: str | None = None,
+    language: str | None = None,
+    page: int = 1,
+    page_size: int = 25,
+) -> dict:
+    active_build_id, chunks = _load_active_rag_chunks()
+    all_items = [
+        _admin_chunk_item(chunk, position=index)
+        for index, chunk in enumerate(chunks, start=1)
+    ]
+
+    normalized_search = _search_fold(search)
+    search_terms = normalized_search.split()
+    filtered: list[dict] = []
+    for chunk, item in zip(chunks, all_items, strict=True):
+        searchable = " ".join(
+            value
+            for value in (
+                chunk.chunk_id,
+                chunk.document_name,
+                chunk.content_original,
+                chunk.content_vi or "",
+                chunk.section or "",
+                chunk.subsection or "",
+                chunk.topic or "",
+            )
+            if value
+        )
+        searchable = _search_fold(searchable)
+        if search_terms and not all(term in searchable for term in search_terms):
+            continue
+        if document_name and chunk.document_name != document_name:
+            continue
+        if document_type and chunk.document_type != document_type:
+            continue
+        if language and chunk.language != language:
+            continue
+        filtered.append(item)
+
+    page_value = max(1, int(page or 1))
+    page_size_value = min(100, max(1, int(page_size or 25)))
+    total = len(filtered)
+    total_pages = (total + page_size_value - 1) // page_size_value if total else 0
+    if total_pages and page_value > total_pages:
+        page_value = total_pages
+    offset = (page_value - 1) * page_size_value
+
+    character_counts = [len(chunk.content_original) for chunk in chunks]
+    return {
+        "items": filtered[offset:offset + page_size_value],
+        "summary": {
+            "total": len(chunks),
+            "documents": len({chunk.document_name for chunk in chunks}),
+            "translated": sum(bool(chunk.content_vi) for chunk in chunks),
+            "averageCharacters": (
+                round(sum(character_counts) / len(character_counts))
+                if character_counts
+                else 0
+            ),
+        },
+        "filters": {
+            "documentNames": sorted({chunk.document_name for chunk in chunks}),
+            "documentTypes": sorted({chunk.document_type for chunk in chunks}),
+            "languages": sorted({chunk.language for chunk in chunks}),
+        },
+        "activeBuildId": active_build_id,
+        "page": page_value,
+        "pageSize": page_size_value,
+        "total": total,
+        "totalPages": total_pages,
+    }
+
+
+def get_admin_rag_chunk(chunk_id: str) -> dict:
+    active_build_id, chunks = _load_active_rag_chunks()
+    for position, chunk in enumerate(chunks, start=1):
+        if chunk.chunk_id == chunk_id:
+            return {
+                "chunk": _admin_chunk_item(
+                    chunk,
+                    position=position,
+                    include_content=True,
+                ),
+                "activeBuildId": active_build_id,
+            }
+    raise ValueError("RAG chunk not found in the active index.")
+
+
+def _load_active_rag_chunks() -> tuple[str, list[DocumentChunk]]:
+    try:
+        build_root = _resolve_active_build_root_from_pointer(strict=True)
+    except Exception as exc:
+        raise RuntimeError(f"Could not resolve the active RAG build: {exc}") from exc
+
+    if build_root is None:
+        raise RuntimeError("No active RAG build is available.")
+
+    chunks_path = build_root / "rag" / "chunks.jsonl"
+    if not chunks_path.is_file():
+        raise RuntimeError("The active RAG build has no chunks artifact.")
+
+    chunks: list[DocumentChunk] = []
+    try:
+        with chunks_path.open("r", encoding="utf-8") as source:
+            for line_number, line in enumerate(source, start=1):
+                content = line.strip()
+                if not content:
+                    continue
+                try:
+                    chunks.append(DocumentChunk.model_validate_json(content))
+                except Exception as exc:
+                    raise RuntimeError(
+                        f"Invalid RAG chunk at line {line_number}."
+                    ) from exc
+    except OSError as exc:
+        raise RuntimeError(f"Could not read active RAG chunks: {exc}") from exc
+
+    return build_root.name, chunks
+
+
+def _admin_chunk_item(
+    chunk: DocumentChunk,
+    *,
+    position: int,
+    include_content: bool = False,
+) -> dict:
+    normalized_preview = " ".join(chunk.content_original.split())
+    if len(normalized_preview) > 240:
+        normalized_preview = f"{normalized_preview[:237].rstrip()}..."
+
+    item = {
+        "chunkId": chunk.chunk_id,
+        "position": position,
+        "documentName": chunk.document_name,
+        "documentType": chunk.document_type,
+        "sourcePriority": chunk.source_priority,
+        "contentPreview": normalized_preview,
+        "language": chunk.language,
+        "page": chunk.page,
+        "section": chunk.section,
+        "subsection": chunk.subsection,
+        "topic": chunk.topic,
+        "policyVersion": chunk.policy_version,
+        "effectiveDate": chunk.effective_date,
+        "ingestedAt": chunk.ingested_at,
+        "characterCount": len(chunk.content_original),
+        "wordCount": len(chunk.content_original.split()),
+        "sourceElementCount": len(chunk.source_element_ids),
+        "hasTranslation": bool(chunk.content_vi),
+    }
+    if include_content:
+        item.update(
+            {
+                "contentOriginal": chunk.content_original,
+                "contentVi": chunk.content_vi,
+                "fileHash": chunk.file_hash,
+                "createdDate": chunk.created_date,
+                "fileSizeBytes": chunk.file_size_bytes,
+                "sourceElementIds": chunk.source_element_ids,
+            }
+        )
+    return item
+
+
+def _search_fold(value: str | None) -> str:
+    normalized = unicodedata.normalize("NFKD", str(value or "").casefold())
+    without_marks = "".join(
+        character
+        for character in normalized
+        if not unicodedata.combining(character)
+    )
+    return " ".join(without_marks.split())
 
 
 def _new_build_id() -> str:

@@ -4,6 +4,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+# Public API fields intentionally follow the frontend camelCase contract.
+# ruff: noqa: N815
+
 
 DocumentStatus = Literal["ACTIVE", "INACTIVE", "ARCHIVED"]
 
@@ -128,3 +131,62 @@ class AdminKnowledgeVersionActionResponse(BaseModel):
     documentId: int
     versionId: int
     message: str
+
+
+class AdminRagChunkSummary(BaseModel):
+    total: int = 0
+    documents: int = 0
+    translated: int = 0
+    averageCharacters: int = 0
+
+
+class AdminRagChunkFilters(BaseModel):
+    documentNames: list[str] = Field(default_factory=list)
+    documentTypes: list[str] = Field(default_factory=list)
+    languages: list[str] = Field(default_factory=list)
+
+
+class AdminRagChunkListItem(BaseModel):
+    chunkId: str
+    position: int
+    documentName: str
+    documentType: str
+    sourcePriority: int
+    contentPreview: str
+    language: str
+    page: int | None = None
+    section: str | None = None
+    subsection: str | None = None
+    topic: str | None = None
+    policyVersion: str | None = None
+    effectiveDate: str | None = None
+    ingestedAt: str | None = None
+    characterCount: int = 0
+    wordCount: int = 0
+    sourceElementCount: int = 0
+    hasTranslation: bool = False
+
+
+class AdminRagChunksResponse(BaseModel):
+    items: list[AdminRagChunkListItem] = Field(default_factory=list)
+    summary: AdminRagChunkSummary = Field(default_factory=AdminRagChunkSummary)
+    filters: AdminRagChunkFilters = Field(default_factory=AdminRagChunkFilters)
+    activeBuildId: str
+    page: int = 1
+    pageSize: int = 25
+    total: int = 0
+    totalPages: int = 0
+
+
+class AdminRagChunkDetail(AdminRagChunkListItem):
+    contentOriginal: str
+    contentVi: str | None = None
+    fileHash: str | None = None
+    createdDate: str | None = None
+    fileSizeBytes: int | None = None
+    sourceElementIds: list[str] = Field(default_factory=list)
+
+
+class AdminRagChunkDetailResponse(BaseModel):
+    chunk: AdminRagChunkDetail
+    activeBuildId: str

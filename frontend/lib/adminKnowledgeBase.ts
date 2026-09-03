@@ -123,6 +123,11 @@ export type KnowledgeReindexResponse = {
   removedBuilds: string[];
 };
 
+export type KnowledgeReloadResponse = {
+  status: string;
+  message: string;
+};
+
 export type KnowledgeUser = {
   id: number;
   fullName: string;
@@ -211,6 +216,74 @@ export type KnowledgeVersionUploadPayload = {
   file: File;
 };
 
+export type KnowledgeChunkSummary = {
+  total: number;
+  documents: number;
+  translated: number;
+  averageCharacters: number;
+};
+
+export type KnowledgeChunkFilters = {
+  documentNames: string[];
+  documentTypes: string[];
+  languages: string[];
+};
+
+export type KnowledgeChunkListItem = {
+  chunkId: string;
+  position: number;
+  documentName: string;
+  documentType: string;
+  sourcePriority: number;
+  contentPreview: string;
+  language: string;
+  page: number | null;
+  section: string | null;
+  subsection: string | null;
+  topic: string | null;
+  policyVersion: string | null;
+  effectiveDate: string | null;
+  ingestedAt: string | null;
+  characterCount: number;
+  wordCount: number;
+  sourceElementCount: number;
+  hasTranslation: boolean;
+};
+
+export type KnowledgeChunksParams = {
+  search?: string;
+  documentName?: string;
+  documentType?: string;
+  language?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type KnowledgeChunksResponse = {
+  items: KnowledgeChunkListItem[];
+  summary: KnowledgeChunkSummary;
+  filters: KnowledgeChunkFilters;
+  activeBuildId: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+export type KnowledgeChunkDetail = KnowledgeChunkListItem & {
+  contentOriginal: string;
+  contentVi: string | null;
+  fileHash: string | null;
+  createdDate: string | null;
+  fileSizeBytes: number | null;
+  sourceElementIds: string[];
+};
+
+export type KnowledgeChunkDetailResponse = {
+  chunk: KnowledgeChunkDetail;
+  activeBuildId: string;
+};
+
 function documentsQuery(params: KnowledgeDocumentsParams): string {
   const query = new URLSearchParams();
 
@@ -221,6 +294,17 @@ function documentsQuery(params: KnowledgeDocumentsParams): string {
   query.set("page", String(params.page ?? 1));
   query.set("page_size", String(params.pageSize ?? 10));
 
+  return query.toString();
+}
+
+function chunksQuery(params: KnowledgeChunksParams): string {
+  const query = new URLSearchParams();
+  if (params.search?.trim()) query.set("search", params.search.trim());
+  if (params.documentName) query.set("document_name", params.documentName);
+  if (params.documentType) query.set("document_type", params.documentType);
+  if (params.language) query.set("language", params.language);
+  query.set("page", String(params.page ?? 1));
+  query.set("page_size", String(params.pageSize ?? 25));
   return query.toString();
 }
 
@@ -237,6 +321,16 @@ export const adminKnowledgeBaseApi = {
       {
         method: "POST",
       },
+    ),
+
+  chunks: (params: KnowledgeChunksParams = {}) =>
+    request<KnowledgeChunksResponse>(
+      `/api/v1/admin/knowledge/chunks?${chunksQuery(params)}`,
+    ),
+
+  chunk: (chunkId: string) =>
+    request<KnowledgeChunkDetailResponse>(
+      `/api/v1/admin/knowledge/chunks/${encodeURIComponent(chunkId)}`,
     ),
 
   documents: (params: KnowledgeDocumentsParams = {}) =>
@@ -316,7 +410,45 @@ export const adminKnowledgeBaseApi = {
         method: "POST",
       },
     ),
+
+  reload: () =>
+    request<KnowledgeReloadResponse>(
+      "/api/v1/chat/reload",
+      {
+        method: "POST",
+      },
+    ),
 };
+
+export async function openKnowledgeDocumentVersion(
+  documentId: number,
+  versionId: number,
+  download = false,
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE}/api/v1/admin/knowledge/documents/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(versionId)}/file${download ? "?download=true" : ""}`,
+    { headers: { ...authHeaders() } },
+  );
+  if (!response.ok) {
+    let message = `HTTP ${response.status}`;
+    try {
+      const body = (await response.json()) as { detail?: string };
+      if (body.detail) message = body.detail;
+    } catch {}
+    throw new KnowledgeBaseApiError(message, response.status);
+  }
+
+  const blobUrl = URL.createObjectURL(await response.blob());
+  if (download) {
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = "";
+    link.click();
+  } else {
+    window.open(blobUrl, "_blank", "noopener,noreferrer");
+  }
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+}
 
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return "-";

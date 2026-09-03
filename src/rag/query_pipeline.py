@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal, cast
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 from langchain_openai import ChatOpenAI
@@ -374,8 +374,8 @@ def build_retrieval_queries(
     cache_payload = {
         "query": redis_cache.normalize_query(query),
         "conversation_context": conversation_context or "",
-        "use_semantic_planner": use_semantic_planner,
-        "use_openai_translation": use_openai_translation,
+        "use_semantic_planner": bool(use_semantic_planner),
+        "use_openai_translation": bool(use_openai_translation),
         "model": settings.openai_chat_model or settings.model_name,
     }
 
@@ -432,7 +432,7 @@ def translate_query_to_english(
 
     llm = _get_chat_llm(
         settings.openai_chat_model or settings.model_name,
-        settings.openai_temperature,
+        float(settings.openai_temperature),
     )
 
     user_prompt = QUERY_TRANSLATION_USER_TEMPLATE.format(
@@ -720,7 +720,7 @@ class SemanticRouteOutput(BaseModel):
 
 
     followup_relation: FollowUpRelation = Field(
-        default=cast(FollowUpRelation, "new_request"),
+        default="new_request",
         description=(
             "Relationship of the CURRENT user message to recent conversation. "
             "A correction means the user rejects/replaces something previously assumed; "
@@ -730,7 +730,7 @@ class SemanticRouteOutput(BaseModel):
     )
 
     data_source: DataSourceChoice = Field(
-        default=cast(DataSourceChoice, "none"),
+        default="none",
         description=(
             "What kind of information/operation is actually needed: conversation for "
             "rewriting/translating/referring to text already in chat; rag for indexed "
@@ -778,7 +778,7 @@ class SemanticRouteOutput(BaseModel):
 
 
     speech_act: SpeechActChoice = Field(
-        default=cast(SpeechActChoice, "other"),
+        default="other",
         description=(
             "The pragmatic speech act of the CURRENT message. This is semantic, not "
             "grammatical. A question-shaped utterance such as 'Can you remind me to "
@@ -789,7 +789,7 @@ class SemanticRouteOutput(BaseModel):
 
 
     pending_transition: PendingTransition = Field(
-        default=cast(PendingTransition, "none"),
+        default="none",
         description=(
             "Semantic relationship to structured pending write state. "
             "confirm_pending authorizes the existing draft; cancel_pending rejects it; "
@@ -823,7 +823,7 @@ class SemanticRouteOutput(BaseModel):
     )
 
     form_request_mode: FormRequestMode = Field(
-        default=cast(FormRequestMode, "none"),
+        default="none",
         description=(
             "For form_guidance only. Use 'content' when the user asks what a form "
             "means, contains, is used for, how to complete it, or who signs it. "
@@ -856,7 +856,7 @@ class SemanticRouteOutput(BaseModel):
     )
 
     evidence_mode: EvidenceMode = Field(
-        default=cast(EvidenceMode, "none"),
+        default="none",
         description=(
             "Evidence strategy. Use 'fast' for direct factual document questions that can "
             "be supported by explicit passages. Use 'semantic' for exceptions, conditional "
@@ -867,7 +867,7 @@ class SemanticRouteOutput(BaseModel):
     )
 
     assistant_action: AssistantAction = Field(
-        default=cast(AssistantAction, "none"),
+        default="none",
         description=(
             "Fine-grained internship-copilot capability requested by the user. "
             "This is behavioral metadata only and MUST NOT broaden the top-level scope, "
@@ -876,7 +876,7 @@ class SemanticRouteOutput(BaseModel):
     )
 
     action_mode: ActionMode = Field(
-        default=cast(ActionMode, "inform"),
+        default="inform",
         description=(
             "Semantic state of the CURRENT message. A pending preview is context, not a forced menu. "
             "Use 'preview' for a first supported write or a semantic revision of a pending write; use 'execute' "
@@ -1458,9 +1458,9 @@ def _serialize_retrieval_result(
         return [
             {
                 "chunk_id": hit.chunk_id,
-                "score": hit.score,
+                "score": float(hit.score),
                 "source": hit.source,
-                "rank": hit.rank,
+                "rank": int(hit.rank),
             }
             for hit in hits
         ]
@@ -3064,7 +3064,7 @@ def _list_form_resources_from_index(
 
 def _canonical_form_number(value: str | None) -> str | None:
     """Normalize an explicit/semantic Form reference to its numeric identifier."""
-    raw = (value or "").strip()
+    raw = str(value or "").strip()
     if not raw:
         return None
 
@@ -3103,7 +3103,7 @@ def _form_display_title(
     name = Path(document_name or "").stem
 
     name = re.sub(
-        rf"^form[-_ ]?{re.escape(form_number)}[-_ ]*",
+        rf"^form[-_ ]?{re.escape(str(form_number))}[-_ ]*",
         "",
         name,
         flags=re.IGNORECASE,

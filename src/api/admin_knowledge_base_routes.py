@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
@@ -14,6 +15,8 @@ from src.models.admin_knowledge_base import (
     AdminKnowledgeDocumentUpdateRequest,
     AdminKnowledgeDocumentVersionsResponse,
     AdminKnowledgeVersionActionResponse,
+    AdminRagChunkDetailResponse,
+    AdminRagChunksResponse,
 )
 from src.security.auth import get_current_user
 from src.services.admin_knowledge_base_service import (
@@ -22,14 +25,16 @@ from src.services.admin_knowledge_base_service import (
     create_admin_knowledge_document_version,
     delete_admin_knowledge_document,
     get_admin_knowledge_document_detail,
+    get_admin_knowledge_document_version_file,
     list_admin_knowledge_document_versions,
     list_admin_knowledge_documents,
     set_admin_knowledge_current_version,
     update_admin_knowledge_document,
-    
 )
 from src.services.rag_index_service import (
+    get_admin_rag_chunk,
     get_rag_index_status,
+    list_admin_rag_chunks,
     rebuild_rag_index,
 )
 
@@ -249,6 +254,49 @@ def create_document_version(
     "/documents/{document_id}/versions/{version_id}/set-current",
     response_model=AdminKnowledgeVersionActionResponse,
 )
+
+
+@router.get("/chunks", response_model=AdminRagChunksResponse)
+def list_chunks(
+    search: str | None = Query(default=None),
+    document_name: str | None = Query(default=None),
+    document_type: str | None = Query(default=None),
+    language: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100, alias="page_size"),
+) -> AdminRagChunksResponse:
+    try:
+        return AdminRagChunksResponse(
+            **list_admin_rag_chunks(
+                search=search,
+                document_name=document_name,
+                document_type=document_type,
+                language=language,
+                page=page,
+                page_size=page_size,
+            )
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/chunks/{chunk_id}", response_model=AdminRagChunkDetailResponse)
+def get_chunk(chunk_id: str) -> AdminRagChunkDetailResponse:
+    try:
+        return AdminRagChunkDetailResponse(**get_admin_rag_chunk(chunk_id))
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
 def set_current_version(
     document_id: int,
     version_id: int,
@@ -267,6 +315,37 @@ def set_current_version(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+
+
+@router.get("/documents/{document_id}/versions/{version_id}/file")
+def open_document_version_file(
+    document_id: int,
+    version_id: int,
+    download: bool = Query(default=False),
+    db: Session = Depends(get_db),
+):
+    try:
+        file_info = get_admin_knowledge_document_version_file(
+            db=db,
+            document_id=document_id,
+            version_id=version_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if file_info is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy tệp của phiên bản tài liệu.",
+        )
+
+    disposition = "attachment" if download else "inline"
+    return FileResponse(
+        path=file_info["filePath"],
+        media_type=file_info["mediaType"],
+        filename=file_info["fileName"],
+        content_disposition_type=disposition,
+    )
 
 
 @router.get("/index-status")

@@ -73,7 +73,15 @@ def get_lecturer_reports(
     if lecturer is None:
         raise ValueError("Không tìm thấy giảng viên đang hoạt động.")
 
-    current_lecturer_id = int(lecturer["id"])
+    return _get_reports(db, lecturer_id=int(lecturer["id"]))
+
+
+def get_admin_reports(db: Session) -> dict:
+    """Return report schedules and submissions across active internships."""
+    return _get_reports(db, lecturer_id=None)
+
+
+def _get_reports(db: Session, lecturer_id: int | None) -> dict:
 
     rows = db.execute(
         text(
@@ -98,7 +106,7 @@ def get_lecturer_reports(
                     ON sp.student_id = i.student_id
                 LEFT JOIN public.semesters AS s ON s.id = i.semester_id
                 LEFT JOIN public.companies AS c ON c.id = i.company_id
-                WHERE i.lecturer_id = :lecturer_id
+                WHERE (:lecturer_id IS NULL OR i.lecturer_id = :lecturer_id)
                   AND i.status <> 'CANCELLED'
             ),
             scheduled_reports AS (
@@ -236,7 +244,7 @@ def get_lecturer_reports(
                 ar.week_number DESC NULLS LAST
             """
         ),
-        {"lecturer_id": current_lecturer_id},
+        {"lecturer_id": lecturer_id},
     ).mappings().all()
 
     reports = [_map_report(row) for row in rows]
@@ -252,12 +260,12 @@ def get_lecturer_reports(
                 s.start_date
             FROM public.internships AS i
             INNER JOIN public.semesters AS s ON s.id = i.semester_id
-            WHERE i.lecturer_id = :lecturer_id
+            WHERE (:lecturer_id IS NULL OR i.lecturer_id = :lecturer_id)
               AND i.status <> 'CANCELLED'
             ORDER BY s.start_date DESC NULLS LAST, s.id DESC
             """
         ),
-        {"lecturer_id": current_lecturer_id},
+        {"lecturer_id": lecturer_id},
     ).mappings().all()
 
     submitted = sum(1 for item in reports if item["submittedAt"] is not None)
