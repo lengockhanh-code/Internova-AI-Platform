@@ -644,16 +644,12 @@
     background: linear-gradient(135deg, rgba(232, 242, 255, .3), transparent 48%);
 }
 
-.featureIcon,
-.featureIconWrapper {
+.featureIcon {
     position: relative;
     z-index: 1;
     grid-column: 1;
     grid-row: 1 / span 3;
     align-self: start;
-}
-
-.featureIcon {
     width: 68px;
     height: 68px;
     margin: 0;
@@ -662,51 +658,50 @@
     color: #1257ba;
 }
 
-.featureIconWrapper {
-    display: flex;
-    width: 68px;
-    margin: 0;
-    align-items: flex-start;
-    justify-content: center;
-}
-
-.featureIconWrapper .featureIcon {
+.featureCard:nth-child(2) .featureIcon {
     background: #f3edff;
     color: #6d3fd1;
 }
 
-.devBadge {
-    top: -2px;
-    right: auto;
-    left: 96px;
-    padding: 4px 9px;
-    border-radius: 7px;
-    background: #f3edff;
-    color: #6d3fd1;
-    font-size: 10px;
-    font-weight: 600;
-    box-shadow: none;
-}
-
-.featureCard h3,
-.featureCard p,
-.featureCta {
+.featureHeader {
     position: relative;
     z-index: 1;
     grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    margin-top: 4px;
 }
 
-.featureCard h3 {
-    grid-row: 1;
-    margin: 8px 0 0;
+.featureHeader h3 {
+    margin: 0;
     color: #0e2347;
     font-size: 15px;
     font-weight: 700;
     line-height: 1.35;
 }
 
-.featureCard:nth-child(2) h3 {
-    margin-top: 36px;
+.devBadge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 7px;
+    background: #f3edff;
+    color: #6d3fd1;
+    font-size: 10.5px;
+    font-weight: 650;
+    line-height: 1.2;
+    white-space: nowrap;
+    box-shadow: none;
+}
+
+.featureCard p,
+.featureCta {
+    position: relative;
+    z-index: 1;
+    grid-column: 2;
 }
 
 .featureCard p {
@@ -991,10 +986,17 @@
 
 :global(.dark) .dashboardWelcome h1,
 :global(.dark) .featureCard h3,
+:global(.dark) .featureHeader h3,
 :global(.dark) .statusCardHeader h4,
 :global(.dark) .statusRow dd,
 :global(.dark) .progressRingInner strong {
     color: #eef4ff;
+}
+
+:global(.dark) .devBadge {
+    background: rgba(109, 63, 209, 0.22);
+    color: #c4b5fd;
+    border: 1px solid rgba(167, 139, 250, 0.3);
 }
 
 @media (max-width: 1180px) {
@@ -1016,14 +1018,9 @@
         padding: 22px 20px;
     }
 
-    .featureIcon,
-    .featureIconWrapper {
+    .featureIcon {
         width: 58px;
         height: 58px;
-    }
-
-    .devBadge {
-        left: 78px;
     }
 }
 
@@ -1069,8 +1066,7 @@
         padding: 20px 16px;
     }
 
-    .featureIcon,
-    .featureIconWrapper {
+    .featureIcon {
         width: 48px;
         height: 48px;
     }
@@ -1078,16 +1074,6 @@
     .featureIcon svg {
         width: 22px;
         height: 22px;
-    }
-
-    .devBadge {
-        position: static;
-        margin-top: 55px;
-        transform: translateX(12px);
-    }
-
-    .featureCard:nth-child(2) h3 {
-        margin-top: 8px;
     }
 
     .featureCta {

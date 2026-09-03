@@ -593,15 +593,15 @@ export default function Dashboard() {
                                 />
                             </div>
 
-
-                            <h3>
-                                {
-                                    t(
-                                        "dashboard.ai_consulting"
-                                    )
-                                }
-                            </h3>
-
+                            <div className={styles.featureHeader}>
+                                <h3>
+                                    {
+                                        t(
+                                            "dashboard.ai_consulting"
+                                        )
+                                    }
+                                </h3>
+                            </div>
 
                             <p>
                                 {
@@ -610,7 +610,6 @@ export default function Dashboard() {
                                     )
                                 }
                             </p>
-
 
                             <button
                                 type="button"
@@ -645,21 +644,25 @@ export default function Dashboard() {
                         >
                             <div
                                 className={
-                                    styles.featureIconWrapper
+                                    styles.featureIcon
                                 }
                             >
-                                <div
-                                    className={
-                                        styles.featureIcon
+                                <FileCheck2
+                                    size={28}
+                                    strokeWidth={
+                                        2
                                     }
-                                >
-                                    <FileCheck2
-                                        size={28}
-                                        strokeWidth={
-                                            2
-                                        }
-                                    />
-                                </div>
+                                />
+                            </div>
+
+                            <div className={styles.featureHeader}>
+                                <h3>
+                                    {
+                                        t(
+                                            "dashboard.ai_review"
+                                        )
+                                    }
+                                </h3>
 
                                 <span
                                     className={
@@ -674,16 +677,6 @@ export default function Dashboard() {
                                 </span>
                             </div>
 
-
-                            <h3>
-                                {
-                                    t(
-                                        "dashboard.ai_review"
-                                    )
-                                }
-                            </h3>
-
-
                             <p>
                                 {
                                     t(
@@ -691,7 +684,6 @@ export default function Dashboard() {
                                     )
                                 }
                             </p>
-
 
                             <button
                                 type="button"
