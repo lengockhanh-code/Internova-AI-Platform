@@ -45,17 +45,6 @@ CREATE TABLE IF NOT EXISTS users (
             )
         ),
 
-    -- auth
-    auth_provider VARCHAR(20)
-        NOT NULL DEFAULT 'LOCAL'
-        CHECK (
-            auth_provider IN (
-                'LOCAL',
-                'GOOGLE'
-            )
-        ),
-    google_sub VARCHAR(255),
-
     -- avatar (lưu trực tiếp trong PostgreSQL)
     avatar_data BYTEA,
     avatar_mime_type VARCHAR(100),
@@ -64,11 +53,6 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub
-ON users(google_sub)
-WHERE google_sub IS NOT NULL;
-
 
 -- ============================================================
 -- 2. STUDENT PROFILES

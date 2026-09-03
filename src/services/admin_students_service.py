@@ -268,8 +268,7 @@ def create_admin_student(db: Session, payload: dict[str, Any]) -> dict[str, Any]
                     phone,
                     gender,
                     role,
-                    is_active,
-                    auth_provider
+                    is_active
                 )
                 VALUES (
                     :email,
@@ -278,8 +277,7 @@ def create_admin_student(db: Session, payload: dict[str, Any]) -> dict[str, Any]
                     :phone,
                     :gender,
                     'STUDENT',
-                    TRUE,
-                    'LOCAL'
+                    TRUE
                 )
                 RETURNING id
                 """

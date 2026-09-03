@@ -27,9 +27,7 @@ _LECTURER_SELECT = """
         u.gender,
         u.avatar_url,
         u.is_active,
-        u.auth_provider,
         u.password_hash,
-        u.google_sub,
         u.created_at,
         u.updated_at,
         lp.lecturer_code,
@@ -94,10 +92,8 @@ def _lecturer_item(row: Any) -> dict[str, Any]:
         "faculty": value.get("faculty"),
         "specialization": value.get("specialization"),
         "isActive": bool(value.get("is_active")),
-        "authProvider": str(value.get("auth_provider") or "LOCAL").upper(),
-        "accountStatus": (
-            "REGISTERED" if value.get("password_hash") or value.get("google_sub") else "PENDING"
-        ),
+        "authProvider": "LOCAL",
+        "accountStatus": "REGISTERED" if value.get("password_hash") else "PENDING",
         "assignedStudents": assigned_students,
         "activeInternships": active_internships,
         "completedInternships": int(value.get("completed_internships") or 0),
@@ -365,10 +361,10 @@ def create_admin_lecturer(db: Session, payload: dict[str, Any]) -> dict[str, Any
                 """
                 INSERT INTO public.users (
                     email, password_hash, full_name, phone, gender,
-                    role, is_active, auth_provider, created_at, updated_at
+                    role, is_active, created_at, updated_at
                 ) VALUES (
                     :email, :password_hash, :full_name, :phone, :gender,
-                    'LECTURER', :is_active, 'LOCAL', NOW(), NOW()
+                    'LECTURER', :is_active, NOW(), NOW()
                 )
                 RETURNING id
                 """
@@ -443,7 +439,7 @@ def update_admin_lecturer(
         "specialization": payload.get("specialization"),
     }
     if payload.get("newPassword"):
-        password_sql = ", password_hash = :password_hash, auth_provider = 'LOCAL'"
+        password_sql = ", password_hash = :password_hash"
         params["password_hash"] = hash_password(str(payload["newPassword"]))
     try:
         db.execute(

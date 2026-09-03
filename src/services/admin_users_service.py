@@ -35,7 +35,7 @@ def _user_item(row: Any) -> dict[str, Any]:
         identity_code = None
         faculty = None
 
-    registered = bool(value.get("password_hash") or value.get("google_sub"))
+    registered = bool(value.get("password_hash"))
     return {
         "id": int(value["id"]),
         "fullName": value.get("full_name") or "Người dùng",
@@ -44,7 +44,7 @@ def _user_item(row: Any) -> dict[str, Any]:
         "avatarUrl": value.get("avatar_url"),
         "role": role,
         "isActive": bool(value.get("is_active")),
-        "authProvider": str(value.get("auth_provider") or "LOCAL").upper(),
+        "authProvider": "LOCAL",
         "accountStatus": "REGISTERED" if registered else "PENDING",
         "identityCode": identity_code,
         "faculty": faculty,
@@ -62,9 +62,7 @@ _USER_SELECT = """
         u.avatar_url,
         u.role,
         u.is_active,
-        u.auth_provider,
         u.password_hash,
-        u.google_sub,
         u.created_at,
         u.updated_at,
         sp.student_code,
@@ -121,9 +119,8 @@ def list_admin_users(
         conditions.append("u.is_active = TRUE")
     elif status == "INACTIVE":
         conditions.append("u.is_active = FALSE")
-    if auth_provider in {"LOCAL", "GOOGLE"}:
-        conditions.append("u.auth_provider = :auth_provider")
-        params["auth_provider"] = auth_provider
+    if auth_provider == "GOOGLE":
+        conditions.append("FALSE")
 
     where_sql = " AND ".join(conditions)
     total = int(
@@ -168,9 +165,7 @@ def list_admin_users(
                 COUNT(*) FILTER (WHERE role = 'STUDENT') AS students,
                 COUNT(*) FILTER (WHERE role = 'LECTURER') AS lecturers,
                 COUNT(*) FILTER (WHERE role = 'ADMIN') AS admins,
-                COUNT(*) FILTER (
-                    WHERE password_hash IS NULL AND google_sub IS NULL
-                ) AS pending
+                COUNT(*) FILTER (WHERE password_hash IS NULL) AS pending
             FROM public.users
             """
         )
@@ -336,10 +331,10 @@ def create_admin_user(db: Session, payload: dict[str, Any]) -> dict[str, Any]:
             text(
                 """
                 INSERT INTO public.users (
-                    email, password_hash, full_name, phone, role, is_active, auth_provider
+                    email, password_hash, full_name, phone, role, is_active
                 )
                 VALUES (
-                    :email, :password_hash, :full_name, :phone, :role, :is_active, 'LOCAL'
+                    :email, :password_hash, :full_name, :phone, :role, :is_active
                 )
                 RETURNING id
                 """
