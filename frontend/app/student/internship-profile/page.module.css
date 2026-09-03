@@ -9,12 +9,10 @@
 .main {
     display: flex;
     flex: 1;
-    width: calc(100vw - 256px);
-    max-width: calc(100vw - 256px);
     min-width: 0;
     min-height: 100vh;
     flex-direction: column;
-    overflow-x: clip;
+    overflow-x: hidden;
 }
 
 .profilePage {
