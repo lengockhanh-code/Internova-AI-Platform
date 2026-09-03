@@ -1188,13 +1188,13 @@
     background: #17304d;
     color: #ffffff;
 }
-
-:global(.dark) .progressCircle {
-    box-shadow:
-        0 0 0 1px rgba(102, 156, 224, 0.10),
-        0 12px 30px rgba(0, 0, 0, 0.16);
+.main {
+    background: #f6f8fb;
 }
 
+.profilePage {
+    background:
+        radial-gradient(circle at 86% 5%, rgba(48, 105, 176, 0.055), transparent 31%),
         linear-gradient(180deg, #f8fafc 0%, #f5f7fb 100%);
 }
 
