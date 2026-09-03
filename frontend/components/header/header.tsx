@@ -74,11 +74,41 @@ interface RawStudentNotification {
     sent_at?: string;
 }
 
+let cachedHeaderUser: UserInfo | null = null;
+let cachedUnreadCount = 0;
+
+function readStoredUser(): UserInfo | null {
+    if (typeof window === "undefined") {
+        return cachedHeaderUser;
+    }
+
+    if (cachedHeaderUser) {
+        return cachedHeaderUser;
+    }
+
+    try {
+        const storedUser = localStorage.getItem("internova_user");
+        if (!storedUser) {
+            return null;
+        }
+
+        const parsed = JSON.parse(storedUser) as UserInfo;
+        if (!parsed?.fullName || !parsed?.role) {
+            return null;
+        }
+
+        cachedHeaderUser = parsed;
+        return parsed;
+    } catch {
+        return null;
+    }
+}
+
 export default function Header() {
     const router = useRouter();
     const { theme, locale, toggleTheme, t } = useSettings();
-    const [user, setUser] = useState<UserInfo | null>(null);
-    const [unreadCount, setUnreadCount] = useState(0);
+    const [user, setUser] = useState<UserInfo | null>(() => readStoredUser());
+    const [unreadCount, setUnreadCount] = useState(cachedUnreadCount);
     const [themeBusy, setThemeBusy] = useState(false);
 
     // Account dropdown state
@@ -113,6 +143,7 @@ export default function Header() {
             const token = localStorage.getItem("internova_access_token");
 
             if (!token) {
+                cachedHeaderUser = null;
                 return;
             }
 
@@ -126,6 +157,8 @@ export default function Header() {
                 if (response.status === 401) {
                     localStorage.removeItem("internova_access_token");
                     localStorage.removeItem("internova_user");
+                    cachedHeaderUser = null;
+                    cachedUnreadCount = 0;
                     window.alert(t("header.session.expired"));
                     window.location.replace("/auth/login");
                     return;
@@ -136,6 +169,8 @@ export default function Header() {
                 }
 
                 const data = await response.json();
+                cachedHeaderUser = data;
+                localStorage.setItem("internova_user", JSON.stringify(data));
                 setUser(data);
             } catch (error) {
                 console.error("Không thể tải thông tin người dùng:", error);
@@ -217,6 +252,8 @@ export default function Header() {
             if (response.status === 401) {
                 localStorage.removeItem("internova_access_token");
                 localStorage.removeItem("internova_user");
+                cachedHeaderUser = null;
+                cachedUnreadCount = 0;
                 window.location.replace("/auth/login");
                 return;
             }
@@ -327,19 +364,27 @@ setLatestNotifications(normalized);
         let active = true;
         void fetchStudentUnreadCount()
             .then((count) => {
+                cachedUnreadCount = count;
                 if (active) setUnreadCount(count);
             })
             .catch(() => undefined);
 
         const unsubscribeRealtime = subscribeStudentNotificationEvents(
             () => {
-                setUnreadCount((count) => count + 1);
+                setUnreadCount((count) => {
+                    const nextCount = count + 1;
+                    cachedUnreadCount = nextCount;
+                    return nextCount;
+                });
                 if (isNotificationOpen) {
                     void loadLatestNotifications();
                 }
             },
         );
-        const unsubscribeCount = subscribeStudentUnreadCount(setUnreadCount);
+        const unsubscribeCount = subscribeStudentUnreadCount((count) => {
+            cachedUnreadCount = count;
+            setUnreadCount(count);
+        });
 
         return () => {
             active = false;
@@ -411,6 +456,8 @@ setLatestNotifications(normalized);
 
         localStorage.removeItem("internova_access_token");
         localStorage.removeItem("internova_user");
+        cachedHeaderUser = null;
+        cachedUnreadCount = 0;
         window.location.replace("/auth/login");
     }
 
