@@ -239,6 +239,7 @@ def review_report_with_ai(
 
 
     llm = ChatOpenAI(
+        base_url=settings.openai_base_url or None,
         api_key=
             settings.openai_api_key,
 

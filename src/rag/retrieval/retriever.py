@@ -146,6 +146,8 @@ class HybridRetriever:
             self._embeddings = OpenAIEmbeddings(
                 model=settings.openai_embedding_model,
                 api_key=settings.openai_api_key,
+                base_url=settings.openai_base_url or None,
+                check_embedding_ctx_length=settings.openai_embedding_check_ctx_length,
             )
 
             self._chroma_client = chromadb.PersistentClient(

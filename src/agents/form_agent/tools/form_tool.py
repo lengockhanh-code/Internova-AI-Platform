@@ -404,6 +404,7 @@ def _extract_fields_batch(
         llm = ChatOpenAI(
             model=settings.openai_chat_model or settings.model_name,
             api_key=settings.openai_api_key,
+            base_url=settings.openai_base_url or None,
             temperature=0.0,
             model_kwargs={"response_format": {"type": "json_object"}},
         )

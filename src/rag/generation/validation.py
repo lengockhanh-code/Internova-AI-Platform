@@ -196,8 +196,9 @@ def check_llm_guardrail(query: str, settings) -> bool:
     user_prompt = f"Analyze the following user query for safety violations:\n\n{query}"
 
     llm = ChatOpenAI(
-        model="gpt-4o-mini",
+        model=settings.openai_guardrail_model,
         api_key=settings.openai_api_key,
+        base_url=settings.openai_base_url or None,
         temperature=0.0,
         max_tokens=5,
     )
@@ -670,6 +671,7 @@ def generate_dynamic_fallback(query: str, reason: str, lang: str) -> str:
         llm = ChatOpenAI(
             model=settings.openai_chat_model or settings.model_name,
             api_key=settings.openai_api_key,
+            base_url=settings.openai_base_url or None,
             temperature=0.7,
         )
         

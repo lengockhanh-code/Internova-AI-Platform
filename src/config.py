@@ -74,6 +74,14 @@ class Settings(BaseSettings):
 
     openai_api_key: str = ""
 
+    # Empty uses the SDK default endpoint; OpenRouter: https://openrouter.ai/api/v1.
+    openai_base_url: str = ""
+
+    openai_guardrail_model: str = "gpt-4o-mini"
+
+    # Disable for providers that expect text instead of OpenAI token arrays.
+    openai_embedding_check_ctx_length: bool = True
+
     model_name: str = "gpt-5.6-terra"
 
     llm_temperature: float = Field(

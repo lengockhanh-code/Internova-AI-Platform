@@ -66,6 +66,8 @@ def build_chroma_store(
     embeddings = OpenAIEmbeddings(
         model=embedding_model,
         api_key=settings.openai_api_key,
+        base_url=settings.openai_base_url or None,
+        check_embedding_ctx_length=settings.openai_embedding_check_ctx_length,
     )
 
     documents = [build_embedding_text(chunk) for chunk in chunks]
